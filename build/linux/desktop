@@ -1,0 +1,13 @@
+[Desktop Entry]
+Version=1.0
+Name=Yulai
+Comment=EVE Online tools
+# The Exec line includes %u to pass the URL to the application
+Exec=/usr/local/bin/yulai %u
+Terminal=false
+Type=Application
+Icon=yulai
+Categories=Utility;
+StartupWMClass=yulai
+
+ 

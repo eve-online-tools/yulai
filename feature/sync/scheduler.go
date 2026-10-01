@@ -1,0 +1,93 @@
+// Package sync runs feature jobs per character on the cadence the jobs ask for.
+package sync
+
+import (
+	"context"
+	"database/sql"
+	"fmt"
+	"time"
+
+	"github.com/eve-online-tools/lib-esi-go/middleware/authentication"
+
+	"github.com/eve-online-tools/yulai/core/todo"
+	"github.com/eve-online-tools/yulai/feature"
+)
+
+const EventJobsChanged = "sync:jobs:changed"
+
+// retryAfter is the backoff for a job that failed for a non-auth reason.
+const retryAfter = 5 * time.Minute
+
+// jobTimeout bounds one run. Paginated syncs should chunk work well under this.
+const jobTimeout = 2 * time.Minute
+
+// Tokens is what the scheduler needs from identity/token.
+type Tokens interface {
+	Scopes(ctx context.Context, characterID int64) ([]string, error)
+	For(characterID int64) authentication.RefreshableToken
+}
+
+// OnAuthFailure is called when a job fails because the character's token is dead.
+type OnAuthFailure func(ctx context.Context, characterID int64, reason string)
+
+// SyncJob is one row of the sync_jobs table. sqlc will generate this.
+type SyncJob struct {
+	CharacterID int64   `json:"characterId"`
+	Job         string  `json:"job"`
+	NextRun     *int64  `json:"nextRun"`
+	LastRun     *int64  `json:"lastRun"`
+	LastError   *string `json:"lastError"`
+	State       string  `json:"state"`
+}
+
+type Scheduler struct {
+	conn     *sql.DB
+	features []feature.Feature
+	jobs     map[string]feature.Job
+	tokens   Tokens
+	workers  int
+	tick     time.Duration
+	onAuth   OnAuthFailure
+}
+
+func NewScheduler(conn *sql.DB, features []feature.Feature, tokens Tokens, workers int, onAuth OnAuthFailure) *Scheduler {
+	s := &Scheduler{
+		conn:     conn,
+		features: features,
+		jobs:     map[string]feature.Job{},
+		tokens:   tokens,
+		workers:  workers,
+		tick:     time.Second,
+		onAuth:   onAuth,
+	}
+	for _, f := range features {
+		for _, j := range f.Jobs() {
+			if _, dup := s.jobs[j.Name]; dup {
+				panic(fmt.Sprintf("sync: duplicate job name %q", j.Name))
+			}
+			s.jobs[j.Name] = j
+		}
+	}
+	return s
+}
+
+// Enroll reconciles a character's job rows with the features its token unlocks.
+// Jobs of disabled features are removed, new ones start now, and RunAtStartup jobs
+// are made due so stored data gets verified. Call at boot and after every login.
+func (s *Scheduler) Enroll(ctx context.Context, characterID int64) error {
+	return todo.ErrNotImplemented
+}
+
+// Start will run the scheduling loop until ctx is cancelled: tick, list due jobs,
+// run up to workers at once, record outcome/state/errors, wake requested jobs.
+func (s *Scheduler) Start(ctx context.Context) {
+	<-ctx.Done()
+}
+
+// RunNow makes a job due on the next tick.
+func (s *Scheduler) RunNow(ctx context.Context, characterID int64, job string) error {
+	if _, ok := s.jobs[job]; !ok {
+		return fmt.Errorf("sync: unknown job %q", job)
+	}
+	return todo.ErrNotImplemented
+}
