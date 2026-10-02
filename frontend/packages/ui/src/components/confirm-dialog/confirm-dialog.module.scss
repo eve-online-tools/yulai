@@ -1,0 +1,32 @@
+.dialog {
+  width: min(420px, calc(100% - 2 * var(--x-space-5)));
+  padding: 0;
+  border: 1px solid var(--x-surface-edge);
+  border-radius: var(--x-radius);
+  background: var(--x-color-surface);
+  color: inherit;
+  box-shadow: var(--x-shadow);
+
+  &::backdrop {
+    background: rgb(0 0 0 / 60%);
+  }
+}
+
+.inner {
+  display: flex;
+  flex-direction: column;
+  gap: var(--x-space-3);
+  padding: var(--x-space-5);
+}
+
+.title {
+  margin: 0;
+  font-size: var(--x-fs-h3);
+}
+
+.actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: var(--x-space-2);
+  margin-top: var(--x-space-2);
+}
