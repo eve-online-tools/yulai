@@ -1,70 +1,53 @@
-import type { ReactNode } from "react";
+import { useEffect } from "react";
 import { useMutation, useSuspenseQuery } from "@tanstack/react-query";
 import { useNavigate } from "@tanstack/react-router";
-import { Service as Characters } from "@bindings/github.com/eve-online-tools/yulai/feature/character";
-import type { SetupStatus } from "@bindings/github.com/eve-online-tools/yulai/app";
-import { Alert, Button, Panel } from "@xaroth.nl/design/react";
+import { Service as Characters, type ListRow as Character } from "@bindings/github.com/eve-online-tools/yulai/feature/character";
+import type { SyncJob } from "@bindings/github.com/eve-online-tools/yulai/feature/sync";
+import { Alert, Button, Panel, Progress } from "@xaroth.nl/design/react";
 import { Portrait } from "@yulai/ui";
-import { charactersQuery, setupQuery } from "../../queries";
+import { charactersQuery, setupQuery, syncJobsQuery } from "../../queries";
 import styles from "./welcome.module.scss";
+
+const steps = ["Add a character", "Synchronizing", "Complete"];
 
 // Covers only what blocks using the app. Optional steps live in the sidebar checklist.
 export function WelcomePage() {
   const { data: setup } = useSuspenseQuery(setupQuery);
   const { data: characters } = useSuspenseQuery(charactersQuery);
+  const { data: jobs } = useSuspenseQuery(syncJobsQuery);
+  const navigate = useNavigate();
+
   const first = characters[0];
+  const myJobs = first ? jobs.filter((j) => j.characterId === first.id) : [];
+  const synced = myJobs.filter((j) => j.lastRun != null).length;
+  const current = !first ? 0 : synced < myJobs.length ? 1 : 2;
+
+  useEffect(() => {
+    if (current === 2) navigate({ to: "/characters", replace: true });
+  }, [current, navigate]);
 
   return (
     <div className={styles.welcome}>
       <Panel variant="raised" marks padding="lg" className={styles.panel}>
         <p className={styles.eyebrow}>First run</p>
         <h1>Welcome to Yulai</h1>
-        <p className="muted">Two steps before you can start.</p>
-        <ol className={styles.steps}>
-          <Step n={1} title="Register an SSO application" state={setup.ssoConfigured ? "done" : "active"}>
-            {!setup.ssoConfigured && <SSOInstructions setup={setup} />}
-          </Step>
-          <Step n={2} title="Add your first character" state={first ? "done" : setup.ssoConfigured ? "active" : "todo"}>
-            {setup.ssoConfigured && (first ? <Added name={first.name} id={first.id} /> : <AddFirst loginUrl={setup.loginUrl} />)}
-          </Step>
+        <ol className={styles.stepper}>
+          {steps.map((title, i) => (
+            <li key={title} className={styles.step} data-state={i < current ? "done" : i === current ? "active" : "todo"}>
+              <span className={styles.n}>{i < current ? "✓" : i + 1}</span>
+              <span className={styles.title}>{title}</span>
+            </li>
+          ))}
         </ol>
+        <div className={styles.content}>
+          {current === 0 && <AddFirst loginUrl={setup.loginUrl} />}
+          {current === 1 && <Syncing character={first} jobs={myJobs} synced={synced} />}
+        </div>
         <p className="muted small">
           Login runs in your own browser, so Yulai never sees your password. Tokens are stored encrypted on this machine.
         </p>
       </Panel>
     </div>
-  );
-}
-
-type StepState = "todo" | "active" | "done";
-
-function Step({ n, title, state, children }: { n: number; title: string; state: StepState; children?: ReactNode }) {
-  return (
-    <li className={styles.step} data-state={state}>
-      <span className={styles.n}>{state === "done" ? "✓" : n}</span>
-      <div className={styles.body}>
-        <div className={styles.title}>{title}</div>
-        {children}
-      </div>
-    </li>
-  );
-}
-
-function SSOInstructions({ setup }: { setup: SetupStatus }) {
-  return (
-    <ol className="small">
-      <li>
-        Create an application at{" "}
-        <a href="https://developers.eveonline.com" target="_blank" rel="noreferrer">
-          developers.eveonline.com
-        </a>{" "}
-        with callback URL <Copyable text={setup.callbackUrl} />
-      </li>
-      <li>
-        Save its client ID as <code>{`{ "clientId": "..." }`}</code> in <Copyable text={setup.ssoPath} />
-      </li>
-      <li>Restart Yulai.</li>
-    </ol>
   );
 }
 
@@ -89,16 +72,17 @@ function AddFirst({ loginUrl }: { loginUrl: string }) {
   );
 }
 
-function Added({ id, name }: { id: number; name: string }) {
-  const navigate = useNavigate();
+function Syncing({ character, jobs, synced }: { character: Character; jobs: SyncJob[]; synced: number }) {
+  const failed = jobs.find((j) => j.lastError);
   return (
-    <div className="row">
-      <Portrait id={id} size={48} />
-      <span>Welcome, {name}.</span>
-      <Button className="push-right" onClick={() => navigate({ to: "/characters" })}>
-        Continue
-      </Button>
-    </div>
+    <>
+      <div className="row">
+        <Portrait id={character.id} size={48} />
+        <span>Welcome, {character.name}. Loading your character data.</span>
+      </div>
+      <Progress label="Synchronizing" value={synced} max={jobs.length} showValue />
+      {failed && <Alert tone="warning">{failed.job}: {failed.lastError}</Alert>}
+    </>
   );
 }
 

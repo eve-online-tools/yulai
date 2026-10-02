@@ -1,12 +1,9 @@
 package app
 
-// SetupStatus is what the welcome screen needs to tell whether the app can log in.
+// SetupStatus is what the welcome screen and checklist need to start a login.
 type SetupStatus struct {
-	SSOConfigured bool   `json:"ssoConfigured"`
-	SSOPath       string `json:"ssoPath"`
-	CallbackURL   string `json:"callbackUrl"`
-	Issuer        string `json:"issuer"`
-	LoginURL      string `json:"loginUrl"`
+	Issuer   string `json:"issuer"`
+	LoginURL string `json:"loginUrl"`
 }
 
 // SetupService reports first-run state. Config is read once at boot, so the
@@ -21,10 +18,7 @@ func (s *SetupService) Status() SetupStatus { return s.status }
 
 func newSetupService(cfg *Config, loginURL string) *SetupService {
 	return &SetupService{status: SetupStatus{
-		SSOConfigured: cfg.SSO.ClientID != "",
-		SSOPath:       cfg.Source,
-		CallbackURL:   cfg.SSO.CallbackURL,
-		Issuer:        cfg.SSO.Issuer,
-		LoginURL:      loginURL,
+		Issuer:   cfg.SSO.Issuer,
+		LoginURL: loginURL,
 	}}
 }

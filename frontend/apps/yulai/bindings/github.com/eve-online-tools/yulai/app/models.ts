@@ -6,26 +6,14 @@
 import { Create as $Create } from "@wailsio/runtime";
 
 /**
- * SetupStatus is what the welcome screen needs to tell whether the app can log in.
+ * SetupStatus is what the welcome screen and checklist need to start a login.
  */
 export class SetupStatus {
-    "ssoConfigured": boolean;
-    "ssoPath": string;
-    "callbackUrl": string;
     "issuer": string;
     "loginUrl": string;
 
     /** Creates a new SetupStatus instance. */
     constructor($$source: Partial<SetupStatus> = {}) {
-        if (!("ssoConfigured" in $$source)) {
-            this["ssoConfigured"] = false;
-        }
-        if (!("ssoPath" in $$source)) {
-            this["ssoPath"] = "";
-        }
-        if (!("callbackUrl" in $$source)) {
-            this["callbackUrl"] = "";
-        }
         if (!("issuer" in $$source)) {
             this["issuer"] = "";
         }

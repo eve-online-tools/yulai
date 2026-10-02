@@ -5,7 +5,6 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"log/slog"
 	"os"
 	"path/filepath"
 
@@ -24,8 +23,7 @@ const (
 	HostEnv        = "YULAI_SSO_HOST"
 )
 
-// DefaultCallbackURL keeps the login server up without SSO config. It must match
-// the SSO app registration.
+// DefaultCallbackURL must match the SSO app registration.
 const DefaultCallbackURL = "http://localhost:45538/callback"
 
 // Set with -ldflags -X by the Taskfile.
@@ -38,11 +36,10 @@ var (
 type Config struct {
 	SSO     sso.Config
 	DataDir string
-	Source  string
 }
 
-// LoadConfig resolves the data dir and the SSO registration. Missing SSO config
-// is not fatal: the app runs, and the login page reports it.
+// LoadConfig resolves the data dir and the SSO registration. A missing client ID
+// is an error: without it no character can log in.
 func LoadConfig() (*Config, error) {
 	dataDir, err := xdg.DataFile(Name)
 	if err != nil {
@@ -56,14 +53,11 @@ func LoadConfig() (*Config, error) {
 	if err != nil {
 		return nil, err
 	}
-	if ssoCfg.ClientID == "" {
-		slog.Warn("no SSO client ID configured; login will fail", "file", source, "env", ClientIDEnv)
-	}
-	return &Config{SSO: ssoCfg, DataDir: dataDir, Source: source}, nil
+	return &Config{SSO: ssoCfg, DataDir: dataDir}, nil
 }
 
 // resolveSSO layers defaults, build-time values, the SSO file at path and
-// environment variables, later sources winning.
+// environment variables, later sources winning. The client ID is required.
 func resolveSSO(path string) (sso.Config, error) {
 	c := sso.Config{
 		Name:        Name,
@@ -78,6 +72,9 @@ func resolveSSO(path string) (sso.Config, error) {
 	c.ClientID = cmp.Or(os.Getenv(ClientIDEnv), c.ClientID)
 	c.CallbackURL = cmp.Or(os.Getenv(CallbackURLEnv), c.CallbackURL, DefaultCallbackURL)
 	c.Issuer = sso.NormalizeIssuer(cmp.Or(os.Getenv(HostEnv), c.Issuer))
+	if c.ClientID == "" {
+		return c, fmt.Errorf("no SSO client ID: build with %s set, or set clientId in %s", ClientIDEnv, path)
+	}
 	return c, nil
 }
 

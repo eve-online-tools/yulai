@@ -45,6 +45,7 @@ replace the asset-manager module path and `github.com/xaroth/lib-esi-go` with th
 
 1. `app.LoadConfig()` resolves the data dir (`xdg.DataFile("yulai")`) and the SSO registration:
    build-time values, then `<config>/yulai/sso.json`, then `YULAI_SSO_*` environment variables.
+   A missing client ID is fatal.
 2. `app.New()`:
    1. `db.Open(DBPath)` runs migrations. Commented out until `core/db` is real.
    2. `crypt.Open(keyring.OS{Service: "eve-online-tools/yulai", User: "master-key"})`
@@ -133,8 +134,9 @@ field names and JSON tags so the bindings don't change. `sqlc.yaml` is added tog
   Wails version in `go.mod`.
 - Hash history, so secondary windows open at `/#/<route>`.
 - Routes under `layout` get the sidebar shell. Routes directly under root sit in the frame only.
-- `/` redirects to `/welcome` (no shell, blocking first-run steps: SSO config, first character) while there
-  are no characters. Optional onboarding is the sidebar checklist in `components/getting-started`. Its items
+- `/` redirects to `/welcome` while there are no characters. It has no shell and a horizontal stepper:
+  add a character, synchronizing (until the character's sync jobs have all run once), complete (redirects
+  to `/characters`). Optional onboarding is the sidebar checklist in `components/getting-started`. Its items
   are derived from backend state; only skips and dismissal are kept, in `localStorage`.
 - Loaders call `queryClient.ensureQueryData` and components use `useSuspenseQuery`.
 - Bindings are generated as classes (`-ts`, no `-i`) and committed.
@@ -161,7 +163,6 @@ field names and JSON tags so the bindings don't change. `sqlc.yaml` is added tog
    Uncomment `db.Open` in `app.New`.
 2. **Identity:** `identity/sso`, `identity/login`, `identity/token`, sqlc for `tokens`.
 3. **Characters:** `character` queries, `Store`/`Remove`/`MarkNeedsLogin`, `EventChanged`.
-   `LoadConfig` makes a missing SSO file fatal again.
 4. **Scheduler:** `core/task`, seeds and gates, `SyncService` per `docs/SCHEDULER.md`.
 5. **First real feature** using the recipe above.
 6. Delete `core/todo`.
