@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	"embed"
+	"io/fs"
 	"log"
 	"runtime"
 
@@ -11,8 +12,10 @@ import (
 	"github.com/eve-online-tools/yulai/app"
 )
 
+// frontend/dist holds one build per app: yulai (the window) and webserver (the login pages).
+//
 //go:embed all:frontend/dist
-var assets embed.FS
+var dist embed.FS
 
 func main() {
 	cfg, err := app.LoadConfig()
@@ -23,7 +26,16 @@ func main() {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
-	a, err := app.New(ctx, cfg)
+	assets, err := fs.Sub(dist, "frontend/dist/yulai")
+	if err != nil {
+		log.Fatal(err)
+	}
+	web, err := fs.Sub(dist, "frontend/dist/webserver")
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	a, err := app.New(ctx, cfg, web)
 	if err != nil {
 		log.Fatal(err)
 	}

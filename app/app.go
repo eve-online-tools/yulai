@@ -4,6 +4,7 @@ import (
 	"context"
 	"database/sql"
 	"errors"
+	"io/fs"
 	"log/slog"
 
 	"github.com/wailsapp/wails/v3/pkg/application"
@@ -36,7 +37,8 @@ type App struct {
 	conn *sql.DB
 }
 
-func New(ctx context.Context, cfg *Config) (*App, error) {
+// web is the apps/webserver build the login server serves.
+func New(ctx context.Context, cfg *Config, web fs.FS) (*App, error) {
 	// The database is opened here once core/db is implemented:
 	//   conn, err := db.Open(ctx, cfg.DBPath())
 	var conn *sql.DB
@@ -63,7 +65,7 @@ func New(ctx context.Context, cfg *Config) (*App, error) {
 	for _, f := range features {
 		loginFeatures = append(loginFeatures, login.Feature{Name: f.Name(), Scopes: f.Scopes()})
 	}
-	app.Login, err = login.New(ssoClient, verifier, loginFeatures, func(ctx context.Context, r *login.Result) error {
+	app.Login, err = login.New(ssoClient, verifier, web, loginFeatures, func(ctx context.Context, r *login.Result) error {
 		return app.Characters.Store(ctx, r)
 	})
 	if err != nil {
