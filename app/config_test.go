@@ -34,8 +34,9 @@ func TestResolveSSO(t *testing.T) {
 		want  sso.Config
 	}{
 		{
-			name: "defaults",
-			want: sso.Config{CallbackURL: DefaultCallbackURL, Issuer: sso.DefaultIssuer},
+			name:  "defaults",
+			build: [3]string{"build-id", "", ""},
+			want:  sso.Config{ClientID: "build-id", CallbackURL: DefaultCallbackURL, Issuer: sso.DefaultIssuer},
 		},
 		{
 			name:  "build values",
@@ -75,6 +76,14 @@ func TestResolveSSO(t *testing.T) {
 				t.Errorf("got %+v, want %+v", got, tt.want)
 			}
 		})
+	}
+}
+
+func TestResolveSSONoClientID(t *testing.T) {
+	setBuild(t, "", "", "")
+	t.Setenv(ClientIDEnv, "")
+	if _, err := resolveSSO(writeSSO(t, `{"ssoHost": "sisilogin.testeveonline.com"}`)); err == nil {
+		t.Fatal("want missing client ID error")
 	}
 }
 
