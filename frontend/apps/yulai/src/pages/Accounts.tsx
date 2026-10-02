@@ -1,6 +1,6 @@
 import { useMutation, useSuspenseQuery } from "@tanstack/react-query";
-import { Service as Characters } from "../../bindings/github.com/eve-online-tools/yulai/feature/character";
-import type { FeatureInfo, ListRow as Character } from "../../bindings/github.com/eve-online-tools/yulai/feature/character";
+import { Service as Characters } from "@bindings/github.com/eve-online-tools/yulai/feature/character";
+import type { FeatureInfo, ListRow as Character } from "@bindings/github.com/eve-online-tools/yulai/feature/character";
 import { charactersQuery, featuresQuery } from "../queries";
 
 export function AccountsPage() {
