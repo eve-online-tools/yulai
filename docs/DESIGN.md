@@ -17,7 +17,7 @@ Components used by more than one app (`apps/yulai`, `apps/webserver`) live in `@
 | Layer | Where | What |
 | --- | --- | --- |
 | Frame | `components/window-frame` (on `@yulai/ui` `Frame`), root route | Backdrop, title bar, window controls. Every page. |
-| Shell | `components/shell`, `layout` route | Sidebar (tools on top; checklist, accounts, settings in the foot) and the content area. |
+| Shell | `components/shell`, `layout` route | Sidebar (tools on top; checklist, characters, settings in the foot) and the content area. |
 | Page | `pages/*` | Content. `/welcome` mounts straight in the frame, without the shell. |
 
 ## Window chrome
