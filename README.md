@@ -39,6 +39,7 @@ core/           infrastructure, owns no tables
   esi/          lib-esi-go client with rate limiting and on-disk cache
   keyring/      OS credential store
   crypt/        AES-GCM sealer with its key in the keyring
+  task/         scheduler: interval/startup/on-demand tasks, conditions, pauses, pools
   todo/         ErrNotImplemented for skeleton stubs; delete when unused
 identity/       who you are and your tokens
   sso/          EVE SSO protocol: discovery, PKCE, token exchange/refresh, JWT verification
@@ -48,5 +49,5 @@ feature/        feature.go: Feature and Job contracts. One subpackage per featur
   character/    characters table, add-character flow, list, remove
   sync/         job scheduler, sync_jobs table
 frontend/       Vite + React + TanStack Router/Query
-docs/           PLAN.md
+docs/           PLAN.md, SCHEDULER.md
 ```
