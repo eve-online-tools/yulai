@@ -2,8 +2,7 @@ import { useState, type ReactNode } from "react";
 import { useMutation, useQuery } from "@tanstack/react-query";
 import { Link } from "@tanstack/react-router";
 import { Service as Characters } from "@bindings/github.com/eve-online-tools/yulai/feature/character";
-import { enabledFeatures } from "@yulai/ui";
-import { charactersQuery, featuresQuery, setupQuery, syncJobsQuery } from "../queries";
+import { charactersQuery, setupQuery, syncJobsQuery } from "../queries";
 
 // UI-only state, so it lives in the webview rather than the database.
 const storageKey = "yulai.gettingStarted";
@@ -24,7 +23,6 @@ type Item = { id: string; title: string; done: boolean; body: ReactNode; skippab
 export function GettingStarted() {
   const [stored, setStored] = useState(load);
   const { data: characters = [] } = useQuery(charactersQuery);
-  const { data: features = [] } = useQuery(featuresQuery);
   const { data: jobs = [] } = useQuery(syncJobsQuery);
   const { data: setup } = useQuery(setupQuery);
   const add = useMutation({ mutationFn: () => Characters.AddCharacter() });
@@ -34,7 +32,6 @@ export function GettingStarted() {
     setStored(next);
   };
 
-  const enabledSomewhere = new Set(characters.flatMap((c) => enabledFeatures(features, c.scopes).map((f) => f.name)));
   const ssoHost = setup?.issuer ? new URL(setup.issuer).host : "the EVE SSO";
 
   const items: Item[] = [
@@ -43,18 +40,6 @@ export function GettingStarted() {
       title: "Add a character",
       done: characters.length > 0,
       body: <button onClick={() => add.mutate()}>Add character</button>,
-    },
-    {
-      id: "features",
-      title: "Choose features",
-      done: features.every((f) => enabledSomewhere.has(f.name)),
-      skippable: true,
-      body: (
-        <>
-          <p className="muted">Features follow the scopes you consent to. Log in again with more features checked to enable them.</p>
-          <button onClick={() => add.mutate()}>Log in again</button>
-        </>
-      ),
     },
     {
       id: "accounts",
