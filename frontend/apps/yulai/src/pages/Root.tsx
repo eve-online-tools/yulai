@@ -1,4 +1,5 @@
 import { Link, Outlet } from "@tanstack/react-router";
+import { GettingStarted } from "../components/GettingStarted";
 
 export function Root() {
   return (
@@ -10,6 +11,7 @@ export function Root() {
             Characters
           </Link>
         </nav>
+        <GettingStarted />
         <Link to="/accounts" className="icon-button" title="Accounts" activeProps={{ className: "icon-button active" }}>
           <PersonIcon />
         </Link>

@@ -9,7 +9,8 @@ import {
 import { Root } from "./pages/Root";
 import { CharactersPage } from "./pages/Characters";
 import { AccountsPage } from "./pages/Accounts";
-import { charactersQuery, featuresQuery, queryClient } from "./queries";
+import { WelcomePage } from "./pages/Welcome";
+import { charactersQuery, featuresQuery, queryClient, setupQuery } from "./queries";
 
 // Hash history: Wails serves one index.html.
 const rootRoute = createRootRoute({ component: Outlet });
@@ -24,9 +25,18 @@ const layoutRoute = createRoute({
 const indexRoute = createRoute({
   getParentRoute: () => layoutRoute,
   path: "/",
-  beforeLoad: () => {
-    throw redirect({ to: "/characters" });
+  beforeLoad: async () => {
+    const characters = await queryClient.ensureQueryData(charactersQuery);
+    throw redirect({ to: characters.length === 0 ? "/welcome" : "/characters" });
   },
+});
+
+// First run. Chromeless so nothing else competes with the blocking steps.
+const welcomeRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: "/welcome",
+  loader: () => Promise.all([queryClient.ensureQueryData(setupQuery), queryClient.ensureQueryData(charactersQuery)]),
+  component: WelcomePage,
 });
 
 const charactersRoute = createRoute({
@@ -44,7 +54,7 @@ const accountsRoute = createRoute({
 });
 
 export const router = createRouter({
-  routeTree: rootRoute.addChildren([layoutRoute.addChildren([indexRoute, charactersRoute, accountsRoute])]),
+  routeTree: rootRoute.addChildren([welcomeRoute, layoutRoute.addChildren([indexRoute, charactersRoute, accountsRoute])]),
   history: createHashHistory(),
   defaultPreload: "intent",
 });

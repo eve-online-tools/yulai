@@ -97,6 +97,7 @@ func (a *App) Services() []application.Service {
 	return []application.Service{
 		application.NewService(a.Characters),
 		application.NewService(sync.NewService(a.Scheduler)),
+		application.NewService(newSetupService(a.Config, a.Login.URL())),
 	}
 }
 
