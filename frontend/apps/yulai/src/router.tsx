@@ -11,7 +11,7 @@ import { CharactersPage } from "./pages/characters";
 import { AccountsPage } from "./pages/accounts";
 import { WelcomePage } from "./pages/welcome";
 import { SettingsPage } from "./pages/settings";
-import { charactersQuery, featuresQuery, queryClient, setupQuery } from "./queries";
+import { charactersQuery, featuresQuery, queryClient, setupQuery, syncJobsQuery } from "./queries";
 
 // Hash history: Wails serves one index.html. Every page sits in the frame (title bar, window controls).
 const rootRoute = createRootRoute({ component: WindowFrame });
@@ -36,7 +36,12 @@ const indexRoute = createRoute({
 const welcomeRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: "/welcome",
-  loader: () => Promise.all([queryClient.ensureQueryData(setupQuery), queryClient.ensureQueryData(charactersQuery)]),
+  loader: () =>
+    Promise.all([
+      queryClient.ensureQueryData(setupQuery),
+      queryClient.ensureQueryData(charactersQuery),
+      queryClient.ensureQueryData(syncJobsQuery),
+    ]),
   component: WelcomePage,
 });
 

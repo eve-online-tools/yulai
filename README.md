@@ -20,7 +20,7 @@ SSO settings are resolved in this order, later wins:
 | `sso.json` in the OS config dir (`%APPDATA%\yulai` on Windows) | `clientId` | `callbackUrl` | `ssoHost` |
 | Runtime environment | `YULAI_SSO_CLIENT_ID` | `YULAI_SSO_CALLBACK_URL` | `YULAI_SSO_HOST` |
 
-Without a client ID the app logs a warning and the login page reports it.
+Without a client ID the app exits at startup.
 
 In GitHub Actions, store the client ID as a secret and pass it to the build step:
 
