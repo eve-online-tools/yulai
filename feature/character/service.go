@@ -5,8 +5,12 @@ import (
 	"context"
 	"database/sql"
 	"net/http"
+	"time"
 
-	"github.com/eve-online-tools/yulai/core/todo"
+	esicharacter "github.com/eve-online-tools/lib-esi-go/common/character"
+	"github.com/eve-online-tools/lib-esi-go/esi/getcharacterscharacterid"
+
+	"github.com/eve-online-tools/yulai/core/esi"
 	"github.com/eve-online-tools/yulai/feature"
 	"github.com/eve-online-tools/yulai/identity/login"
 	"github.com/eve-online-tools/yulai/identity/token"
@@ -30,30 +34,22 @@ type Browser interface {
 	OpenURL(url string) error
 }
 
+// Emitter sends app events. Implemented by app with Wails.
+type Emitter interface {
+	Emit(name string)
+}
+
 // FeatureInfo is what the frontend needs to show opt-in choices.
 type FeatureInfo struct {
 	Name   string   `json:"name"`
 	Scopes []string `json:"scopes"`
 }
 
-// ListRow is one character as the UI sees it. sqlc will generate this from
-// queries.sql once the characters table exists.
-type ListRow struct {
-	ID             int64   `json:"id"`
-	Name           string  `json:"name"`
-	CorporationID  int64   `json:"corporationId"`
-	AllianceID     *int64  `json:"allianceId"`
-	Status         string  `json:"status"`
-	StatusError    *string `json:"statusError"`
-	Scopes         string  `json:"scopes"`
-	TokenExpiresAt *int64  `json:"tokenExpiresAt"`
-	TokenIssuedAt  *int64  `json:"tokenIssuedAt"`
-}
-
 type Service struct {
-	conn     *sql.DB
+	q        *Queries
 	loginURL string
 	browser  Browser
+	events   Emitter
 	tokens   *token.Store
 	esi      *http.Client
 	features []feature.Feature
@@ -61,14 +57,21 @@ type Service struct {
 }
 
 // loginURL is the login server's picker page.
-func NewService(conn *sql.DB, loginURL string, browser Browser, tokens *token.Store, esiClient *http.Client, features []feature.Feature, enroller Enroller) *Service {
-	return &Service{conn: conn, loginURL: loginURL, browser: browser, tokens: tokens, esi: esiClient, features: features, enroller: enroller}
+func NewService(conn *sql.DB, loginURL string, browser Browser, events Emitter, tokens *token.Store, esiClient *http.Client, features []feature.Feature, enroller Enroller) *Service {
+	return &Service{q: New(conn), loginURL: loginURL, browser: browser, events: events, tokens: tokens, esi: esiClient, features: features, enroller: enroller}
 }
 
 func (s *Service) ServiceName() string { return "CharacterService" }
 
 func (s *Service) List(ctx context.Context) ([]ListRow, error) {
-	return []ListRow{}, nil
+	rows, err := s.q.List(ctx)
+	if err != nil {
+		return nil, err
+	}
+	if rows == nil {
+		rows = []ListRow{}
+	}
+	return rows, nil
 }
 
 // Features lists every opt-in feature and the scopes it needs. The frontend diffs
@@ -90,16 +93,58 @@ func (s *Service) AddCharacter() error { return s.browser.OpenURL(s.loginURL) }
 //
 //wails:ignore
 func (s *Service) Store(ctx context.Context, r *login.Result) error {
-	return todo.ErrNotImplemented
+	// Public info; no token needed.
+	info, err := esi.Check(getcharacterscharacterid.Request(ctx, s.esi,
+		&getcharacterscharacterid.Input{Character: esicharacter.Identifier(r.CharacterID)}))
+	if err != nil {
+		return err
+	}
+	var allianceID *int64
+	if info.Alliance != nil {
+		v := int64(*info.Alliance)
+		allianceID = &v
+	}
+
+	now := time.Now().Unix()
+	if err := s.q.Upsert(ctx, UpsertParams{
+		ID:            r.CharacterID,
+		Name:          r.Name,
+		OwnerHash:     r.OwnerHash,
+		CorporationID: int64(info.Corporation),
+		AllianceID:    allianceID,
+		AddedAt:       now,
+		UpdatedAt:     now,
+	}); err != nil {
+		return err
+	}
+	if err := s.tokens.Save(ctx, r.CharacterID, &r.Tokens, &r.Identity); err != nil {
+		return err
+	}
+	if err := s.enroller.Enroll(ctx, r.CharacterID); err != nil {
+		return err
+	}
+	s.events.Emit(EventChanged)
+	return nil
 }
 
 func (s *Service) Remove(ctx context.Context, characterID int64) error {
-	return todo.ErrNotImplemented
+	if err := s.q.Delete(ctx, characterID); err != nil {
+		return err
+	}
+	s.tokens.Forget(characterID)
+	s.events.Emit(EventChanged)
+	return nil
 }
 
 // MarkNeedsLogin flags a character whose refresh token stopped working.
 //
 //wails:ignore
 func (s *Service) MarkNeedsLogin(ctx context.Context, characterID int64, reason string) error {
-	return todo.ErrNotImplemented
+	if err := s.q.SetStatus(ctx, SetStatusParams{
+		Status: StatusNeedsLogin, StatusError: &reason, UpdatedAt: time.Now().Unix(), ID: characterID,
+	}); err != nil {
+		return err
+	}
+	s.events.Emit(EventChanged)
+	return nil
 }

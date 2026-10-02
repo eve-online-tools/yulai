@@ -4,7 +4,7 @@ package keyring
 import (
 	"errors"
 
-	"github.com/eve-online-tools/yulai/core/todo"
+	"github.com/zalando/go-keyring"
 )
 
 var ErrNotFound = errors.New("keyring: not found")
@@ -15,12 +15,23 @@ type Store interface {
 	Set(value []byte) error
 }
 
-// OS will be backed by Windows Credential Manager, macOS Keychain or Secret Service
-// on Linux (zalando/go-keyring).
+// OS is backed by Windows Credential Manager, macOS Keychain or Secret Service on Linux.
 type OS struct {
 	Service string
 	User    string
 }
 
-func (k OS) Get() ([]byte, error)   { return nil, todo.ErrNotImplemented }
-func (k OS) Set(value []byte) error { return todo.ErrNotImplemented }
+func (k OS) Get() ([]byte, error) {
+	s, err := keyring.Get(k.Service, k.User)
+	if errors.Is(err, keyring.ErrNotFound) {
+		return nil, ErrNotFound
+	}
+	if err != nil {
+		return nil, err
+	}
+	return []byte(s), nil
+}
+
+func (k OS) Set(value []byte) error {
+	return keyring.Set(k.Service, k.User, string(value))
+}

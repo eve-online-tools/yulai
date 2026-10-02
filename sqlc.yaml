@@ -1,0 +1,24 @@
+version: "2"
+sql:
+  - &pkg
+    engine: "sqlite"
+    schema: "core/db/migrations"
+    queries: "identity/token/queries.sql"
+    gen:
+      go: &go
+        package: "token"
+        out: "identity/token"
+        omit_unused_structs: true
+        emit_json_tags: true
+        json_tags_case_style: "camel"
+        emit_pointers_for_null_types: true
+        output_db_file_name: "sqlc_db.go"
+        output_models_file_name: "sqlc_models.go"
+        output_files_suffix: "_sqlc"
+  - <<: *pkg
+    queries: "feature/character/queries.sql"
+    gen:
+      go:
+        <<: *go
+        package: "character"
+        out: "feature/character"
