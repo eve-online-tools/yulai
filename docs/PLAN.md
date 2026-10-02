@@ -32,9 +32,10 @@ Real features are out of scope for now. This plan describes where they plug in.
 | `identity/sso`     | Discovery, PKCE, exchange, refresh (`ErrInvalidGrant`), JWT verify | types only     |
 | `identity/login`   | Callback listener, `Pending` attempt, `Wait`/`Cancel`              | stub           |
 | `identity/token`   | `tokens` table, sealed refresh tokens, `For()` → `RefreshableToken`| stub           |
-| `feature`          | `Feature`, `Job`, `Run`, `Outcome` contracts, `Enabled()`          | done (tested)  |
+| `feature`          | `Feature` contract (`Tasks() []task.Binding`), `Enabled()`         | done (tested), contract changes per SCHEDULER.md |
 | `feature/character`| `characters` table, add-character flow, list, remove, needs-login  | `Features()` real, rest stub |
-| `feature/sync`     | Per-character job scheduler, `sync_jobs` table                     | job registry real, loop stub |
+| `core/task`        | Generic in-memory scheduler, `task_pauses` table (see SCHEDULER.md) | engine done (tested), not wired |
+| `feature/sync`     | Wails `SyncService` over the scheduler: list, pause, resume, trigger | old job registry, to be replaced |
 | `frontend`         | Router, query layer, event listener, Root/Characters/Accounts/Add pages | done, renders stub data |
 
 The asset-manager `poc` implementations are the reference for every stub. Port each one and
@@ -62,7 +63,7 @@ Ported from asset-manager, minus `presence`:
   status (`ok` | `needs_login`), status_error, added_at, updated_at
 - `tokens`: character_id (FK, cascade), access_token, refresh_token_enc, expires_at,
   scopes (space separated `scp`), issued_at (`iat`)
-- `sync_jobs`: (character_id, job) PK, next_run (NULL = paused), last_run, last_error, state (JSON)
+- `task_pauses`: (kind, value) PK. kind is `task` or `subject`. Scheduling itself is not persisted, see `docs/SCHEDULER.md`.
 
 Each feature then adds its own tables in a new migration. Once a table exists, the hand-written
 `ListRow` / `SyncJob` structs are replaced by sqlc-generated ones (`sqlc_*.go`, `*_sqlc.go`). Keep the
@@ -71,8 +72,8 @@ field names and JSON tags so the bindings don't change. `sqlc.yaml` is added tog
 
 ## Adding a feature (the extension point)
 
-1. `feature/<name>/`: a type implementing `feature.Feature` (`Name`, `Scopes`, `Jobs`).
-2. Jobs return `feature.Outcome{Next, State, Wake}`. Use `esi.ExpiresAt` to pick `Next` from cache headers.
+1. `feature/<name>/`: a type implementing `feature.Feature` (`Name`, `Scopes`, `Tasks`).
+2. Tasks in `feature/<name>/tasks/`: a receiver type holding dependencies and `var X = task.New((*Recv).X, opts...)`. See `docs/SCHEDULER.md`.
 3. Tables go in a new migration. Queries go in `feature/<name>/queries.sql` with a matching `sqlc.yaml` entry.
 4. Optional Wails `Service` for the UI, with `ServiceName()`. Emit `<name>:changed` after writes and register
    the event in `app/app.go` `init()`.
@@ -110,7 +111,7 @@ field names and JSON tags so the bindings don't change. `sqlc.yaml` is added tog
 2. **Identity:** `identity/sso`, `identity/login`, `identity/token`, sqlc for `tokens`.
 3. **Characters:** `character` queries, `BeginLogin`/`store`/`Remove`/`MarkNeedsLogin`, `EventChanged`.
    `LoadConfig` makes a missing SSO file fatal again.
-4. **Sync:** scheduler loop, `Enroll`, `RunNow`, `sync_jobs` queries, port asset-manager's scheduler tests.
+4. **Scheduler:** `core/task`, seeds and gates, `SyncService` per `docs/SCHEDULER.md`.
 5. **First real feature** using the recipe above.
 6. Delete `core/todo`.
 
