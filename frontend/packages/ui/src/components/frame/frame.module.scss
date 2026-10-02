@@ -26,37 +26,9 @@
     opacity: 0.35;
     mask-image: linear-gradient(180deg, #000, transparent 75%);
   }
-
-  // Window edge. macOS draws its own.
-  &::after {
-    content: '';
-    position: absolute;
-    inset: 0;
-    z-index: 10;
-    pointer-events: none;
-    border: 1px solid var(--x-color-line-strong);
-  }
-
-  &[data-maximised]::after,
-  &[data-platform='mac']::after {
-    display: none;
-  }
-
-  // Unified compact toolbar height, and room for the traffic lights.
-  &[data-platform='mac'] {
-    --titlebar-h: 38px;
-    --titlebar-inset: 78px;
-  }
-
-  // Fullscreen hides the traffic lights along with the toolbar.
-  &[data-platform='mac'][data-fullscreen] {
-    --titlebar-inset: 0px;
-  }
 }
 
 .titlebar {
-  --wails-draggable: drag;
-
   display: flex;
   align-items: stretch;
   justify-content: space-between;

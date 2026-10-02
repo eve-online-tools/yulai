@@ -1,6 +1,6 @@
 import type { ReactNode } from "react";
 import { Link, type LinkProps } from "@tanstack/react-router";
-import { AppIcon, type AppIconName } from "../app-icon";
+import { AppIcon, type AppIconName } from "@yulai/ui";
 import styles from "./nav-item.module.scss";
 
 // For sidebar entries that are not links, like the getting started summary.

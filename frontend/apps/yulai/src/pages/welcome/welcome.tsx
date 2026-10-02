@@ -8,7 +8,7 @@ import { Portrait } from "@yulai/ui";
 import { charactersQuery, setupQuery } from "../../queries";
 import styles from "./welcome.module.scss";
 
-// Covers only what blocks using the app. Optional steps live in the top bar checklist.
+// Covers only what blocks using the app. Optional steps live in the sidebar checklist.
 export function WelcomePage() {
   const { data: setup } = useSuspenseQuery(setupQuery);
   const { data: characters } = useSuspenseQuery(charactersQuery);

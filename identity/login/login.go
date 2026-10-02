@@ -1,17 +1,19 @@
 // Package login runs the interactive login in the system browser. A loopback HTTP
 // server lives for the whole app lifetime: it shows the feature picker, sends the
-// browser to the SSO and finishes the PKCE flow on the callback.
+// browser to the SSO and finishes the PKCE flow on the callback. Pages are the
+// apps/webserver build; each response is its index.html with the page data inlined.
 package login
 
 import (
+	"bytes"
 	"context"
 	"crypto/rand"
 	"crypto/subtle"
-	"embed"
 	"encoding/base64"
+	"encoding/json"
 	"errors"
 	"fmt"
-	"html/template"
+	"io/fs"
 	"log/slog"
 	"net"
 	"net/http"
@@ -31,10 +33,13 @@ const maxAttempts = 64
 // request so a closed tab does not abort a half-finished login.
 const finishTimeout = 30 * time.Second
 
-//go:embed pages.html
-var pagesFS embed.FS
+// The empty data element in apps/webserver/index.html.
+const (
+	pageDataOpen  = `<script type="application/json" id="page-data">`
+	pageDataClose = `</script>`
+)
 
-var pages = template.Must(template.ParseFS(pagesFS, "pages.html"))
+var pageDataSlot = []byte(pageDataOpen + pageDataClose)
 
 type Result struct {
 	sso.Identity
@@ -43,8 +48,26 @@ type Result struct {
 
 // Feature is one choice on the picker.
 type Feature struct {
-	Name   string
-	Scopes []string
+	Name   string   `json:"name"`
+	Scopes []string `json:"scopes"`
+}
+
+// Page data, matching PageData in apps/webserver/src/page-data.ts.
+type pickerPage struct {
+	Page     string    `json:"page"`
+	CSRF     string    `json:"csrf"`
+	Features []Feature `json:"features"`
+}
+
+type donePage struct {
+	Page string `json:"page"`
+	ID   int64  `json:"id"`
+	Name string `json:"name"`
+}
+
+type errorPage struct {
+	Page    string `json:"page"`
+	Message string `json:"message"`
 }
 
 // Handler receives each completed login. An error is shown to the user.
@@ -68,6 +91,7 @@ type Server struct {
 	callback *url.URL
 	hosts    []string
 	csrf     string
+	index    []byte
 	handler  http.Handler
 
 	mu       sync.Mutex
@@ -77,7 +101,8 @@ type Server struct {
 }
 
 // New validates the callback URL. It must be http on a loopback host with an explicit port.
-func New(client *sso.Client, verifier *sso.Verifier, features []Feature, onLogin Handler) (*Server, error) {
+// web is the apps/webserver build.
+func New(client *sso.Client, verifier *sso.Verifier, web fs.FS, features []Feature, onLogin Handler) (*Server, error) {
 	cb, err := url.Parse(client.Config().CallbackURL)
 	if err != nil {
 		return nil, fmt.Errorf("login: bad callback url: %w", err)
@@ -88,6 +113,13 @@ func New(client *sso.Client, verifier *sso.Verifier, features []Feature, onLogin
 	}
 	if cb.Path == "" || cb.Path == "/" || cb.Path == "/start" || cb.Path == "/done" {
 		return nil, fmt.Errorf("login: callback url %q needs its own path", cb)
+	}
+	index, err := fs.ReadFile(web, "index.html")
+	if err != nil {
+		return nil, fmt.Errorf("login: webserver build: %w", err)
+	}
+	if !bytes.Contains(index, pageDataSlot) {
+		return nil, errors.New("login: webserver index.html has no page-data element")
 	}
 	csrf, err := randomToken()
 	if err != nil {
@@ -101,6 +133,7 @@ func New(client *sso.Client, verifier *sso.Verifier, features []Feature, onLogin
 		onLogin:  onLogin,
 		callback: cb,
 		csrf:     csrf,
+		index:    index,
 		attempts: map[string]*attempt{},
 	}
 	for _, h := range []string{"localhost", "127.0.0.1", "::1"} {
@@ -112,6 +145,7 @@ func New(client *sso.Client, verifier *sso.Verifier, features []Feature, onLogin
 	mux.HandleFunc("POST /start", s.start)
 	mux.HandleFunc("GET "+cb.Path, s.finish)
 	mux.HandleFunc("GET /done", s.done)
+	mux.Handle("GET /assets/", http.FileServerFS(web))
 	s.handler = s.guard(mux)
 	return s, nil
 }
@@ -203,30 +237,38 @@ func (s *Server) guard(next http.Handler) http.Handler {
 		}
 		h := w.Header()
 		h.Set("Cache-Control", "no-store")
-		h.Set("Content-Security-Policy", "default-src 'none'; style-src 'unsafe-inline'; img-src https://images.evetech.net; frame-ancestors 'none'")
+		h.Set("Content-Security-Policy", "default-src 'none'; script-src 'self'; style-src 'self'; font-src 'self'; img-src 'self' data: https://images.evetech.net; frame-ancestors 'none'")
 		h.Set("X-Frame-Options", "DENY")
 		h.Set("Referrer-Policy", "no-referrer")
 		next.ServeHTTP(w, r)
 	})
 }
 
-func (s *Server) render(w http.ResponseWriter, status int, page string, data any) {
+// render inlines data into index.html. json.Marshal escapes <, > and &, so the data
+// cannot close the script element.
+func (s *Server) render(w http.ResponseWriter, status int, data any) {
+	b, err := json.Marshal(data)
+	if err != nil {
+		slog.Error("login: render", "err", err)
+		http.Error(w, "render failed", http.StatusInternalServerError)
+		return
+	}
+	filled := slices.Concat([]byte(pageDataOpen), b, []byte(pageDataClose))
 	w.Header().Set("Content-Type", "text/html; charset=utf-8")
 	w.WriteHeader(status)
-	if err := pages.ExecuteTemplate(w, page, data); err != nil {
-		slog.Error("login: render", "page", page, "err", err)
-	}
+	w.Write(bytes.Replace(s.index, pageDataSlot, filled, 1))
 }
 
 func (s *Server) fail(w http.ResponseWriter, status int, msg string) {
-	s.render(w, status, "error", map[string]string{"Message": msg})
+	s.render(w, status, errorPage{Page: "error", Message: msg})
 }
 
 func (s *Server) picker(w http.ResponseWriter, r *http.Request) {
-	s.render(w, http.StatusOK, "picker", map[string]any{
-		"Features": s.features,
-		"CSRF":     s.csrf,
-	})
+	features := s.features
+	if features == nil {
+		features = []Feature{}
+	}
+	s.render(w, http.StatusOK, pickerPage{Page: "picker", CSRF: s.csrf, Features: features})
 }
 
 func (s *Server) start(w http.ResponseWriter, r *http.Request) {
@@ -385,7 +427,7 @@ func (s *Server) done(w http.ResponseWriter, r *http.Request) {
 		http.Redirect(w, r, "/", http.StatusSeeOther)
 		return
 	}
-	s.render(w, http.StatusOK, "done", map[string]any{"Name": name, "ID": id})
+	s.render(w, http.StatusOK, donePage{Page: "done", ID: id, Name: name})
 }
 
 func randomToken() (string, error) {

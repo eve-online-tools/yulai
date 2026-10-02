@@ -1,5 +1,5 @@
 import { EmptyState, PageHead } from "@xaroth.nl/design/react";
-import { AppIcon } from "../../components/app-icon";
+import { AppIcon } from "@yulai/ui";
 
 export function SettingsPage() {
   return (

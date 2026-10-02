@@ -64,7 +64,7 @@ if they can see the real URL and know the app is not reading their input. A loop
 in `identity/login` runs for the whole app lifetime.
 
 1. "Add character" (`Characters.AddCharacter`) opens `http://localhost:45538/` in the system browser.
-2. `GET /` renders the feature picker (Go `html/template`, from the `[]feature.Feature` list).
+2. `GET /` renders the feature picker (`apps/webserver`, with the `[]feature.Feature` list as page data).
 3. `POST /start` takes the selected features, creates an attempt (`state`, PKCE verifier, scopes)
    and redirects to the SSO authorize URL.
 4. `GET /callback` matches `state` to the attempt, exchanges the code, verifies the JWT, hands the
@@ -123,7 +123,8 @@ field names and JSON tags so the bindings don't change. `sqlc.yaml` is added tog
 ## Frontend conventions
 
 - `frontend/` is a pnpm workspace root. Its `dev`/`build` scripts forward to `@yulai/yulai`, so the
-  Wails tasks run unchanged. `apps/yulai` builds to `frontend/dist`, which `main.go` embeds.
+  Wails tasks run unchanged. `apps/yulai` builds to `frontend/dist/yulai` and `apps/webserver` (the loopback
+  server pages) to `frontend/dist/webserver`. `main.go` embeds both and hands the webserver build to `identity/login`.
 - `@yulai/ui` (`packages/ui`) holds styles and components shared by every app. It exports TS source,
   so it has no build step. It has no Wails dependency; pnpm does not hoist, so importing
   `@wailsio/runtime` or bindings from it fails to resolve. Data comes in through props.
@@ -131,9 +132,9 @@ field names and JSON tags so the bindings don't change. `sqlc.yaml` is added tog
 - `pnpm-workspace.yaml` sets a 7-day `minimumReleaseAge`. `@wailsio/runtime` is exempt and pinned to the
   Wails version in `go.mod`.
 - Hash history, so secondary windows open at `/#/<route>`.
-- Routes under `layout` get the top bar. Routes directly under root are chromeless windows.
-- `/` redirects to `/welcome` (chromeless, blocking first-run steps: SSO config, first character) while there
-  are no characters. Optional onboarding is the top bar checklist in `components/GettingStarted.tsx`. Its items
+- Routes under `layout` get the sidebar shell. Routes directly under root sit in the frame only.
+- `/` redirects to `/welcome` (no shell, blocking first-run steps: SSO config, first character) while there
+  are no characters. Optional onboarding is the sidebar checklist in `components/getting-started`. Its items
   are derived from backend state; only skips and dismissal are kept, in `localStorage`.
 - Loaders call `queryClient.ensureQueryData` and components use `useSuspenseQuery`.
 - Bindings are generated as classes (`-ts`, no `-i`) and committed.

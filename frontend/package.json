@@ -4,8 +4,8 @@
   "type": "module",
   "scripts": {
     "dev": "pnpm --filter @yulai/yulai dev",
-    "build:dev": "pnpm --filter @yulai/yulai build:dev",
-    "build": "pnpm --filter @yulai/yulai build",
+    "build:dev": "pnpm --filter \"./apps/*\" build:dev",
+    "build": "pnpm --filter \"./apps/*\" build",
     "typecheck": "pnpm -r typecheck"
   },
   "packageManager": "pnpm@12.8.1"

@@ -50,8 +50,9 @@ feature/        feature.go: Feature and Job contracts. One subpackage per featur
   character/    characters table, add-character flow, list, remove
   sync/         job scheduler, sync_jobs table
 frontend/       pnpm workspaces, Vite + React
-  apps/yulai/   the Wails app (TanStack Router/Query), builds to frontend/dist
+  apps/yulai/   the Wails app (TanStack Router/Query), builds to frontend/dist/yulai
     bindings/   generated Wails bindings, imported as @bindings/...
+  apps/webserver/  loopback server pages (login), builds to frontend/dist/webserver
   packages/ui/  @yulai/ui: shared styles and components, no Wails imports
 docs/           PLAN.md, SCHEDULER.md, DESIGN.md
 ```
