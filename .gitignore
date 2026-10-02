@@ -27,9 +27,9 @@ build/android/gen/
 
 # Local secrets / data
 sso.*.json
-!sso.example.json
 .env
 .env.*
+!.env.example
 *.sqlite
 *.sqlite-*
 *.db
