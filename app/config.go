@@ -1,6 +1,7 @@
 package app
 
 import (
+	"cmp"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -15,15 +16,24 @@ import (
 
 const Name = "yulai"
 
-// DevFile is loaded from the working directory when present. Gitignored.
-const DevFile = "sso.dev.json"
+// Runtime overrides, applied over the build-time values and the SSO file. The
+// Taskfile reads the same names from the environment or .env at build time.
+const (
+	ClientIDEnv    = "YULAI_SSO_CLIENT_ID"
+	CallbackURLEnv = "YULAI_SSO_CALLBACK_URL"
+	HostEnv        = "YULAI_SSO_HOST"
+)
 
-// IssuerEnv overrides the SSO issuer from the SSO file, e.g. to use a test server.
-const IssuerEnv = "YULAI_SSO_ISSUER"
-
-// DefaultCallbackURL keeps the login server up without an SSO file. It must match
+// DefaultCallbackURL keeps the login server up without SSO config. It must match
 // the SSO app registration.
 const DefaultCallbackURL = "http://localhost:45538/callback"
+
+// Set with -ldflags -X by the Taskfile.
+var (
+	buildClientID    string
+	buildCallbackURL string
+	buildSSOHost     string
+)
 
 type Config struct {
 	SSO     sso.Config
@@ -31,8 +41,8 @@ type Config struct {
 	Source  string
 }
 
-// LoadConfig resolves the data dir and reads the SSO registration. A missing SSO
-// file is not fatal: the app runs, and the login page reports it.
+// LoadConfig resolves the data dir and the SSO registration. Missing SSO config
+// is not fatal: the app runs, and the login page reports it.
 func LoadConfig() (*Config, error) {
 	dataDir, err := xdg.DataFile(Name)
 	if err != nil {
@@ -41,31 +51,40 @@ func LoadConfig() (*Config, error) {
 	if err := os.MkdirAll(dataDir, 0o700); err != nil {
 		return nil, err
 	}
-	cfg := &Config{
-		DataDir: dataDir,
-		SSO:     sso.Config{Name: Name, Description: "Yulai", CallbackURL: DefaultCallbackURL},
-	}
-
-	path := DevFile
-	if _, err := os.Stat(path); err != nil {
-		path = filepath.Join(xdg.ConfigHome, Name, "sso.json")
-	}
-	cfg.Source = path
-
-	if err := readSSO(path, &cfg.SSO); err != nil {
+	source := filepath.Join(xdg.ConfigHome, Name, "sso.json")
+	ssoCfg, err := resolveSSO(source)
+	if err != nil {
 		return nil, err
 	}
-	if issuer := os.Getenv(IssuerEnv); issuer != "" {
-		cfg.SSO.Issuer = issuer
+	if ssoCfg.ClientID == "" {
+		slog.Warn("no SSO client ID configured; login will fail", "file", source, "env", ClientIDEnv)
 	}
-	cfg.SSO.Issuer = sso.NormalizeIssuer(cfg.SSO.Issuer)
-	return cfg, nil
+	return &Config{SSO: ssoCfg, DataDir: dataDir, Source: source}, nil
 }
 
+// resolveSSO layers defaults, build-time values, the SSO file at path and
+// environment variables, later sources winning.
+func resolveSSO(path string) (sso.Config, error) {
+	c := sso.Config{
+		Name:        Name,
+		Description: "Yulai",
+		ClientID:    buildClientID,
+		CallbackURL: buildCallbackURL,
+		Issuer:      buildSSOHost,
+	}
+	if err := readSSO(path, &c); err != nil {
+		return c, err
+	}
+	c.ClientID = cmp.Or(os.Getenv(ClientIDEnv), c.ClientID)
+	c.CallbackURL = cmp.Or(os.Getenv(CallbackURLEnv), c.CallbackURL, DefaultCallbackURL)
+	c.Issuer = sso.NormalizeIssuer(cmp.Or(os.Getenv(HostEnv), c.Issuer))
+	return c, nil
+}
+
+// readSSO overlays the fields present in the SSO file onto c.
 func readSSO(path string, c *sso.Config) error {
 	raw, err := os.ReadFile(path)
 	if errors.Is(err, os.ErrNotExist) {
-		slog.Warn("no SSO config found; login will fail", "want", []string{DevFile, path})
 		return nil
 	}
 	if err != nil {
@@ -73,9 +92,6 @@ func readSSO(path string, c *sso.Config) error {
 	}
 	if err := json.Unmarshal(raw, c); err != nil {
 		return fmt.Errorf("parse %s: %w", path, err)
-	}
-	if c.ClientID == "" || c.CallbackURL == "" {
-		return fmt.Errorf("%s: clientId and callbackUrl are required", path)
 	}
 	return nil
 }

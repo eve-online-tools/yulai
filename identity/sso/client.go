@@ -19,14 +19,13 @@ var ErrInvalidGrant = errors.New("sso: invalid_grant")
 
 // Config is the SSO application registration.
 type Config struct {
-	Name         string `json:"name"`
-	Description  string `json:"description"`
-	ClientID     string `json:"clientId"`
-	ClientSecret string `json:"clientSecret,omitempty"`
-	CallbackURL  string `json:"callbackUrl"`
-	// Issuer is the SSO base URL, e.g. "https://login.eveonline.com". A bare host gets
-	// https. Defaults to DefaultIssuer.
-	Issuer string `json:"issuer,omitempty"`
+	Name        string `json:"name"`
+	Description string `json:"description"`
+	ClientID    string `json:"clientId"`
+	CallbackURL string `json:"callbackUrl"`
+	// Issuer is the SSO host, e.g. "https://login.eveonline.com" or a test server
+	// like Singularity's. A bare host gets https. Defaults to DefaultIssuer.
+	Issuer string `json:"ssoHost,omitempty"`
 }
 
 type Tokens struct {
@@ -117,9 +116,6 @@ func (c *Client) tokenRequest(ctx context.Context, form url.Values) (*Tokens, er
 		return nil, err
 	}
 	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
-	if c.cfg.ClientSecret != "" {
-		req.SetBasicAuth(c.cfg.ClientID, c.cfg.ClientSecret)
-	}
 
 	resp, err := c.http.Do(req)
 	if err != nil {

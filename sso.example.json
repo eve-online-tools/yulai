@@ -1,6 +1,0 @@
-{
-  "name": "yulai",
-  "description": "Yulai",
-  "clientId": "YOUR_CLIENT_ID",
-  "callbackUrl": "http://localhost:45538/callback"
-}
