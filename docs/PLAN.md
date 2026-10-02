@@ -36,7 +36,7 @@ Real features are out of scope for now. This plan describes where they plug in.
 | `feature/character`| `characters` table, add-character flow, list, remove, needs-login  | `Features()` real, rest stub |
 | `core/task`        | Generic in-memory scheduler, `task_pauses` table (see SCHEDULER.md) | engine done (tested), not wired |
 | `feature/sync`     | Wails `SyncService` over the scheduler: list, pause, resume, trigger | old job registry, to be replaced |
-| `frontend`         | Router, query layer, event listener, Root/Characters/Accounts/Add pages | done, renders stub data |
+| `frontend`         | pnpm workspaces: `apps/yulai` (router, query layer, events, pages), `packages/ui` | done, renders stub data |
 
 The asset-manager `poc` implementations are the reference for every stub. Port each one and
 replace the asset-manager module path and `github.com/xaroth/lib-esi-go` with the paths below.
@@ -117,15 +117,23 @@ field names and JSON tags so the bindings don't change. `sqlc.yaml` is added tog
 4. Optional Wails `Service` for the UI, with `ServiceName()`. Emit `<name>:changed` after writes and register
    the event in `app/app.go` `init()`.
 5. Register the feature in `app.New`'s `features` slice and its service in `Services()`.
-6. Frontend: add a key, a `queryOptions` and an `Events.On` to `src/queries.ts`. Add a route in
-   `src/router.tsx` and/or a panel in the character card.
+6. Frontend: add a key, a `queryOptions` and an `Events.On` to `apps/yulai/src/queries.ts`. Add a route in
+   `apps/yulai/src/router.tsx` and/or a panel in the character card.
 
 ## Frontend conventions
 
+- `frontend/` is a pnpm workspace root. Its `dev`/`build` scripts forward to `@yulai/yulai`, so the
+  Wails tasks run unchanged. `apps/yulai` builds to `frontend/dist`, which `main.go` embeds.
+- `@yulai/ui` (`packages/ui`) holds styles and components shared by every app. It exports TS source,
+  so it has no build step. It has no Wails dependency; pnpm does not hoist, so importing
+  `@wailsio/runtime` or bindings from it fails to resolve. Data comes in through props.
+- Bindings are generated into `apps/yulai/bindings` (`-d` in the Taskfiles) and imported as `@bindings/...`.
+- `pnpm-workspace.yaml` sets a 7-day `minimumReleaseAge`. `@wailsio/runtime` is exempt and pinned to the
+  Wails version in `go.mod`.
 - Hash history, so secondary windows open at `/#/<route>`.
 - Routes under `layout` get the top bar. Routes directly under root are chromeless windows.
 - Loaders call `queryClient.ensureQueryData` and components use `useSuspenseQuery`.
-- Bindings are generated as classes (`-ts`, no `-i`) into `frontend/bindings` and committed.
+- Bindings are generated as classes (`-ts`, no `-i`) and committed.
 
 ## lib-esi-go move
 

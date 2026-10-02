@@ -1,0 +1,11 @@
+packages:
+  - apps/*
+  - packages/*
+
+# Refuse package versions published less than 7 days ago, reducing exposure to
+# freshly compromised releases.
+minimumReleaseAge: 10080
+
+# Pinned to match github.com/wailsapp/wails/v3 in go.mod, which is not subject to the cutoff.
+minimumReleaseAgeExclude:
+  - "@wailsio/runtime"

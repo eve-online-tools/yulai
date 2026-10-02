@@ -1,6 +1,7 @@
 import { useMutation, useSuspenseQuery } from "@tanstack/react-query";
-import { Service as Characters } from "../../bindings/github.com/eve-online-tools/yulai/feature/character";
-import type { FeatureInfo, ListRow as Character } from "../../bindings/github.com/eve-online-tools/yulai/feature/character";
+import { Service as Characters } from "@bindings/github.com/eve-online-tools/yulai/feature/character";
+import type { FeatureInfo, ListRow as Character } from "@bindings/github.com/eve-online-tools/yulai/feature/character";
+import { Portrait, Tag, enabledFeatures } from "@yulai/ui";
 import { charactersQuery, featuresQuery } from "../queries";
 
 export function AccountsPage() {
@@ -48,8 +49,7 @@ export function AccountsPage() {
 
 function AccountRow({ c, features }: { c: Character; features: FeatureInfo[] }) {
   const remove = useMutation({ mutationFn: () => Characters.Remove(c.id) });
-  const have = new Set(c.scopes.split(" ").filter(Boolean));
-  const enabled = features.filter((f) => f.scopes.every((s) => have.has(s)));
+  const enabled = enabledFeatures(features, c.scopes);
 
   const nowSec = Date.now() / 1000;
   const active = c.status === "ok" && c.tokenExpiresAt != null && c.tokenExpiresAt > nowSec;
@@ -59,7 +59,7 @@ function AccountRow({ c, features }: { c: Character; features: FeatureInfo[] }) 
     <tr>
       <td>
         <div className="row">
-          <img src={`https://images.evetech.net/characters/${c.id}/portrait?size=32`} alt="" width={24} height={24} className="avatar" />
+          <Portrait id={c.id} size={24} className="avatar" />
           <span>{c.name}</span>
         </div>
       </td>
@@ -73,7 +73,7 @@ function AccountRow({ c, features }: { c: Character; features: FeatureInfo[] }) 
         <div className="row small">
           {enabled.length === 0 && <span className="muted">none</span>}
           {enabled.map((f) => (
-            <span key={f.name} className="tag on">{f.name}</span>
+            <Tag key={f.name} on>{f.name}</Tag>
           ))}
         </div>
       </td>
