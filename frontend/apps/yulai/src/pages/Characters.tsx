@@ -1,6 +1,7 @@
 import { useQuery, useSuspenseQuery, useMutation } from "@tanstack/react-query";
 import type { FeatureInfo, ListRow as Character } from "@bindings/github.com/eve-online-tools/yulai/feature/character";
 import { Service as Sync } from "@bindings/github.com/eve-online-tools/yulai/feature/sync";
+import { Portrait, Tag, enabledFeatures } from "@yulai/ui";
 import { charactersQuery, featuresQuery, syncJobsQuery } from "../queries";
 
 export function CharactersPage() {
@@ -27,15 +28,14 @@ function CharacterCard({ character: c, features }: { character: Character; featu
   const { data: jobs = [] } = useQuery(syncJobsQuery);
   const runNow = useMutation({ mutationFn: (job: string) => Sync.RunNow(c.id, job) });
 
-  const have = new Set(c.scopes.split(" ").filter(Boolean));
-  const enabled = features.filter((f) => f.scopes.every((s) => have.has(s))).map((f) => f.name);
+  const enabled = enabledFeatures(features, c.scopes).map((f) => f.name);
   const disabled = features.filter((f) => !enabled.includes(f.name)).map((f) => f.name);
   const myJobs = jobs.filter((j) => j.characterId === c.id);
 
   return (
     <div className="card">
       <div className="card-head">
-        <img src={`https://images.evetech.net/characters/${c.id}/portrait?size=64`} alt="" width={48} height={48} />
+        <Portrait id={c.id} size={48} />
         <div>
           <div className="name">{c.name}</div>
           <div className="muted small">{c.id}</div>
@@ -46,10 +46,10 @@ function CharacterCard({ character: c, features }: { character: Character; featu
 
       <div className="row small">
         {enabled.map((n) => (
-          <span key={n} className="tag on">{n}</span>
+          <Tag key={n} on>{n}</Tag>
         ))}
         {disabled.map((n) => (
-          <span key={n} className="tag" title="Log in again with this feature checked to enable it">{n}</span>
+          <Tag key={n} title="Log in again with this feature checked to enable it">{n}</Tag>
         ))}
       </div>
 
