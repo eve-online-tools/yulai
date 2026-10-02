@@ -3,23 +3,24 @@ import {
   createRootRoute,
   createRoute,
   createRouter,
-  Outlet,
   redirect,
 } from "@tanstack/react-router";
-import { Root } from "./pages/Root";
-import { CharactersPage } from "./pages/Characters";
-import { AccountsPage } from "./pages/Accounts";
-import { WelcomePage } from "./pages/Welcome";
+import { Frame } from "./components/frame";
+import { Shell } from "./components/shell";
+import { CharactersPage } from "./pages/characters";
+import { AccountsPage } from "./pages/accounts";
+import { WelcomePage } from "./pages/welcome";
+import { SettingsPage } from "./pages/settings";
 import { charactersQuery, featuresQuery, queryClient, setupQuery } from "./queries";
 
-// Hash history: Wails serves one index.html.
-const rootRoute = createRootRoute({ component: Outlet });
+// Hash history: Wails serves one index.html. Every page sits in the frame (title bar, window controls).
+const rootRoute = createRootRoute({ component: Frame });
 
-// Main window pages share the header chrome.
+// Tool pages share the sidebar shell.
 const layoutRoute = createRoute({
   getParentRoute: () => rootRoute,
   id: "layout",
-  component: Root,
+  component: Shell,
 });
 
 const indexRoute = createRoute({
@@ -31,7 +32,7 @@ const indexRoute = createRoute({
   },
 });
 
-// First run. Chromeless so nothing else competes with the blocking steps.
+// First run. Skips the shell so nothing else competes with the blocking steps.
 const welcomeRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: "/welcome",
@@ -53,8 +54,14 @@ const accountsRoute = createRoute({
   component: AccountsPage,
 });
 
+const settingsRoute = createRoute({
+  getParentRoute: () => layoutRoute,
+  path: "/settings",
+  component: SettingsPage,
+});
+
 export const router = createRouter({
-  routeTree: rootRoute.addChildren([welcomeRoute, layoutRoute.addChildren([indexRoute, charactersRoute, accountsRoute])]),
+  routeTree: rootRoute.addChildren([welcomeRoute, layoutRoute.addChildren([indexRoute, charactersRoute, accountsRoute, settingsRoute])]),
   history: createHashHistory(),
   defaultPreload: "intent",
 });

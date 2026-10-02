@@ -1,0 +1,33 @@
+.controls {
+  --wails-draggable: no-drag;
+
+  display: flex;
+}
+
+.button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 46px;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: var(--x-color-text-muted);
+  cursor: default;
+
+  &:hover {
+    background: var(--x-color-surface-3);
+    color: var(--x-color-text);
+  }
+
+  &:focus-visible {
+    outline: var(--x-focus-width) solid var(--x-color-focus);
+    outline-offset: calc(var(--x-focus-width) * -1);
+  }
+}
+
+// Platform close red, not a theme color.
+.close:hover {
+  background: #c42b1c;
+  color: #fff;
+}

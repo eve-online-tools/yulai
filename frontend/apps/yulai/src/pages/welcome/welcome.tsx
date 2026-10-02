@@ -3,8 +3,10 @@ import { useMutation, useSuspenseQuery } from "@tanstack/react-query";
 import { useNavigate } from "@tanstack/react-router";
 import { Service as Characters } from "@bindings/github.com/eve-online-tools/yulai/feature/character";
 import type { SetupStatus } from "@bindings/github.com/eve-online-tools/yulai/app";
+import { Alert, Button, Panel } from "@xaroth.nl/design/react";
 import { Portrait } from "@yulai/ui";
-import { charactersQuery, setupQuery } from "../queries";
+import { charactersQuery, setupQuery } from "../../queries";
+import styles from "./welcome.module.scss";
 
 // Covers only what blocks using the app. Optional steps live in the top bar checklist.
 export function WelcomePage() {
@@ -13,11 +15,12 @@ export function WelcomePage() {
   const first = characters[0];
 
   return (
-    <div className="welcome">
-      <div className="welcome-panel">
+    <div className={styles.welcome}>
+      <Panel variant="raised" marks padding="lg" className={styles.panel}>
+        <p className={styles.eyebrow}>First run</p>
         <h1>Welcome to Yulai</h1>
         <p className="muted">Two steps before you can start.</p>
-        <ol className="steps">
+        <ol className={styles.steps}>
           <Step n={1} title="Register an SSO application" state={setup.ssoConfigured ? "done" : "active"}>
             {!setup.ssoConfigured && <SSOInstructions setup={setup} />}
           </Step>
@@ -28,7 +31,7 @@ export function WelcomePage() {
         <p className="muted small">
           Login runs in your own browser, so Yulai never sees your password. Tokens are stored encrypted on this machine.
         </p>
-      </div>
+      </Panel>
     </div>
   );
 }
@@ -37,10 +40,10 @@ type StepState = "todo" | "active" | "done";
 
 function Step({ n, title, state, children }: { n: number; title: string; state: StepState; children?: ReactNode }) {
   return (
-    <li className={`step ${state}`}>
-      <span className="step-n">{state === "done" ? "✓" : n}</span>
-      <div className="step-body">
-        <div className="step-title">{title}</div>
+    <li className={styles.step} data-state={state}>
+      <span className={styles.n}>{state === "done" ? "✓" : n}</span>
+      <div className={styles.body}>
+        <div className={styles.title}>{title}</div>
         {children}
       </div>
     </li>
@@ -71,12 +74,12 @@ function AddFirst({ loginUrl }: { loginUrl: string }) {
     <>
       <p className="muted small">Pick the features you want, then log in with EVE SSO in your browser.</p>
       <div className="row">
-        <button onClick={() => add.mutate()} disabled={add.isPending}>
+        <Button onClick={() => add.mutate()} loading={add.isPending}>
           Add character
-        </button>
+        </Button>
         {add.isSuccess && <span className="muted small">Waiting for login in your browser...</span>}
       </div>
-      {add.isError && <p className="error small">{String(add.error)}</p>}
+      {add.isError && <Alert tone="danger">{String(add.error)}</Alert>}
       {(add.isSuccess || add.isError) && (
         <p className="muted small">
           Browser did not open? Go to <Copyable text={loginUrl} />
@@ -90,18 +93,18 @@ function Added({ id, name }: { id: number; name: string }) {
   const navigate = useNavigate();
   return (
     <div className="row">
-      <Portrait id={id} size={48} className="avatar" />
+      <Portrait id={id} size={48} />
       <span>Welcome, {name}.</span>
-      <button className="push-right" onClick={() => navigate({ to: "/characters" })}>
+      <Button className="push-right" onClick={() => navigate({ to: "/characters" })}>
         Continue
-      </button>
+      </Button>
     </div>
   );
 }
 
 function Copyable({ text }: { text: string }) {
   return (
-    <code className="copyable" title="Click to copy" onClick={() => navigator.clipboard.writeText(text)}>
+    <code className={styles.copyable} title="Click to copy" onClick={() => navigator.clipboard.writeText(text)}>
       {text}
     </code>
   );

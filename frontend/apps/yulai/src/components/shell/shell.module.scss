@@ -1,0 +1,61 @@
+.shell {
+  flex: 1;
+  min-height: 0;
+  display: grid;
+  grid-template-columns: 232px minmax(0, 1fr);
+}
+
+.sidebar {
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  gap: var(--x-space-4);
+  min-height: 0;
+  padding: var(--x-space-4) var(--x-space-3);
+  background: var(--x-color-glass);
+  border-right: 1px solid var(--x-color-line);
+  backdrop-filter: var(--x-blur);
+}
+
+.nav,
+.foot {
+  display: flex;
+  flex-direction: column;
+  gap: var(--x-space-1);
+}
+
+// Only the tool list scrolls, so the checklist popover in the foot is not clipped.
+.nav {
+  min-height: 0;
+  overflow-y: auto;
+}
+
+.foot {
+  padding-top: var(--x-space-3);
+  border-top: 1px solid var(--x-color-line);
+}
+
+.label {
+  margin: 0 0 var(--x-space-2);
+  padding-inline: var(--x-space-3);
+  font-family: var(--x-font-ui);
+  font-size: var(--x-fs-label);
+  font-weight: 600;
+  letter-spacing: var(--x-track-label);
+  text-transform: uppercase;
+  color: var(--x-color-text-faint);
+}
+
+.content {
+  min-height: 0;
+  overflow: auto;
+  padding: var(--x-space-6) var(--x-space-7);
+  display: flex;
+  flex-direction: column;
+  gap: var(--x-space-5);
+
+  // Site-scale page titles are too loud for a tool window.
+  :global(.x-page-head__title) {
+    font-size: var(--x-fs-h2);
+  }
+}
