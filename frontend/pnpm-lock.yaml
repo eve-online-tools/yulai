@@ -169,8 +169,8 @@ importers:
   apps/webserver:
     dependencies:
       '@xaroth.nl/design':
-        specifier: ^0.2.0
-        version: 0.2.0(react@19.3.0)
+        specifier: ^0.3.0
+        version: 0.3.0(react@19.3.0)
       '@yulai/ui':
         specifier: workspace:*
         version: link:../../packages/ui
@@ -212,8 +212,8 @@ importers:
         specifier: 3.0.0-beta.27
         version: 3.0.0-beta.27
       '@xaroth.nl/design':
-        specifier: ^0.2.0
-        version: 0.2.0(react@19.3.0)
+        specifier: ^0.3.0
+        version: 0.3.0(react@19.3.0)
       '@yulai/ui':
         specifier: workspace:*
         version: link:../../packages/ui
@@ -259,8 +259,8 @@ importers:
         specifier: ^19.3.0
         version: 19.3.0(@types/react@19.3.0)
       '@xaroth.nl/design':
-        specifier: ^0.2.0
-        version: 0.2.0(react@19.3.0)
+        specifier: ^0.3.0
+        version: 0.3.0(react@19.3.0)
       typescript:
         specifier: ^5.2.2
         version: 5.9.3
@@ -531,8 +531,8 @@ packages:
   '@wailsio/runtime@3.0.0-beta.27':
     resolution: {integrity: sha512-QUXfpr04hXzQa/yGavoJTP1UAwpGzvwysoKGwdMIEmyHgwSHtF+k4MfHbV0olRdw0+nbDQtcBM/SkKqb8tvQsw==}
 
-  '@xaroth.nl/design@0.2.0':
-    resolution: {integrity: sha512-STG+blgxPuVhcXHHnqe1S0I6iAjED+CRgZYSQwB1qhyw2Y9jbdjzKxS9RNV/3bFlQte/zZm4VCtPWnTa0JkZxQ==}
+  '@xaroth.nl/design@0.3.0':
+    resolution: {integrity: sha512-b9p/eeFkchDeSA2TocUgPaJUueUPXnLAxa56ZpxuPe6Dd2h8V/d2sZjXTp3PJZxnCjZs7tqUaRJIf4FrPB9kiA==}
     peerDependencies:
       astro: ^7
       react: ^19
@@ -950,7 +950,7 @@ snapshots:
 
   '@wailsio/runtime@3.0.0-beta.27': {}
 
-  '@xaroth.nl/design@0.2.0(react@19.3.0)':
+  '@xaroth.nl/design@0.3.0(react@19.3.0)':
     dependencies:
       '@fontsource-variable/alegreya': 5.3.0
       '@fontsource-variable/azeret-mono': 5.3.0

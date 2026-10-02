@@ -13,7 +13,7 @@
     "@tanstack/react-query": "^5.103.2",
     "@tanstack/react-router": "^1.170.39",
     "@wailsio/runtime": "3.0.0-beta.27",
-    "@xaroth.nl/design": "^0.2.0",
+    "@xaroth.nl/design": "^0.3.0",
     "@yulai/ui": "workspace:*",
     "react": "^19.3.0",
     "react-dom": "^19.3.0"
