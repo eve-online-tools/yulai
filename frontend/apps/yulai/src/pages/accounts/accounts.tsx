@@ -1,7 +1,8 @@
+import { useState } from "react";
 import { useMutation, useSuspenseQuery } from "@tanstack/react-query";
 import { Service as Characters } from "@bindings/github.com/eve-online-tools/yulai/feature/character";
 import type { FeatureInfo, ListRow as Character } from "@bindings/github.com/eve-online-tools/yulai/feature/character";
-import { Alert, Button, EmptyState, Icon, PageHead, Table, Tag } from "@xaroth.nl/design/react";
+import { Alert, Button, EmptyState, Icon, PageHead, Table, Tag, Tooltip } from "@xaroth.nl/design/react";
 import { Portrait, enabledFeatures } from "@yulai/ui";
 import { charactersQuery, featuresQuery } from "../../queries";
 
@@ -69,15 +70,33 @@ function accountRow(c: Character, features: FeatureInfo[]) {
         ))}
       </div>
     ),
-    remove: <RemoveButton id={c.id} />,
+    remove: <RemoveButton id={c.id} name={c.name} />,
   };
 }
 
-function RemoveButton({ id }: { id: number }) {
+// Inline confirm until @xaroth.nl/design has a dialog: https://github.com/Xaroth/design/issues/11
+function RemoveButton({ id, name }: { id: number; name: string }) {
+  const [confirming, setConfirming] = useState(false);
   const remove = useMutation({ mutationFn: () => Characters.Remove(id) });
+
+  if (!confirming) {
+    return (
+      <Tooltip id={`remove-${id}`} text={`Remove ${name}`}>
+        <Button variant="tertiary" tone="danger" size="sm" aria-label={`Remove ${name}`} onClick={() => setConfirming(true)}>
+          <Icon name="close" />
+        </Button>
+      </Tooltip>
+    );
+  }
   return (
-    <Button variant="tertiary" tone="danger" size="sm" aria-label="Remove" onClick={() => remove.mutate()}>
-      <Icon name="close" />
-    </Button>
+    <div className="row">
+      <span className="small">Remove {name} and its token?</span>
+      <Button tone="danger" size="sm" disabled={remove.isPending} onClick={() => remove.mutate()}>
+        Remove
+      </Button>
+      <Button variant="tertiary" size="sm" autoFocus onClick={() => setConfirming(false)}>
+        Cancel
+      </Button>
+    </div>
   );
 }

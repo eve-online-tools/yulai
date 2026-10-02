@@ -59,10 +59,13 @@ type pickerPage struct {
 	Features []Feature `json:"features"`
 }
 
+// donePage carries the previous choice so "add another" can post straight to /start.
 type donePage struct {
-	Page string `json:"page"`
-	ID   int64  `json:"id"`
-	Name string `json:"name"`
+	Page     string   `json:"page"`
+	ID       int64    `json:"id"`
+	Name     string   `json:"name"`
+	CSRF     string   `json:"csrf"`
+	Features []string `json:"features"`
 }
 
 type errorPage struct {
@@ -74,9 +77,10 @@ type errorPage struct {
 type Handler func(ctx context.Context, r *Result) error
 
 type attempt struct {
-	pkce   *sso.PKCE
-	scopes []string
-	busy   bool
+	pkce     *sso.PKCE
+	scopes   []string
+	features []string
+	busy     bool
 	// name is set once the login completed.
 	name string
 	id   int64
@@ -284,7 +288,8 @@ func (s *Server) start(w http.ResponseWriter, r *http.Request) {
 		s.fail(w, http.StatusServiceUnavailable, "No SSO application is configured. See the README.")
 		return
 	}
-	scopes, err := s.scopesFor(r.PostForm["feature"])
+	names := r.PostForm["feature"]
+	scopes, err := s.scopesFor(names)
 	if err != nil {
 		s.fail(w, http.StatusBadRequest, err.Error())
 		return
@@ -301,7 +306,7 @@ func (s *Server) start(w http.ResponseWriter, r *http.Request) {
 		s.fail(w, http.StatusBadGateway, "Could not reach EVE SSO. Check your connection and try again.")
 		return
 	}
-	s.add(p.State, &attempt{pkce: p, scopes: scopes})
+	s.add(p.State, &attempt{pkce: p, scopes: scopes, features: names})
 	http.Redirect(w, r, authURL, http.StatusSeeOther)
 }
 
@@ -417,17 +422,19 @@ func (s *Server) complete(ctx context.Context, code string, p *sso.PKCE) (*Resul
 
 func (s *Server) done(w http.ResponseWriter, r *http.Request) {
 	s.mu.Lock()
-	var name string
-	var id int64
+	page := donePage{Page: "done", CSRF: s.csrf, Features: []string{}}
 	if a := s.attempts[r.URL.Query().Get("state")]; a != nil {
-		name, id = a.name, a.id
+		page.Name, page.ID = a.name, a.id
+		if a.features != nil {
+			page.Features = a.features
+		}
 	}
 	s.mu.Unlock()
-	if name == "" {
+	if page.Name == "" {
 		http.Redirect(w, r, "/", http.StatusSeeOther)
 		return
 	}
-	s.render(w, http.StatusOK, donePage{Page: "done", ID: id, Name: name})
+	s.render(w, http.StatusOK, page)
 }
 
 func randomToken() (string, error) {

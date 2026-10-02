@@ -226,6 +226,10 @@ func TestFullFlow(t *testing.T) {
 	if resp.StatusCode != http.StatusOK || !strings.Contains(body, `"name":"Test \u003cPilot\u003e"`) {
 		t.Errorf("done: %d %s", resp.StatusCode, body)
 	}
+	// "Add another" reposts the same choice to /start.
+	if !strings.Contains(body, `"features":["Assets","Wallet"]`) || !strings.Contains(body, `"csrf":"`+h.srv.csrf+`"`) {
+		t.Errorf("done page lacks previous choice: %s", body)
+	}
 
 	// A reload of the callback must not replay the used code.
 	resp, _ = h.get(t, "/callback?"+url.Values{"code": {"good"}, "state": {state}}.Encode())
