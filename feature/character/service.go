@@ -25,16 +25,9 @@ type Enroller interface {
 	Enroll(ctx context.Context, characterID int64) error
 }
 
-// LoginUI is the window the login happens in. Implemented by app with Wails windows.
-type LoginUI interface {
-	// OpenPicker shows the feature picker, or focuses it if already open.
-	OpenPicker()
-	// ShowSSO navigates the picker window to the SSO and calls onClosed if the user
-	// closes it before the login completes.
-	ShowSSO(url string, onClosed func())
-	// Fail returns the window to the picker with an error message.
-	Fail(msg string)
-	Close()
+// Browser opens URLs in the system browser. Implemented by app with Wails.
+type Browser interface {
+	OpenURL(url string) error
 }
 
 // FeatureInfo is what the frontend needs to show opt-in choices.
@@ -59,16 +52,17 @@ type ListRow struct {
 
 type Service struct {
 	conn     *sql.DB
-	login    *login.Login
-	ui       LoginUI
+	loginURL string
+	browser  Browser
 	tokens   *token.Store
 	esi      *http.Client
 	features []feature.Feature
 	enroller Enroller
 }
 
-func NewService(conn *sql.DB, l *login.Login, ui LoginUI, tokens *token.Store, esiClient *http.Client, features []feature.Feature, enroller Enroller) *Service {
-	return &Service{conn: conn, login: l, ui: ui, tokens: tokens, esi: esiClient, features: features, enroller: enroller}
+// loginURL is the login server's picker page.
+func NewService(conn *sql.DB, loginURL string, browser Browser, tokens *token.Store, esiClient *http.Client, features []feature.Feature, enroller Enroller) *Service {
+	return &Service{conn: conn, loginURL: loginURL, browser: browser, tokens: tokens, esi: esiClient, features: features, enroller: enroller}
 }
 
 func (s *Service) ServiceName() string { return "CharacterService" }
@@ -87,13 +81,15 @@ func (s *Service) Features() []FeatureInfo {
 	return out
 }
 
-// OpenAddWindow shows the feature picker window.
-func (s *Service) OpenAddWindow() { s.ui.OpenPicker() }
+// AddCharacter opens the login server's feature picker in the system browser.
+// Completed logins arrive through Store and are reported through EventChanged.
+func (s *Service) AddCharacter() error { return s.browser.OpenURL(s.loginURL) }
 
-// BeginLogin is called from the picker window. It will start the SSO flow for the
-// named features and send that window to the SSO; completion is reported through
-// EventChanged.
-func (s *Service) BeginLogin(features []string) error {
+// Store upserts the character and saves its tokens, replacing earlier scopes, then
+// enrolls it. It is the login server's handler.
+//
+//wails:ignore
+func (s *Service) Store(ctx context.Context, r *login.Result) error {
 	return todo.ErrNotImplemented
 }
 

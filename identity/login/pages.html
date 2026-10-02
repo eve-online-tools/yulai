@@ -1,0 +1,75 @@
+{{define "head"}}<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Yulai login</title>
+<style>
+  body { font-family: system-ui, sans-serif; background: #06070f; color: #e6e7ee; margin: 0; }
+  main { max-width: 32rem; margin: 4rem auto; padding: 0 1.5rem; }
+  h1 { font-size: 1.4rem; font-weight: 600; }
+  .muted { color: #8a8da3; }
+  .small { font-size: 0.85rem; }
+  .error { color: #f2777a; }
+  ul { list-style: none; padding: 0; }
+  li { margin: 0.6rem 0; }
+  label { display: flex; gap: 0.6rem; align-items: flex-start; cursor: pointer; }
+  label span { display: flex; flex-direction: column; }
+  button, a.button { display: inline-block; background: #3b5bdb; color: #fff; border: 0; border-radius: 4px;
+    padding: 0.6rem 1rem; font: inherit; cursor: pointer; text-decoration: none; }
+  .character { display: flex; gap: 0.8rem; align-items: center; }
+  .character img { border-radius: 4px; }
+</style>
+</head>
+<body>
+<main>
+{{end}}
+
+{{define "foot"}}
+</main>
+</body>
+</html>
+{{end}}
+
+{{define "picker"}}{{template "head"}}
+<h1>Add character</h1>
+<p class="muted">Pick what this character should share. Logging in again later replaces this choice.</p>
+<form method="post" action="/start">
+  <input type="hidden" name="csrf" value="{{.CSRF}}">
+  {{if .Features}}
+  <ul>
+    {{range .Features}}
+    <li>
+      <label>
+        <input type="checkbox" name="feature" value="{{.Name}}" checked>
+        <span>
+          <span>{{.Name}}</span>
+          <span class="muted small">{{range $i, $s := .Scopes}}{{if $i}}, {{end}}{{$s}}{{end}}</span>
+        </span>
+      </label>
+    </li>
+    {{end}}
+  </ul>
+  {{else}}
+  <p class="muted">No features yet. Logging in only identifies the character.</p>
+  {{end}}
+  <button type="submit">Log in with EVE Online</button>
+</form>
+{{template "foot"}}{{end}}
+
+{{define "done"}}{{template "head"}}
+<h1>Character added</h1>
+<p class="character">
+  <img src="https://images.evetech.net/characters/{{.ID}}/portrait?size=64" alt="" width="48" height="48">
+  <span>{{.Name}} is logged in. You can close this tab.</span>
+</p>
+<p><a class="button" href="/">Add another character</a></p>
+<p class="muted small">EVE SSO remembers your account. To add a character from another account, log out at
+  login.eveonline.com first.</p>
+{{template "foot"}}{{end}}
+
+{{define "error"}}{{template "head"}}
+<h1>Login failed</h1>
+<p class="error">{{.Message}}</p>
+<p><a class="button" href="/">Start again</a></p>
+{{template "foot"}}{{end}}
