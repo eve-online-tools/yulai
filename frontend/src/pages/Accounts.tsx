@@ -6,7 +6,7 @@ import { charactersQuery, featuresQuery } from "../queries";
 export function AccountsPage() {
   const { data: characters } = useSuspenseQuery(charactersQuery);
   const { data: features } = useSuspenseQuery(featuresQuery);
-  const open = useMutation({ mutationFn: () => Characters.OpenAddWindow() });
+  const add = useMutation({ mutationFn: () => Characters.AddCharacter() });
 
   return (
     <>
@@ -38,7 +38,9 @@ export function AccountsPage() {
       )}
 
       <footer className="page-footer">
-        <button onClick={() => open.mutate()}>Add character</button>
+        {add.isError && <p className="error">{String(add.error)}</p>}
+        <button onClick={() => add.mutate()}>Add character</button>
+        <p className="muted small">Login continues in your browser.</p>
       </footer>
     </>
   );

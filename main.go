@@ -28,6 +28,7 @@ func main() {
 	}
 	defer a.Close()
 
+	var mainWindow *application.WebviewWindow
 	wails := application.New(application.Options{
 		Name:        cfg.SSO.Name,
 		Description: cfg.SSO.Description,
@@ -35,12 +36,21 @@ func main() {
 		Assets: application.AssetOptions{
 			Handler: application.AssetFileServerFS(assets),
 		},
+		// Before a.Start binds the login port, so a second launch focuses this one
+		// instead of failing on the busy port.
+		SingleInstance: &application.SingleInstanceOptions{
+			UniqueID: "tools.eve-online.yulai",
+			OnSecondInstanceLaunch: func(application.SecondInstanceData) {
+				mainWindow.Restore()
+				mainWindow.Focus()
+			},
+		},
 		Mac: application.MacOptions{
 			ApplicationShouldTerminateAfterLastWindowClosed: true,
 		},
 	})
 
-	wails.Window.NewWithOptions(application.WebviewWindowOptions{
+	mainWindow = wails.Window.NewWithOptions(application.WebviewWindowOptions{
 		Title:            "Yulai",
 		Width:            1100,
 		Height:           700,

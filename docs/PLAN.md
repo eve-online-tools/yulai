@@ -17,20 +17,20 @@ Real features are out of scope for now. This plan describes where they plug in.
   has one owning package with its own `queries.sql` and sqlc output. Other packages go through
   the owner's Go API.
 - **Dependencies point inward.** `app` → `feature/*` → `identity/*` → `core/*`. Features depend
-  on interfaces (`Enroller`, `LoginUI`, `Tokens`), not on each other, and `app` wires them.
+  on interfaces (`Enroller`, `Browser`, `Tokens`), not on each other, and `app` wires them.
 
 ## Layers
 
 | Package            | Responsibility                                                     | Skeleton state |
 |--------------------|--------------------------------------------------------------------|----------------|
 | `main.go`          | Load config, build `app.App`, create the Wails app and main window | done           |
-| `app`              | Config, wiring, event registration, Wails windows (`loginWindow`)  | wiring done, db commented out |
+| `app`              | Config, wiring, event registration                                 | wiring done, db commented out |
 | `core/db`          | sqlite (glebarez, pure Go), WAL, single writer, goose migrations   | stub           |
 | `core/esi`         | lib-esi-go transport, rate limit + disk cache middleware, `Check`/`Fetch`/`ExpiresAt` | returns a bare `http.Client` |
 | `core/keyring`     | `Store` interface, OS impl via zalando/go-keyring                  | stub           |
 | `core/crypt`       | AES-GCM `Sealer`, master key in keyring                            | stub           |
-| `identity/sso`     | Discovery, PKCE, exchange, refresh (`ErrInvalidGrant`), JWT verify | types only     |
-| `identity/login`   | Callback listener, `Pending` attempt, `Wait`/`Cancel`              | stub           |
+| `identity/sso`     | Discovery, PKCE, exchange, refresh (`ErrInvalidGrant`), JWT verify | ported         |
+| `identity/login`   | Permanent loopback server: feature picker, SSO redirect, callback  | done (tested)   |
 | `identity/token`   | `tokens` table, sealed refresh tokens, `For()` → `RefreshableToken`| stub           |
 | `feature`          | `Feature` contract (`Tasks() []task.Binding`), `Enabled()`         | done (tested), contract changes per SCHEDULER.md |
 | `feature/character`| `characters` table, add-character flow, list, remove, needs-login  | `Features()` real, rest stub |
@@ -51,9 +51,48 @@ replace the asset-manager module path and `github.com/xaroth/lib-esi-go` with th
    3. SSO client → verifier → login flow → token store → ESI client
    4. Build the `[]feature.Feature` list. Its order is the UI order.
    5. Scheduler (with `onAuth` → `Characters.MarkNeedsLogin`), then the character service.
-3. Wails app with `a.Services()` and the main window.
-4. `a.Start(ctx)` enrolls every character and starts the scheduler goroutine.
+   6. Login server (`login.New`), handler `Characters.Store`.
+3. Wails app with `a.Services()`, single-instance, and the main window. A second launch exits
+   here and focuses the first.
+4. `a.Start(ctx)` binds the login port (busy port is fatal), enrolls every character and starts the scheduler goroutine.
 5. `wails.Run()`.
+
+## Login flow
+
+SSO runs in the system browser, never in a Wails window: the user can only trust the login page
+if they can see the real URL and know the app is not reading their input. A loopback HTTP server
+in `identity/login` runs for the whole app lifetime.
+
+1. "Add character" (`Characters.AddCharacter`) opens `http://localhost:45538/` in the system browser.
+2. `GET /` renders the feature picker (Go `html/template`, from the `[]feature.Feature` list).
+3. `POST /start` takes the selected features, creates an attempt (`state`, PKCE verifier, scopes)
+   and redirects to the SSO authorize URL.
+4. `GET /callback` matches `state` to the attempt, exchanges the code, verifies the JWT, hands the
+   result to the character service, then redirects to `/done`. The redirect keeps a reload from
+   replaying a used code.
+5. `/done` names the character and links back to `/` to add another. It notes that EVE SSO
+   remembers the account, so adding a character from another account needs an SSO logout first.
+
+Rules:
+
+- Scopes requested are exactly the selected features' scopes. Logging in again replaces the token
+  and its scopes, so downscoping is allowed and removes features. A removed feature's tasks stop;
+  its stored data is kept.
+- Owner hash changes are recorded, not acted on.
+- Attempts live in memory with no timeout, since the user can take arbitrarily long at SSO. The map is
+  capped (oldest evicted) to bound memory. Unknown `state` and `error=access_denied` render an error
+  page with a link to `/`.
+- Bind loopback only. Reject requests whose `Host` is not `localhost:45538` or `127.0.0.1:45538`
+  (DNS rebinding). The picker form carries a CSRF token.
+- The callback URL is `localhost`, which browsers may resolve to `::1`, so bind both `127.0.0.1`
+  and `[::1]`.
+- Port in use is fatal at boot. Use Wails single-instance so a second launch focuses the running
+  app instead of hitting that error.
+- No in-app progress for now. The character list updates through `character:changed`.
+- The SSO is the configured issuer (default `https://login.eveonline.com`), overridable with
+  `"issuer"` in the SSO file or `YULAI_SSO_ISSUER`. Everything else comes from its
+  `/.well-known/openid-configuration`: authorize and token endpoints, `jwks_uri` for signature
+  keys, and `issuer`, which must equal the configured one and is what `iss` is validated against.
 
 ## Data model (first migration, `core/db/migrations/00001_init.sql`)
 
@@ -83,8 +122,8 @@ field names and JSON tags so the bindings don't change. `sqlc.yaml` is added tog
 
 ## Frontend conventions
 
-- Hash history, so secondary windows open at `/#/<route>` (e.g. `/#/add` for the picker window).
-- Routes under `layout` get the top bar. Routes under root (`/add`) are chromeless windows.
+- Hash history, so secondary windows open at `/#/<route>`.
+- Routes under `layout` get the top bar. Routes directly under root are chromeless windows.
 - Loaders call `queryClient.ensureQueryData` and components use `useSuspenseQuery`.
 - Bindings are generated as classes (`-ts`, no `-i`) into `frontend/bindings` and committed.
 
@@ -109,7 +148,7 @@ field names and JSON tags so the bindings don't change. `sqlc.yaml` is added tog
 1. **Infrastructure:** `core/db` + first migration, `core/keyring`, `core/crypt`, `core/esi` (port and test).
    Uncomment `db.Open` in `app.New`.
 2. **Identity:** `identity/sso`, `identity/login`, `identity/token`, sqlc for `tokens`.
-3. **Characters:** `character` queries, `BeginLogin`/`store`/`Remove`/`MarkNeedsLogin`, `EventChanged`.
+3. **Characters:** `character` queries, `Store`/`Remove`/`MarkNeedsLogin`, `EventChanged`.
    `LoadConfig` makes a missing SSO file fatal again.
 4. **Scheduler:** `core/task`, seeds and gates, `SyncService` per `docs/SCHEDULER.md`.
 5. **First real feature** using the recipe above.
@@ -121,6 +160,6 @@ field names and JSON tags so the bindings don't change. `sqlc.yaml` is added tog
 - **Shared module.** `core/*`, `identity/*`, `feature` and `feature/sync` are app-agnostic and would be
   duplicated with asset-manager. They could be extracted into a shared `eve-online-tools/*` module once both
   apps have stabilised them. Until then, port by copy.
-- **Callback port.** Yulai uses `45538` (asset-manager uses `45537`) so both apps can log in side by side.
+- **Callback port.** Yulai uses `45538` (asset-manager uses `45537`) so both apps can run side by side.
   Each needs its own SSO app registration.
 - **Mobile.** The build targets exist from the template, but `keyring.OS` needs a mobile `Store`.

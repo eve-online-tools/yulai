@@ -18,6 +18,13 @@ const Name = "yulai"
 // DevFile is loaded from the working directory when present. Gitignored.
 const DevFile = "sso.dev.json"
 
+// IssuerEnv overrides the SSO issuer from the SSO file, e.g. to use a test server.
+const IssuerEnv = "YULAI_SSO_ISSUER"
+
+// DefaultCallbackURL keeps the login server up without an SSO file. It must match
+// the SSO app registration.
+const DefaultCallbackURL = "http://localhost:45538/callback"
+
 type Config struct {
 	SSO     sso.Config
 	DataDir string
@@ -25,7 +32,7 @@ type Config struct {
 }
 
 // LoadConfig resolves the data dir and reads the SSO registration. A missing SSO
-// file is not fatal while the skeleton has no login; it will be once it does.
+// file is not fatal: the app runs, and the login page reports it.
 func LoadConfig() (*Config, error) {
 	dataDir, err := xdg.DataFile(Name)
 	if err != nil {
@@ -36,7 +43,7 @@ func LoadConfig() (*Config, error) {
 	}
 	cfg := &Config{
 		DataDir: dataDir,
-		SSO:     sso.Config{Name: Name, Description: "Yulai"},
+		SSO:     sso.Config{Name: Name, Description: "Yulai", CallbackURL: DefaultCallbackURL},
 	}
 
 	path := DevFile
@@ -45,21 +52,32 @@ func LoadConfig() (*Config, error) {
 	}
 	cfg.Source = path
 
-	raw, err := os.ReadFile(path)
-	if errors.Is(err, os.ErrNotExist) {
-		slog.Warn("no SSO config found; login is disabled", "want", []string{DevFile, path})
-		return cfg, nil
-	}
-	if err != nil {
+	if err := readSSO(path, &cfg.SSO); err != nil {
 		return nil, err
 	}
-	if err := json.Unmarshal(raw, &cfg.SSO); err != nil {
-		return nil, fmt.Errorf("parse %s: %w", path, err)
+	if issuer := os.Getenv(IssuerEnv); issuer != "" {
+		cfg.SSO.Issuer = issuer
 	}
-	if cfg.SSO.ClientID == "" || cfg.SSO.CallbackURL == "" {
-		return nil, fmt.Errorf("%s: clientId and callbackUrl are required", path)
-	}
+	cfg.SSO.Issuer = sso.NormalizeIssuer(cfg.SSO.Issuer)
 	return cfg, nil
+}
+
+func readSSO(path string, c *sso.Config) error {
+	raw, err := os.ReadFile(path)
+	if errors.Is(err, os.ErrNotExist) {
+		slog.Warn("no SSO config found; login will fail", "want", []string{DevFile, path})
+		return nil
+	}
+	if err != nil {
+		return err
+	}
+	if err := json.Unmarshal(raw, c); err != nil {
+		return fmt.Errorf("parse %s: %w", path, err)
+	}
+	if c.ClientID == "" || c.CallbackURL == "" {
+		return fmt.Errorf("%s: clientId and callbackUrl are required", path)
+	}
+	return nil
 }
 
 func (c *Config) DBPath() string    { return filepath.Join(c.DataDir, "yulai.sqlite") }

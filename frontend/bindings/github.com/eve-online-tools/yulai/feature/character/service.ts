@@ -10,12 +10,11 @@ import { Call as $Call, CancellablePromise as $CancellablePromise, Create as $Cr
 import * as $models from "./models.js";
 
 /**
- * BeginLogin is called from the picker window. It will start the SSO flow for the
- * named features and send that window to the SSO; completion is reported through
- * EventChanged.
+ * AddCharacter opens the login server's feature picker in the system browser.
+ * Completed logins arrive through Store and are reported through EventChanged.
  */
-export function BeginLogin(features: string[]): $CancellablePromise<void> {
-    return $Call.ByID(686594795, features);
+export function AddCharacter(): $CancellablePromise<void> {
+    return $Call.ByID(1521250203);
 }
 
 /**
@@ -32,13 +31,6 @@ export function List(): $CancellablePromise<$models.ListRow[]> {
     return $Call.ByID(195734209).then(($result: any) => {
         return $$createType3($result);
     });
-}
-
-/**
- * OpenAddWindow shows the feature picker window.
- */
-export function OpenAddWindow(): $CancellablePromise<void> {
-    return $Call.ByID(3766459884);
 }
 
 export function Remove(characterID: number): $CancellablePromise<void> {
