@@ -18,6 +18,9 @@ const Name = "yulai"
 // DevFile is loaded from the working directory when present. Gitignored.
 const DevFile = "sso.dev.json"
 
+// IssuerEnv overrides the SSO issuer from the SSO file, e.g. to use a test server.
+const IssuerEnv = "YULAI_SSO_ISSUER"
+
 type Config struct {
 	SSO     sso.Config
 	DataDir string
@@ -45,21 +48,32 @@ func LoadConfig() (*Config, error) {
 	}
 	cfg.Source = path
 
+	if err := readSSO(path, &cfg.SSO); err != nil {
+		return nil, err
+	}
+	if issuer := os.Getenv(IssuerEnv); issuer != "" {
+		cfg.SSO.Issuer = issuer
+	}
+	cfg.SSO.Issuer = sso.NormalizeIssuer(cfg.SSO.Issuer)
+	return cfg, nil
+}
+
+func readSSO(path string, c *sso.Config) error {
 	raw, err := os.ReadFile(path)
 	if errors.Is(err, os.ErrNotExist) {
 		slog.Warn("no SSO config found; login is disabled", "want", []string{DevFile, path})
-		return cfg, nil
+		return nil
 	}
 	if err != nil {
-		return nil, err
+		return err
 	}
-	if err := json.Unmarshal(raw, &cfg.SSO); err != nil {
-		return nil, fmt.Errorf("parse %s: %w", path, err)
+	if err := json.Unmarshal(raw, c); err != nil {
+		return fmt.Errorf("parse %s: %w", path, err)
 	}
-	if cfg.SSO.ClientID == "" || cfg.SSO.CallbackURL == "" {
-		return nil, fmt.Errorf("%s: clientId and callbackUrl are required", path)
+	if c.ClientID == "" || c.CallbackURL == "" {
+		return fmt.Errorf("%s: clientId and callbackUrl are required", path)
 	}
-	return cfg, nil
+	return nil
 }
 
 func (c *Config) DBPath() string    { return filepath.Join(c.DataDir, "yulai.sqlite") }

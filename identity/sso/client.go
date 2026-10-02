@@ -24,7 +24,8 @@ type Config struct {
 	ClientID     string `json:"clientId"`
 	ClientSecret string `json:"clientSecret,omitempty"`
 	CallbackURL  string `json:"callbackUrl"`
-	// Issuer defaults to DefaultIssuer.
+	// Issuer is the SSO base URL, e.g. "https://login.eveonline.com". A bare host gets
+	// https. Defaults to DefaultIssuer.
 	Issuer string `json:"issuer,omitempty"`
 }
 
@@ -41,14 +42,25 @@ type Client struct {
 }
 
 func NewClient(cfg Config) *Client {
-	if cfg.Issuer == "" {
-		cfg.Issuer = DefaultIssuer
-	}
+	cfg.Issuer = NormalizeIssuer(cfg.Issuer)
 	hc := &http.Client{Timeout: 15 * time.Second}
 	return &Client{cfg: cfg, http: hc, disc: &discovery{issuer: cfg.Issuer, http: hc}}
 }
 
 func (c *Client) Config() Config { return c.cfg }
+
+// NormalizeIssuer defaults an empty issuer, adds https to a bare host and drops a
+// trailing slash, so it compares equal to the discovery document and the iss claim.
+func NormalizeIssuer(issuer string) string {
+	issuer = strings.TrimRight(strings.TrimSpace(issuer), "/")
+	if issuer == "" {
+		return DefaultIssuer
+	}
+	if !strings.Contains(issuer, "://") {
+		issuer = "https://" + issuer
+	}
+	return issuer
+}
 
 // Endpoints returns the discovered SSO endpoints.
 func (c *Client) Endpoints(ctx context.Context) (*Endpoints, error) { return c.disc.endpoints(ctx) }

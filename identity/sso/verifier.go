@@ -66,9 +66,13 @@ func (v *Verifier) keySet(ctx context.Context) (jwk.Set, error) {
 	return v.keys, nil
 }
 
-// Verify checks signature, expiry, issuer and that the token was issued to this
-// client (azp). We are not an API, so aud is not checked.
+// Verify checks signature, expiry, the discovered issuer and that the token was issued
+// to this client (azp). We are not an API, so aud is not checked.
 func (v *Verifier) Verify(ctx context.Context, accessToken string) (*Identity, error) {
+	eps, err := v.client.Endpoints(ctx)
+	if err != nil {
+		return nil, err
+	}
 	keys, err := v.keySet(ctx)
 	if err != nil {
 		return nil, err
@@ -82,7 +86,7 @@ func (v *Verifier) Verify(ctx context.Context, accessToken string) (*Identity, e
 		return nil, fmt.Errorf("sso: parse token: %w", err)
 	}
 	if err := jwt.Validate(tok,
-		jwt.WithIssuer(v.client.cfg.Issuer),
+		jwt.WithIssuer(eps.Issuer),
 		jwt.WithClaimValue("azp", v.client.cfg.ClientID),
 		jwt.WithAcceptableSkew(30*time.Second),
 	); err != nil {

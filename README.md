@@ -10,7 +10,8 @@ returns `todo.ErrNotImplemented`. See [docs/PLAN.md](docs/PLAN.md) for what goes
 
 1. Register an application at https://developers.eveonline.com with callback URL `http://localhost:45538/callback`. PKCE is used, no client secret needed.
 2. Copy `sso.example.json` to `sso.dev.json` and fill in `clientId`. `sso.dev.json` is gitignored. Without it the app looks for `sso.json` in the OS config dir (`%APPDATA%\yulai` on Windows). While the skeleton has no login a missing file only logs a warning.
-3. Install tools: `wails3` (v3.0.0-beta.27), and once tables exist `sqlc` and `goose`.
+3. Optional: point the app at another SSO with `"issuer"` in the SSO file or the `YULAI_SSO_ISSUER` environment variable (which wins). Default is `https://login.eveonline.com`. A bare host gets `https://`. Endpoints come from the issuer's `/.well-known/openid-configuration`.
+4. Install tools: `wails3` (v3.0.0-beta.27), and once tables exist `sqlc` and `goose`.
 
 ## Develop
 
