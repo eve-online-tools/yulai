@@ -3,6 +3,7 @@ package app
 import (
 	"context"
 	"database/sql"
+	"errors"
 	"log/slog"
 
 	"github.com/wailsapp/wails/v3/pkg/application"
@@ -30,6 +31,7 @@ type App struct {
 	Config     *Config
 	Characters *character.Service
 	Scheduler  *sync.Scheduler
+	Login      *login.Server
 
 	conn *sql.DB
 }
@@ -46,7 +48,6 @@ func New(ctx context.Context, cfg *Config) (*App, error) {
 
 	ssoClient := sso.NewClient(cfg.SSO)
 	verifier := sso.NewVerifier(ssoClient)
-	loginFlow := login.New(ssoClient, verifier)
 	tokens := token.NewStore(conn, ssoClient, verifier, sealer)
 	esiClient := esi.NewClient(cfg.SSO.Name, cfg.SSO.Description, cfg.CachePath())
 
@@ -58,13 +59,27 @@ func New(ctx context.Context, cfg *Config) (*App, error) {
 	app.Scheduler = sync.NewScheduler(conn, features, tokens, syncWorkers, func(ctx context.Context, id int64, reason string) {
 		_ = app.Characters.MarkNeedsLogin(ctx, id, reason)
 	})
-	app.Characters = character.NewService(conn, loginFlow, &loginWindow{}, tokens, esiClient, features, app.Scheduler)
+	loginFeatures := make([]login.Feature, 0, len(features))
+	for _, f := range features {
+		loginFeatures = append(loginFeatures, login.Feature{Name: f.Name(), Scopes: f.Scopes()})
+	}
+	app.Login, err = login.New(ssoClient, verifier, loginFeatures, func(ctx context.Context, r *login.Result) error {
+		return app.Characters.Store(ctx, r)
+	})
+	if err != nil {
+		return nil, err
+	}
+	app.Characters = character.NewService(conn, app.Login.URL(), browser{}, tokens, esiClient, features, app.Scheduler)
 
 	return app, nil
 }
 
-// Start enrolls existing characters and runs the scheduler until ctx ends.
+// Start binds the login server, enrolls existing characters and runs the scheduler
+// until ctx ends. A busy login port is fatal.
 func (a *App) Start(ctx context.Context) error {
+	if err := a.Login.Listen(); err != nil {
+		return err
+	}
 	chars, err := a.Characters.List(ctx)
 	if err != nil {
 		return err
@@ -86,8 +101,14 @@ func (a *App) Services() []application.Service {
 }
 
 func (a *App) Close() error {
-	if a.conn == nil {
-		return nil
+	err := a.Login.Close()
+	if a.conn != nil {
+		err = errors.Join(err, a.conn.Close())
 	}
-	return a.conn.Close()
+	return err
 }
+
+// browser implements character.Browser.
+type browser struct{}
+
+func (browser) OpenURL(url string) error { return application.Get().Browser.OpenURL(url) }
