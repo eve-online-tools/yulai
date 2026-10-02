@@ -3,6 +3,9 @@ version: '3'
 # Do not echo every command; the tools themselves are chatty enough.
 silent: true
 
+# Local SSO registration. CI sets the same names as environment variables.
+dotenv: ['.env']
+
 vars:
   APP_NAME: "yulai"
   BIN_DIR: "bin"
@@ -12,6 +15,11 @@ vars:
   # by `wails3 build GOOS=...` (or the GOOS env var) for cross-compilation. The
   # tasks below dispatch to the matching platform Taskfile via this variable.
   GOOS: '{{.GOOS | default OS}}'
+  # SSO registration baked into the binary. The shell environment wins over .env.
+  SSO_CLIENT_ID: '{{env "YULAI_SSO_CLIENT_ID" | default .YULAI_SSO_CLIENT_ID}}'
+  SSO_CALLBACK_URL: '{{env "YULAI_SSO_CALLBACK_URL" | default .YULAI_SSO_CALLBACK_URL}}'
+  SSO_HOST: '{{env "YULAI_SSO_HOST" | default .YULAI_SSO_HOST}}'
+  SSO_LDFLAGS: '-X github.com/eve-online-tools/yulai/app.buildClientID={{.SSO_CLIENT_ID}} -X github.com/eve-online-tools/yulai/app.buildCallbackURL={{.SSO_CALLBACK_URL}} -X github.com/eve-online-tools/yulai/app.buildSSOHost={{.SSO_HOST}}'
 
 includes:
   common: ./build/Taskfile.yml
@@ -29,6 +37,9 @@ tasks:
 
   package:
     summary: Packages a production build of the application
+    preconditions:
+      - sh: '[ -n "{{.SSO_CLIENT_ID}}" ]'
+        msg: "YULAI_SSO_CLIENT_ID is not set. Put it in .env or the environment."
     cmds:
       - task: "{{.GOOS}}:package"
 

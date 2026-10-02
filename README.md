@@ -9,8 +9,27 @@ returns `todo.ErrNotImplemented`. See [docs/PLAN.md](docs/PLAN.md) for what goes
 ## Setup
 
 1. Register an application at https://developers.eveonline.com with callback URL `http://localhost:45538/callback`. PKCE is used, no client secret needed.
-2. Copy `sso.example.json` to `sso.dev.json` and fill in `clientId`. `sso.dev.json` is gitignored. Without it the app looks for `sso.json` in the OS config dir (`%APPDATA%\yulai` on Windows). A missing file logs a warning and the login page reports it.
-3. Optional: point the app at another SSO with `"issuer"` in the SSO file or the `YULAI_SSO_ISSUER` environment variable (which wins). Default is `https://login.eveonline.com`. A bare host gets `https://`. Endpoints come from the issuer's `/.well-known/openid-configuration`.
+2. Copy `.env.example` to `.env` and fill in `YULAI_SSO_CLIENT_ID`. `.env` is gitignored. The Taskfile builds these values into the binary; variables set in the shell override `.env`. `task package` fails without a client ID.
+3. Optional: point the app at another SSO, e.g. Singularity, with `YULAI_SSO_HOST`. Default is `https://login.eveonline.com`. A bare host gets `https://`. Endpoints come from the host's `/.well-known/openid-configuration`.
+
+SSO settings are resolved in this order, later wins:
+
+| Source | Client ID | Callback URL | SSO host |
+| --- | --- | --- | --- |
+| Build time (`.env` or environment) | `YULAI_SSO_CLIENT_ID` | `YULAI_SSO_CALLBACK_URL` | `YULAI_SSO_HOST` |
+| `sso.json` in the OS config dir (`%APPDATA%\yulai` on Windows) | `clientId` | `callbackUrl` | `ssoHost` |
+| Runtime environment | `YULAI_SSO_CLIENT_ID` | `YULAI_SSO_CALLBACK_URL` | `YULAI_SSO_HOST` |
+
+Without a client ID the app logs a warning and the login page reports it.
+
+In GitHub Actions, store the client ID as a secret and pass it to the build step:
+
+```yaml
+env:
+  YULAI_SSO_CLIENT_ID: ${{ secrets.YULAI_SSO_CLIENT_ID }}
+```
+
+Cross-compiles through Docker (`build:docker`) do not get the build-time values.
 4. Install tools: `wails3` (v3.0.0-beta.27), pnpm (`corepack enable` picks up the pinned version), and once tables exist `sqlc` and `goose`.
 
 ## Develop

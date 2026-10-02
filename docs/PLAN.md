@@ -43,8 +43,8 @@ replace the asset-manager module path and `github.com/xaroth/lib-esi-go` with th
 
 ## Boot sequence
 
-1. `app.LoadConfig()` resolves the data dir (`xdg.DataFile("yulai")`) and reads
-   `sso.dev.json` or `<config>/yulai/sso.json`.
+1. `app.LoadConfig()` resolves the data dir (`xdg.DataFile("yulai")`) and the SSO registration:
+   build-time values, then `<config>/yulai/sso.json`, then `YULAI_SSO_*` environment variables.
 2. `app.New()`:
    1. `db.Open(DBPath)` runs migrations. Commented out until `core/db` is real.
    2. `crypt.Open(keyring.OS{Service: "eve-online-tools/yulai", User: "master-key"})`
@@ -89,8 +89,8 @@ Rules:
 - Port in use is fatal at boot. Use Wails single-instance so a second launch focuses the running
   app instead of hitting that error.
 - No in-app progress for now. The character list updates through `character:changed`.
-- The SSO is the configured issuer (default `https://login.eveonline.com`), overridable with
-  `"issuer"` in the SSO file or `YULAI_SSO_ISSUER`. Everything else comes from its
+- The SSO is the configured host (default `https://login.eveonline.com`), overridable with
+  `YULAI_SSO_HOST` at build time, `"ssoHost"` in the SSO file, or `YULAI_SSO_HOST` at runtime. Everything else comes from its
   `/.well-known/openid-configuration`: authorize and token endpoints, `jwks_uri` for signature
   keys, and `issuer`, which must equal the configured one and is what `iss` is validated against.
 
