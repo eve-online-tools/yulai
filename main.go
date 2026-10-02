@@ -4,6 +4,7 @@ import (
 	"context"
 	"embed"
 	"log"
+	"runtime"
 
 	"github.com/wailsapp/wails/v3/pkg/application"
 
@@ -51,9 +52,24 @@ func main() {
 	})
 
 	mainWindow = wails.Window.NewWithOptions(application.WebviewWindowOptions{
-		Title:            "Yulai",
-		Width:            1100,
-		Height:           700,
+		Title:  "Yulai",
+		Width:  1100,
+		Height: 700,
+		// The frontend frame draws the title bar. Windows and Linux get its own controls; macOS keeps
+		// the native traffic lights over a transparent title bar so they behave as users expect.
+		Frameless: runtime.GOOS != "darwin",
+		Mac: application.MacWindow{
+			TitleBar: application.MacTitleBar{
+				AppearsTransparent:   true,
+				HideTitle:            true,
+				FullSizeContent:      true,
+				UseToolbar:           true,
+				HideToolbarSeparator: true,
+				ToolbarStyle:         application.MacToolbarStyleUnifiedCompact,
+			},
+		},
+		MinWidth:         720,
+		MinHeight:        480,
 		BackgroundColour: application.NewRGB(6, 7, 15),
 		URL:              "/",
 	})

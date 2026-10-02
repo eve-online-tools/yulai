@@ -1,7 +1,11 @@
 import { useState, type ReactNode } from "react";
 import { useMutation, useQuery } from "@tanstack/react-query";
 import { Service as Characters } from "@bindings/github.com/eve-online-tools/yulai/feature/character";
-import { charactersQuery, setupQuery } from "../queries";
+import { Alert, Button } from "@xaroth.nl/design/react";
+import { AppIcon } from "../app-icon";
+import { navItemClass } from "../nav-item";
+import { charactersQuery, setupQuery } from "../../queries";
+import styles from "./getting-started.module.scss";
 
 // UI-only state, so it lives in the webview rather than the database.
 const storageKey = "yulai.gettingStarted";
@@ -37,7 +41,7 @@ export function GettingStarted() {
       id: "character",
       title: "Add a character",
       done: characters.length > 0,
-      body: <button onClick={() => add.mutate()}>Add character</button>,
+      body: <Button size="sm" onClick={() => add.mutate()}>Add character</Button>,
     },
     {
       id: "accounts",
@@ -47,7 +51,7 @@ export function GettingStarted() {
       body: (
         <>
           <p className="muted">EVE SSO remembers your account. For a character on another account, log out at {ssoHost} first.</p>
-          <button onClick={() => add.mutate()}>Add character</button>
+          <Button size="sm" onClick={() => add.mutate()}>Add character</Button>
         </>
       ),
     },
@@ -57,31 +61,35 @@ export function GettingStarted() {
   if (stored.dismissed || doneCount === items.length) return null;
 
   return (
-    <details className="getting-started">
-      <summary className="nav-link">
-        Getting started {doneCount}/{items.length}
+    <details className={styles.root}>
+      <summary className={`${navItemClass} ${styles.summary}`}>
+        <AppIcon name="checklist" size={18} />
+        <span>Getting started</span>
+        <span className={styles.count}>
+          {doneCount}/{items.length}
+        </span>
       </summary>
-      <div className="popover">
-        <ul className="checklist">
+      <div className={styles.popover}>
+        <ul className={styles.list}>
           {items.map((i) => (
-            <li key={i.id} className={i.done ? "done" : ""}>
+            <li key={i.id} className={i.done ? styles.done : undefined}>
               <div className="row">
-                <span className="check">{i.done ? "✓" : ""}</span>
+                <span className={styles.check}>{i.done ? "✓" : ""}</span>
                 <span>{i.title}</span>
                 {!i.done && i.skippable && (
-                  <button className="ghost push-right" onClick={() => save({ ...stored, skipped: [...stored.skipped, i.id] })}>
+                  <Button variant="tertiary" size="sm" className="push-right" onClick={() => save({ ...stored, skipped: [...stored.skipped, i.id] })}>
                     skip
-                  </button>
+                  </Button>
                 )}
               </div>
-              {!i.done && <div className="checklist-body small">{i.body}</div>}
+              {!i.done && <div className={styles.body}>{i.body}</div>}
             </li>
           ))}
         </ul>
-        {add.isError && <p className="error small">{String(add.error)}</p>}
-        <button className="ghost" onClick={() => save({ ...stored, dismissed: true })}>
+        {add.isError && <Alert tone="danger">{String(add.error)}</Alert>}
+        <Button variant="tertiary" size="sm" onClick={() => save({ ...stored, dismissed: true })}>
           Hide checklist
-        </button>
+        </Button>
       </div>
     </details>
   );

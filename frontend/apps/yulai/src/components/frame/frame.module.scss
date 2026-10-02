@@ -1,0 +1,94 @@
+.frame {
+  --titlebar-h: 36px;
+  --titlebar-inset: 0px;
+
+  position: relative;
+  display: grid;
+  grid-template-rows: var(--titlebar-h) minmax(0, 1fr);
+  height: 100%;
+  isolation: isolate;
+  background:
+    radial-gradient(ellipse 70% 55% at 85% -10%, rgb(77 220 242 / 9%), transparent 70%),
+    radial-gradient(ellipse 60% 50% at -10% 110%, rgb(42 135 153 / 10%), transparent 70%),
+    var(--x-color-bg);
+
+  // Faint grid, fading out towards the bottom.
+  &::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    z-index: -1;
+    pointer-events: none;
+    background-image:
+      linear-gradient(var(--x-color-line) 1px, transparent 1px),
+      linear-gradient(90deg, var(--x-color-line) 1px, transparent 1px);
+    background-size: 48px 48px;
+    opacity: 0.35;
+    mask-image: linear-gradient(180deg, #000, transparent 75%);
+  }
+
+  // Window edge. macOS draws its own.
+  &::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    z-index: 10;
+    pointer-events: none;
+    border: 1px solid var(--x-color-line-strong);
+  }
+
+  &[data-maximised]::after,
+  &[data-platform='mac']::after {
+    display: none;
+  }
+
+  // Unified compact toolbar height, and room for the traffic lights.
+  &[data-platform='mac'] {
+    --titlebar-h: 38px;
+    --titlebar-inset: 78px;
+  }
+
+  // Fullscreen hides the traffic lights along with the toolbar.
+  &[data-platform='mac'][data-fullscreen] {
+    --titlebar-inset: 0px;
+  }
+}
+
+.titlebar {
+  --wails-draggable: drag;
+
+  display: flex;
+  align-items: stretch;
+  justify-content: space-between;
+  padding-left: var(--titlebar-inset);
+  background: var(--x-color-bg-sunk);
+  border-bottom: 1px solid var(--x-color-line);
+  user-select: none;
+}
+
+.brand {
+  display: flex;
+  align-items: center;
+  gap: var(--x-space-2);
+  padding-inline: var(--x-space-4);
+  font-family: var(--x-font-display);
+  font-size: var(--x-fs-label);
+  font-weight: 600;
+  letter-spacing: var(--x-track-label);
+  text-transform: uppercase;
+  color: var(--x-color-text-muted);
+}
+
+.mark {
+  width: 8px;
+  height: 8px;
+  rotate: 45deg;
+  background: var(--x-color-accent);
+  box-shadow: 0 0 8px var(--x-color-glow);
+}
+
+.body {
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+}

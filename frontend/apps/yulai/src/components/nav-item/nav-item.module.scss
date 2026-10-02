@@ -1,0 +1,40 @@
+.item {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: var(--x-space-3);
+  min-height: var(--x-control-md);
+  padding-inline: var(--x-space-3);
+  font-family: var(--x-font-ui);
+  font-size: var(--x-fs-ui);
+  color: var(--x-color-text-muted);
+  text-decoration: none;
+  white-space: nowrap;
+  cursor: pointer;
+
+  &:hover {
+    color: var(--x-color-text);
+    background: var(--x-color-surface-2);
+  }
+
+  &:focus-visible {
+    outline: var(--x-focus-width) solid var(--x-color-focus);
+    outline-offset: calc(var(--x-focus-width) * -1);
+  }
+}
+
+.active,
+.active:hover {
+  color: var(--x-color-accent-strong);
+  background: var(--x-color-accent-wash);
+}
+
+.active::before {
+  content: '';
+  position: absolute;
+  inset-block: 6px;
+  left: 0;
+  width: 2px;
+  background: var(--x-color-accent);
+  box-shadow: 0 0 8px var(--x-color-glow);
+}
