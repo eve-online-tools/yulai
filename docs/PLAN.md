@@ -132,6 +132,9 @@ field names and JSON tags so the bindings don't change. `sqlc.yaml` is added tog
   Wails version in `go.mod`.
 - Hash history, so secondary windows open at `/#/<route>`.
 - Routes under `layout` get the top bar. Routes directly under root are chromeless windows.
+- `/` redirects to `/welcome` (chromeless, blocking first-run steps: SSO config, first character) while there
+  are no characters. Optional onboarding is the top bar checklist in `components/GettingStarted.tsx`. Its items
+  are derived from backend state; only skips and dismissal are kept, in `localStorage`.
 - Loaders call `queryClient.ensureQueryData` and components use `useSuspenseQuery`.
 - Bindings are generated as classes (`-ts`, no `-i`) and committed.
 
