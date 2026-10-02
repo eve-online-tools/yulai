@@ -9,3 +9,9 @@ minimumReleaseAge: 10080
 # Pinned to match github.com/wailsapp/wails/v3 in go.mod, which is not subject to the cutoff.
 minimumReleaseAgeExclude:
   - "@wailsio/runtime"
+  # Own design system, released alongside this app.
+  - "@xaroth.nl/design"
+
+# Optional native watcher pulled in by sass; Vite does its own watching.
+allowBuilds:
+  "@parcel/watcher": false

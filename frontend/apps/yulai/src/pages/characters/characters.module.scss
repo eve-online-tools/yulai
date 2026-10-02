@@ -1,0 +1,44 @@
+.cards {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  gap: var(--x-space-4);
+}
+
+.card {
+  display: flex;
+  flex-direction: column;
+  gap: var(--x-space-3);
+}
+
+.head {
+  display: flex;
+  align-items: center;
+  gap: var(--x-space-3);
+}
+
+.name {
+  font-family: var(--x-font-heading);
+  font-weight: 600;
+}
+
+.jobs {
+  summary {
+    cursor: pointer;
+  }
+
+  dl {
+    display: grid;
+    grid-template-columns: auto 1fr;
+    align-items: center;
+    gap: var(--x-space-1) var(--x-space-3);
+    margin: 0;
+  }
+
+  dt {
+    color: var(--x-color-text-muted);
+  }
+
+  dd {
+    margin: 0;
+  }
+}

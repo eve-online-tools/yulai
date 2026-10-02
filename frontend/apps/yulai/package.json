@@ -13,14 +13,16 @@
     "@tanstack/react-query": "^5.103.2",
     "@tanstack/react-router": "^1.170.39",
     "@wailsio/runtime": "3.0.0-beta.27",
+    "@xaroth.nl/design": "^0.2.0",
     "@yulai/ui": "workspace:*",
-    "react": "^18.2.0",
-    "react-dom": "^18.2.0"
+    "react": "^19.3.0",
+    "react-dom": "^19.3.0"
   },
   "devDependencies": {
-    "@types/react": "^18.2.43",
-    "@types/react-dom": "^18.2.17",
+    "@types/react": "^19.3.0",
+    "@types/react-dom": "^19.3.0",
     "@vitejs/plugin-react": "^6.0.0",
+    "sass": "^1.105.0",
     "typescript": "^5.2.2",
     "vite": "^8.0.5"
   }

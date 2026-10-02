@@ -53,5 +53,5 @@ frontend/       pnpm workspaces, Vite + React
   apps/yulai/   the Wails app (TanStack Router/Query), builds to frontend/dist
     bindings/   generated Wails bindings, imported as @bindings/...
   packages/ui/  @yulai/ui: shared styles and components, no Wails imports
-docs/           PLAN.md, SCHEDULER.md
+docs/           PLAN.md, SCHEDULER.md, DESIGN.md
 ```

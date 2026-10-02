@@ -1,8 +1,10 @@
 import { useQuery, useSuspenseQuery, useMutation } from "@tanstack/react-query";
 import type { FeatureInfo, ListRow as Character } from "@bindings/github.com/eve-online-tools/yulai/feature/character";
 import { Service as Sync } from "@bindings/github.com/eve-online-tools/yulai/feature/sync";
-import { Portrait, Tag, enabledFeatures } from "@yulai/ui";
-import { charactersQuery, featuresQuery, syncJobsQuery } from "../queries";
+import { Button, EmptyState, PageHead, Panel, Tag } from "@xaroth.nl/design/react";
+import { Portrait, enabledFeatures } from "@yulai/ui";
+import { charactersQuery, featuresQuery, syncJobsQuery } from "../../queries";
+import styles from "./characters.module.scss";
 
 export function CharactersPage() {
   const { data: characters } = useSuspenseQuery(charactersQuery);
@@ -10,11 +12,9 @@ export function CharactersPage() {
 
   return (
     <>
-      <header className="page-header">
-        <h1>Characters</h1>
-      </header>
-      {characters.length === 0 && <p className="muted">No characters yet. Add one from the accounts page.</p>}
-      <div className="cards">
+      <PageHead title="Characters" />
+      {characters.length === 0 && <EmptyState title="No characters yet">Add one from the accounts page.</EmptyState>}
+      <div className={styles.cards}>
         {characters.map((c) => (
           <CharacterCard key={c.id} character={c} features={features} />
         ))}
@@ -33,27 +33,27 @@ function CharacterCard({ character: c, features }: { character: Character; featu
   const myJobs = jobs.filter((j) => j.characterId === c.id);
 
   return (
-    <div className="card">
-      <div className="card-head">
+    <Panel className={styles.card}>
+      <div className={styles.head}>
         <Portrait id={c.id} size={48} />
         <div>
-          <div className="name">{c.name}</div>
+          <div className={styles.name}>{c.name}</div>
           <div className="muted small">{c.id}</div>
         </div>
       </div>
 
       {c.status !== "ok" && <p className="warn">Needs login again. {c.statusError}</p>}
 
-      <div className="row small">
+      <div className="row">
         {enabled.map((n) => (
-          <Tag key={n} on>{n}</Tag>
+          <Tag key={n} active>{n}</Tag>
         ))}
         {disabled.map((n) => (
           <Tag key={n} title="Log in again with this feature checked to enable it">{n}</Tag>
         ))}
       </div>
 
-      <details className="small">
+      <details className={`small ${styles.jobs}`}>
         <summary className="muted">Sync jobs ({myJobs.length})</summary>
         <dl>
           {myJobs.map((j) => (
@@ -61,7 +61,7 @@ function CharacterCard({ character: c, features }: { character: Character; featu
           ))}
         </dl>
       </details>
-    </div>
+    </Panel>
   );
 }
 
@@ -72,7 +72,7 @@ function JobRow({ job, nextRun, lastError, onRun }: { job: string; nextRun: numb
       <dt>{job}</dt>
       <dd>
         <span className={lastError ? "error" : "muted"} title={lastError ?? ""}>{label}</span>{" "}
-        <button className="ghost" onClick={onRun}>sync now</button>
+        <Button variant="tertiary" size="sm" onClick={onRun}>sync now</Button>
       </dd>
     </>
   );

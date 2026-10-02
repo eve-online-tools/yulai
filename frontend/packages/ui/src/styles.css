@@ -1,149 +1,21 @@
+/* Global base on top of @xaroth.nl/design (eve-online theme). Load the theme first. Component styles live in CSS modules. */
+
 :root {
-  color-scheme: dark;
-  --bg: #06070f;
-  --panel: #10121c;
-  --border: #23263a;
-  --text: #e6e7ee;
-  --muted: #8b90a7;
-  --accent: #4f8cff;
-  --warn: #f5b942;
-  --error: #ff6b6b;
-  --ok: #3ddc84;
-  font-family: system-ui, -apple-system, Segoe UI, Roboto, sans-serif;
-  font-size: 14px;
+  scrollbar-gutter: auto;
 }
 
-* { box-sizing: border-box; }
-
-html, body, #root { height: 100%; margin: 0; }
-body { background: var(--bg); color: var(--text); }
-
-button {
-  background: var(--accent);
-  color: white;
-  border: 0;
-  border-radius: 6px;
-  padding: 8px 14px;
-  cursor: pointer;
-  font: inherit;
+html,
+body,
+#root {
+  height: 100%;
+  margin: 0;
+  overflow: hidden;
 }
-button:disabled { opacity: 0.5; cursor: default; }
-button.ghost { background: transparent; color: var(--muted); padding: 4px 8px; margin-left: auto; }
-button.ghost:hover { color: var(--error); }
 
-.app { display: flex; flex-direction: column; height: 100%; }
-
-.topbar {
-  display: flex;
-  align-items: center;
-  gap: 24px;
-  padding: 0 20px;
-  height: 48px;
-  background: var(--panel);
-  border-bottom: 1px solid var(--border);
-}
-.brand { font-weight: 600; }
-.topbar nav { flex: 1; }
-.nav-link { color: var(--muted); text-decoration: none; padding: 6px 10px; border-radius: 6px; }
-.nav-link.active, .nav-link:hover { color: var(--text); background: #1a1d2c; }
-.icon-button { color: var(--muted); display: inline-flex; padding: 6px; border-radius: 6px; }
-.icon-button.active, .icon-button:hover { color: var(--text); background: #1a1d2c; }
-
-.content { flex: 1; padding: 24px 32px; overflow: auto; display: flex; flex-direction: column; }
-.page-footer { margin-top: auto; padding-top: 16px; display: flex; justify-content: flex-end; }
-
-.table-wrap { overflow-x: auto; }
-table { width: 100%; border-collapse: collapse; }
-th, td { text-align: left; padding: 10px 12px; border-bottom: 1px solid var(--border); vertical-align: middle; }
-th { color: var(--muted); font-weight: 500; font-size: 12px; }
-.avatar { border-radius: 4px; }
-.ok { color: var(--ok); }
-
-.page-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 20px; }
-.page-header h1 { margin: 0; font-size: 20px; }
-
-.cards { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 16px; }
-.card {
-  background: var(--panel);
-  border: 1px solid var(--border);
-  border-radius: 10px;
-  padding: 16px;
-  display: flex;
-  flex-direction: column;
-  gap: 12px;
-}
-.card-head { display: flex; align-items: center; gap: 12px; }
-.card-head img { border-radius: 6px; }
-.name { font-weight: 600; }
-
-dl { display: grid; grid-template-columns: auto 1fr; gap: 4px 12px; margin: 0; }
-dt { color: var(--muted); }
-dd { margin: 0; }
-
-.muted { color: var(--muted); }
-.small { font-size: 12px; }
-.warn { color: var(--warn); margin: 0; }
-.error { color: var(--error); margin: 0; }
-
-.row { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
-.tag { border: 1px solid var(--border); border-radius: 999px; padding: 1px 8px; color: var(--muted); }
-.tag.on { border-color: var(--accent); color: var(--text); }
-.dot { display: inline-block; width: 8px; height: 8px; border-radius: 50%; background: var(--muted); margin-right: 6px; }
-.dot.online { background: #3ddc84; }
-details summary { cursor: pointer; }
-
-code { font-family: ui-monospace, monospace; background: #1a1d2c; border-radius: 4px; padding: 1px 5px; }
-code.copyable { cursor: copy; }
-code.copyable:hover { color: var(--accent); }
-a { color: var(--accent); }
+.muted { color: var(--x-color-text-muted); }
+.small { font-size: var(--x-fs-small); }
+.ok { color: var(--x-color-success); }
+.warn { color: var(--x-color-warning); margin: 0; }
+.error { color: var(--x-color-danger); margin: 0; }
+.row { display: flex; align-items: center; gap: var(--x-space-2); flex-wrap: wrap; }
 .push-right { margin-left: auto; }
-
-.welcome { height: 100%; display: flex; align-items: center; justify-content: center; padding: 32px; overflow: auto; }
-.welcome-panel { width: 100%; max-width: 560px; display: flex; flex-direction: column; gap: 12px; }
-.welcome-panel h1 { margin: 0; font-size: 24px; }
-.welcome-panel > p { margin: 0; }
-.steps { list-style: none; padding: 0; margin: 8px 0; display: flex; flex-direction: column; gap: 12px; }
-.step { display: flex; gap: 14px; background: var(--panel); border: 1px solid var(--border); border-radius: 10px; padding: 16px; }
-.step.todo { opacity: 0.5; }
-.step.active { border-color: var(--accent); }
-.step-n {
-  flex: none;
-  width: 26px;
-  height: 26px;
-  border-radius: 50%;
-  border: 1px solid var(--border);
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  font-size: 12px;
-}
-.step.active .step-n { border-color: var(--accent); color: var(--accent); }
-.step.done .step-n { border-color: var(--ok); color: var(--ok); }
-.step-body { flex: 1; display: flex; flex-direction: column; gap: 10px; min-width: 0; }
-.step-title { font-weight: 600; line-height: 26px; }
-.step-body ol { margin: 0; padding-left: 18px; display: flex; flex-direction: column; gap: 6px; }
-.step-body p { margin: 0; }
-
-.getting-started { position: relative; }
-.getting-started summary { list-style: none; color: var(--accent); }
-.getting-started summary::-webkit-details-marker { display: none; }
-.popover {
-  position: absolute;
-  right: 0;
-  top: calc(100% + 10px);
-  z-index: 10;
-  width: 320px;
-  background: var(--panel);
-  border: 1px solid var(--border);
-  border-radius: 10px;
-  padding: 12px;
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-  box-shadow: 0 8px 24px rgb(0 0 0 / 0.4);
-}
-.checklist { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 10px; }
-.checklist li.done { color: var(--muted); }
-.check { width: 16px; height: 16px; border: 1px solid var(--border); border-radius: 4px; display: inline-flex; align-items: center; justify-content: center; font-size: 11px; color: var(--ok); }
-.checklist-body { padding-left: 26px; padding-top: 6px; display: flex; flex-direction: column; gap: 8px; align-items: flex-start; }
-.checklist-body p { margin: 0; }
