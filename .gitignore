@@ -1,15 +1,42 @@
-.task
-bin
-frontend/dist
-frontend/**/node_modules
-build/linux/appimage/build
+# Build / tool output
+/bin/
+/.task/
+*.syso
+frontend/dist/
+build/linux/appimage/build/
+build/linux/*.desktop
 build/windows/nsis/MicrosoftEdgeWebview2Setup.exe
+build/windows/nsis/*-installer.exe
+
+# Node (all workspaces)
+node_modules/
+*.tsbuildinfo
+npm-debug.log*
+pnpm-debug.log*
+
+# Go
+*.test
+*.out
+coverage.*
+
 # Mobile generated (per-machine; overlays hold absolute paths)
 build/ios/xcode/overlay.json
 build/ios/xcode/gen/
 build/android/overlay.json
 build/android/gen/
+
 # Local secrets / data
-sso.dev.json
+sso.*.json
+!sso.example.json
+.env
+.env.*
 *.sqlite
 *.sqlite-*
+*.db
+
+# Editor / OS
+.idea/
+.vscode/
+*.swp
+.DS_Store
+Thumbs.db
