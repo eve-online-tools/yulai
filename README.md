@@ -11,7 +11,7 @@ returns `todo.ErrNotImplemented`. See [docs/PLAN.md](docs/PLAN.md) for what goes
 1. Register an application at https://developers.eveonline.com with callback URL `http://localhost:45538/callback`. PKCE is used, no client secret needed.
 2. Copy `sso.example.json` to `sso.dev.json` and fill in `clientId`. `sso.dev.json` is gitignored. Without it the app looks for `sso.json` in the OS config dir (`%APPDATA%\yulai` on Windows). A missing file logs a warning and the login page reports it.
 3. Optional: point the app at another SSO with `"issuer"` in the SSO file or the `YULAI_SSO_ISSUER` environment variable (which wins). Default is `https://login.eveonline.com`. A bare host gets `https://`. Endpoints come from the issuer's `/.well-known/openid-configuration`.
-4. Install tools: `wails3` (v3.0.0-beta.27), and once tables exist `sqlc` and `goose`.
+4. Install tools: `wails3` (v3.0.0-beta.27), pnpm (`corepack enable` picks up the pinned version), and once tables exist `sqlc` and `goose`.
 
 ## Develop
 
@@ -49,6 +49,9 @@ identity/       who you are and your tokens
 feature/        feature.go: Feature and Job contracts. One subpackage per feature
   character/    characters table, add-character flow, list, remove
   sync/         job scheduler, sync_jobs table
-frontend/       Vite + React + TanStack Router/Query
+frontend/       pnpm workspaces, Vite + React
+  apps/yulai/   the Wails app (TanStack Router/Query), builds to frontend/dist
+    bindings/   generated Wails bindings, imported as @bindings/...
+  packages/ui/  @yulai/ui: shared styles and components, no Wails imports
 docs/           PLAN.md, SCHEDULER.md
 ```
