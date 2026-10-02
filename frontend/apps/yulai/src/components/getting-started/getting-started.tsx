@@ -2,7 +2,7 @@ import { useState, type ReactNode } from "react";
 import { useMutation, useQuery } from "@tanstack/react-query";
 import { Service as Characters } from "@bindings/github.com/eve-online-tools/yulai/feature/character";
 import { Alert, Button } from "@xaroth.nl/design/react";
-import { AppIcon } from "../app-icon";
+import { AppIcon } from "@yulai/ui";
 import { navItemClass } from "../nav-item";
 import { charactersQuery, setupQuery } from "../../queries";
 import styles from "./getting-started.module.scss";

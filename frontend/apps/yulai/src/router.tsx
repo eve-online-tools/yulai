@@ -5,7 +5,7 @@ import {
   createRouter,
   redirect,
 } from "@tanstack/react-router";
-import { Frame } from "./components/frame";
+import { WindowFrame } from "./components/window-frame";
 import { Shell } from "./components/shell";
 import { CharactersPage } from "./pages/characters";
 import { AccountsPage } from "./pages/accounts";
@@ -14,7 +14,7 @@ import { SettingsPage } from "./pages/settings";
 import { charactersQuery, featuresQuery, queryClient, setupQuery } from "./queries";
 
 // Hash history: Wails serves one index.html. Every page sits in the frame (title bar, window controls).
-const rootRoute = createRootRoute({ component: Frame });
+const rootRoute = createRootRoute({ component: WindowFrame });
 
 // Tool pages share the sidebar shell.
 const layoutRoute = createRoute({

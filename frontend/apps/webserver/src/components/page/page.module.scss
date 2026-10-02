@@ -1,0 +1,24 @@
+.page {
+  flex: 1;
+  min-height: 0;
+  overflow: auto;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: var(--x-space-7);
+  background: radial-gradient(ellipse 50% 45% at 50% 45%, rgb(77 220 242 / 7%), transparent 70%);
+}
+
+.panel {
+  width: 100%;
+  max-width: 520px;
+  display: flex;
+  flex-direction: column;
+  gap: var(--x-space-3);
+  align-items: flex-start;
+
+  h1,
+  p {
+    margin: 0;
+  }
+}

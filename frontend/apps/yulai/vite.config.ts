@@ -17,7 +17,7 @@ export default defineConfig({
     alias: { "@bindings": bindings },
   },
   build: {
-    outDir: "../../dist",
+    outDir: "../../dist/yulai",
     emptyOutDir: true,
   },
   plugins: [react(), wails("@bindings")],

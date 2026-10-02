@@ -16,6 +16,7 @@ import (
 	"strings"
 	"sync/atomic"
 	"testing"
+	"testing/fstest"
 	"time"
 
 	"github.com/lestrrat-go/jwx/v3/jwa"
@@ -107,6 +108,12 @@ type harness struct {
 	failOn atomic.Bool
 }
 
+// web stands in for the apps/webserver build.
+var web = fstest.MapFS{
+	"index.html":    {Data: []byte(`<!doctype html><div id="root"></div>` + pageDataOpen + pageDataClose)},
+	"assets/app.js": {Data: []byte(`console.log("app")`)},
+}
+
 var features = []Feature{
 	{Name: "Assets", Scopes: []string{"esi-assets.read_assets.v1"}},
 	{Name: "Wallet", Scopes: []string{"esi-wallet.read_character_wallet.v1", "esi-assets.read_assets.v1"}},
@@ -122,7 +129,7 @@ func newHarness(t *testing.T) *harness {
 		CallbackURL: "http://" + h.ts.Listener.Addr().String() + "/callback",
 		Issuer:      h.sso.URL,
 	})
-	srv, err := New(client, sso.NewVerifier(client), features, func(ctx context.Context, r *Result) error {
+	srv, err := New(client, sso.NewVerifier(client), web, features, func(ctx context.Context, r *Result) error {
 		if h.failOn.Load() {
 			return errors.New("store failed")
 		}
@@ -165,7 +172,7 @@ func (h *harness) post(t *testing.T, path string, form url.Values) (*http.Respon
 	return h.do(t, req)
 }
 
-var csrfRe = regexp.MustCompile(`name="csrf" value="([^"]+)"`)
+var csrfRe = regexp.MustCompile(`"csrf":"([^"]+)"`)
 
 // begin loads the picker, submits it and returns the state sent to the SSO.
 func (h *harness) begin(t *testing.T, feats ...string) (state string, authorize *url.URL) {
@@ -216,7 +223,7 @@ func TestFullFlow(t *testing.T) {
 	}
 
 	resp, body = h.get(t, doneURL)
-	if resp.StatusCode != http.StatusOK || !strings.Contains(body, "Test &lt;Pilot&gt; is logged in") {
+	if resp.StatusCode != http.StatusOK || !strings.Contains(body, `"name":"Test \u003cPilot\u003e"`) {
 		t.Errorf("done: %d %s", resp.StatusCode, body)
 	}
 
@@ -327,7 +334,7 @@ func TestNewRejectsCallback(t *testing.T) {
 		"http://localhost/callback",
 		"http://localhost:45538/",
 	} {
-		if _, err := New(sso.NewClient(sso.Config{CallbackURL: cb}), nil, nil, nil); err == nil {
+		if _, err := New(sso.NewClient(sso.Config{CallbackURL: cb}), nil, web, nil, nil); err == nil {
 			t.Errorf("%s: accepted", cb)
 		}
 	}
@@ -341,7 +348,7 @@ func TestListenBusyPort(t *testing.T) {
 	defer ln.Close()
 
 	client := sso.NewClient(sso.Config{CallbackURL: "http://" + ln.Addr().String() + "/callback"})
-	srv, err := New(client, nil, nil, nil)
+	srv, err := New(client, nil, web, nil, nil)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -360,7 +367,7 @@ func TestListenLocalhost(t *testing.T) {
 	ln.Close()
 
 	client := sso.NewClient(sso.Config{CallbackURL: "http://localhost:" + strconv.Itoa(port) + "/callback"})
-	srv, err := New(client, nil, features, nil)
+	srv, err := New(client, nil, web, features, nil)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -376,5 +383,24 @@ func TestListenLocalhost(t *testing.T) {
 	resp.Body.Close()
 	if resp.StatusCode != http.StatusOK {
 		t.Errorf("status = %d", resp.StatusCode)
+	}
+}
+
+func TestServesAssets(t *testing.T) {
+	h := newHarness(t)
+	resp, body := h.get(t, "/assets/app.js")
+	if resp.StatusCode != http.StatusOK || body != `console.log("app")` {
+		t.Errorf("asset: %d %s", resp.StatusCode, body)
+	}
+	if resp, _ := h.get(t, "/index.html"); resp.StatusCode == http.StatusOK {
+		t.Error("index.html is served without page data")
+	}
+}
+
+func TestNewRejectsWebWithoutSlot(t *testing.T) {
+	client := sso.NewClient(sso.Config{CallbackURL: "http://localhost:1/callback"})
+	bad := fstest.MapFS{"index.html": {Data: []byte(`<div id="root"></div>`)}}
+	if _, err := New(client, nil, bad, nil, nil); err == nil {
+		t.Error("accepted index.html without page-data element")
 	}
 }
