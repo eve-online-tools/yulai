@@ -1,8 +1,7 @@
 import { useState, type ReactNode } from "react";
 import { useMutation, useQuery } from "@tanstack/react-query";
-import { Link } from "@tanstack/react-router";
 import { Service as Characters } from "@bindings/github.com/eve-online-tools/yulai/feature/character";
-import { charactersQuery, setupQuery, syncJobsQuery } from "../queries";
+import { charactersQuery, setupQuery } from "../queries";
 
 // UI-only state, so it lives in the webview rather than the database.
 const storageKey = "yulai.gettingStarted";
@@ -23,7 +22,6 @@ type Item = { id: string; title: string; done: boolean; body: ReactNode; skippab
 export function GettingStarted() {
   const [stored, setStored] = useState(load);
   const { data: characters = [] } = useQuery(charactersQuery);
-  const { data: jobs = [] } = useQuery(syncJobsQuery);
   const { data: setup } = useQuery(setupQuery);
   const add = useMutation({ mutationFn: () => Characters.AddCharacter() });
 
@@ -43,24 +41,14 @@ export function GettingStarted() {
     },
     {
       id: "accounts",
-      title: "Add your other accounts",
+      title: "Add more characters",
       done: characters.length > 1,
       skippable: true,
       body: (
         <>
-          <p className="muted">EVE SSO remembers your account. Log out at {ssoHost} first, then add a character.</p>
+          <p className="muted">EVE SSO remembers your account. For a character on another account, log out at {ssoHost} first.</p>
           <button onClick={() => add.mutate()}>Add character</button>
         </>
-      ),
-    },
-    {
-      id: "sync",
-      title: "Wait for the first sync",
-      done: jobs.every((j) => j.lastRun != null),
-      body: (
-        <p className="muted">
-          Startup syncs are running. Progress shows on the <Link to="/characters">character cards</Link>.
-        </p>
       ),
     },
   ].map((i) => ({ ...i, done: i.done || stored.skipped.includes(i.id) }));
