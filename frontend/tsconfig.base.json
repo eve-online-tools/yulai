@@ -20,6 +20,5 @@
     "noUnusedParameters": false,
     "noImplicitAny": false,
     "noFallthroughCasesInSwitch": true
-  },
-  "include": ["src", "bindings"],
+  }
 }

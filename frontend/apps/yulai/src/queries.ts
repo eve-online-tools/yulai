@@ -1,7 +1,7 @@
 import { QueryClient, queryOptions } from "@tanstack/react-query";
 import { Events } from "@wailsio/runtime";
-import { Service as Characters } from "../bindings/github.com/eve-online-tools/yulai/feature/character";
-import { Service as Sync } from "../bindings/github.com/eve-online-tools/yulai/feature/sync";
+import { Service as Characters } from "@bindings/github.com/eve-online-tools/yulai/feature/character";
+import { Service as Sync } from "@bindings/github.com/eve-online-tools/yulai/feature/sync";
 
 export const queryClient = new QueryClient({
   defaultOptions: {

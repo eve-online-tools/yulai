@@ -208,12 +208,12 @@ tasks:
       - go.mod
       - go.sum
     generates:
-      - frontend/bindings/**/*
+      - frontend/apps/yulai/bindings/**/*
     vars:
       SDK_PATH:
         sh: xcrun --sdk {{.IOS_SDK}} --show-sdk-path
     cmds:
-      - wails3 generate bindings -f '{{.BUILD_FLAGS}}' -clean=true
+      - wails3 generate bindings -d frontend/apps/yulai/bindings -f '{{.BUILD_FLAGS}}' -clean=true
     env:
       GOOS: ios
       CGO_ENABLED: 1
