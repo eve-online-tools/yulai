@@ -5,7 +5,7 @@ import (
 	"time"
 
 	esicharacter "github.com/eve-online-tools/lib-esi-go/common/character"
-	"github.com/eve-online-tools/lib-esi-go/esi/getcharacterscharacteridonline"
+	getonline "github.com/eve-online-tools/lib-esi-go/esi/getcharacterscharacteridonline"
 
 	"github.com/eve-online-tools/yulai/core/db"
 	"github.com/eve-online-tools/yulai/core/esi"
@@ -22,8 +22,13 @@ var Online = task.New(
 func (f *Feature) online(ctx context.Context, in Input) (PresenceOnline, error) {
 	f.mark(in.CharacterID, partOnline)
 
-	input := &getcharacterscharacteridonline.Input{Character: esicharacter.Identifier(in.CharacterID)}
-	resp, err := getcharacterscharacteridonline.Request(ctx, f.esi, input, f.auth(in.CharacterID))
+	resp, err := getonline.Request(
+		ctx, f.esi,
+		&getonline.Input{
+			Character: esicharacter.Identifier(in.CharacterID),
+		},
+		f.auth(in.CharacterID),
+	)
 	if err != nil {
 		return PresenceOnline{}, err
 	}

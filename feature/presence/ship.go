@@ -5,7 +5,7 @@ import (
 	"time"
 
 	esicharacter "github.com/eve-online-tools/lib-esi-go/common/character"
-	"github.com/eve-online-tools/lib-esi-go/esi/getcharacterscharacteridship"
+	getship "github.com/eve-online-tools/lib-esi-go/esi/getcharacterscharacteridship"
 
 	"github.com/eve-online-tools/yulai/core/db"
 	"github.com/eve-online-tools/yulai/core/esi"
@@ -22,8 +22,13 @@ var Ship = task.New(
 func (f *Feature) ship(ctx context.Context, in Input) (PresenceShip, error) {
 	f.mark(in.CharacterID, partShip)
 
-	input := &getcharacterscharacteridship.Input{Character: esicharacter.Identifier(in.CharacterID)}
-	resp, err := getcharacterscharacteridship.Request(ctx, f.esi, input, f.auth(in.CharacterID))
+	resp, err := getship.Request(
+		ctx, f.esi,
+		&getship.Input{
+			Character: esicharacter.Identifier(in.CharacterID),
+		},
+		f.auth(in.CharacterID),
+	)
 	if err != nil {
 		return PresenceShip{}, err
 	}

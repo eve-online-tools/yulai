@@ -5,7 +5,7 @@ import (
 	"time"
 
 	esicharacter "github.com/eve-online-tools/lib-esi-go/common/character"
-	"github.com/eve-online-tools/lib-esi-go/esi/getcharacterscharacteridlocation"
+	getlocation "github.com/eve-online-tools/lib-esi-go/esi/getcharacterscharacteridlocation"
 
 	"github.com/eve-online-tools/yulai/core/db"
 	"github.com/eve-online-tools/yulai/core/esi"
@@ -22,8 +22,13 @@ var Location = task.New(
 func (f *Feature) location(ctx context.Context, in Input) (PresenceLocation, error) {
 	f.mark(in.CharacterID, partLocation)
 
-	input := &getcharacterscharacteridlocation.Input{Character: esicharacter.Identifier(in.CharacterID)}
-	resp, err := getcharacterscharacteridlocation.Request(ctx, f.esi, input, f.auth(in.CharacterID))
+	resp, err := getlocation.Request(
+		ctx, f.esi,
+		&getlocation.Input{
+			Character: esicharacter.Identifier(in.CharacterID),
+		},
+		f.auth(in.CharacterID),
+	)
 	if err != nil {
 		return PresenceLocation{}, err
 	}

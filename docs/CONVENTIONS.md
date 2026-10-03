@@ -4,17 +4,22 @@ Rules for Go code in this repo. Review against them; change this file when a rul
 
 ## Errors
 
-One call per statement. Check its error on the next line and return. Never pass a call's results straight
-into another call that checks them.
+One action per statement. Check its error on the next line and return. Never pass a call's results straight
+into another call that checks them. Building a value inline, like a request input, is not an action and can
+stay in the call.
 
 ```go
 // Wrong: the request and its checks are one nested expression.
-data, err := esi.Check(getcharacterscharacteridship.Request(ctx, f.esi,
-	&getcharacterscharacteridship.Input{Character: esicharacter.Identifier(id)}))
+data, err := esi.Check(getship.Request(ctx, f.esi, &getship.Input{Character: esicharacter.Identifier(id)}))
 
 // Right
-input := &getcharacterscharacteridship.Input{Character: esicharacter.Identifier(id)}
-resp, err := getcharacterscharacteridship.Request(ctx, f.esi, input, f.auth(id))
+resp, err := getship.Request(
+	ctx, f.esi,
+	&getship.Input{
+		Character: esicharacter.Identifier(id),
+	},
+	f.auth(id),
+)
 if err != nil {
 	return PresenceShip{}, err
 }
@@ -36,13 +41,19 @@ if err != nil {
 
 ## ESI requests
 
-1. Build the input in its own variable.
-2. Call the generated `Request`. A non-nil `err` is a transport, auth or decode failure.
-3. Call `esi.ResponseError(resp)`. It returns an `*esi.Error` for a non-2xx status, or for a 2xx without the
+1. Call the generated `Request` with the arguments split over lines: `ctx` and the client, the input literal,
+   then request options. A non-nil `err` is a transport, auth or decode failure.
+2. Call `esi.ResponseError(resp)`. It returns an `*esi.Error` for a non-2xx status, or for a 2xx without the
    body the endpoint promises. lib-esi-go does neither itself.
-4. Read `resp.Data`.
+3. Read `resp.Data`.
 
 Authenticated requests pass `authentication.WithToken(tokens.For(characterID))` as the last argument.
+
+Alias endpoint imports to a short verb and noun, so call sites stay readable:
+
+```go
+getlocation "github.com/eve-online-tools/lib-esi-go/esi/getcharacterscharacteridlocation"
+```
 
 ## Declarations
 

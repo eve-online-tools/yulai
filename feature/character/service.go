@@ -9,7 +9,7 @@ import (
 	"time"
 
 	esicharacter "github.com/eve-online-tools/lib-esi-go/common/character"
-	"github.com/eve-online-tools/lib-esi-go/esi/getcharacterscharacterid"
+	getcharacter "github.com/eve-online-tools/lib-esi-go/esi/getcharacterscharacterid"
 
 	"github.com/eve-online-tools/yulai/core/esi"
 	"github.com/eve-online-tools/yulai/feature"
@@ -119,8 +119,12 @@ func (s *Service) AddCharacter() error { return s.browser.OpenURL(s.loginURL) }
 //wails:ignore
 func (s *Service) Store(ctx context.Context, r *login.Result) error {
 	// Public info; no token needed.
-	input := &getcharacterscharacterid.Input{Character: esicharacter.Identifier(r.CharacterID)}
-	resp, err := getcharacterscharacterid.Request(ctx, s.esi, input)
+	resp, err := getcharacter.Request(
+		ctx, s.esi,
+		&getcharacter.Input{
+			Character: esicharacter.Identifier(r.CharacterID),
+		},
+	)
 	if err != nil {
 		return err
 	}
