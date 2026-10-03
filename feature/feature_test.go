@@ -1,12 +1,16 @@
 package feature
 
-import "testing"
+import (
+	"testing"
+
+	"github.com/eve-online-tools/yulai/core/task"
+)
 
 type fake struct{ scopes []string }
 
-func (f fake) Name() string     { return "fake" }
-func (f fake) Scopes() []string { return f.scopes }
-func (f fake) Jobs() []Job      { return nil }
+func (f fake) Name() string          { return "fake" }
+func (f fake) Scopes() []string      { return f.scopes }
+func (f fake) Tasks() []task.Binding { return nil }
 
 func TestEnabled(t *testing.T) {
 	f := fake{scopes: []string{"a", "b"}}

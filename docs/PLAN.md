@@ -32,7 +32,7 @@ Real features are out of scope for now. This plan describes where they plug in.
 | `identity/sso`     | Discovery, PKCE, exchange, refresh (`ErrInvalidGrant`), JWT verify | ported         |
 | `identity/login`   | Permanent loopback server: feature picker, SSO redirect, callback  | done (tested)   |
 | `identity/token`   | `tokens` table, sealed refresh tokens, `For()` → `RefreshableToken`| ported         |
-| `feature`          | `Feature` contract (`Tasks() []task.Binding`), `Enabled()`         | done (tested), contract changes per SCHEDULER.md |
+| `feature`          | `Feature` contract (`Tasks() []task.Binding`), `Enabled()`, `Covers()` | done (tested) |
 | `feature/character`| `characters` table, add-character flow, list, remove, needs-login  | done (tested), `Enroll` is a no-op until the scheduler is wired |
 | `core/task`        | Generic in-memory scheduler, `task_pauses` table (see SCHEDULER.md) | engine done (tested), not wired |
 | `feature/sync`     | Wails `SyncService` over the scheduler: list, pause, resume, trigger | old job registry, to be replaced |

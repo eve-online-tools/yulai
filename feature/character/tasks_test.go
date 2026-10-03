@@ -30,3 +30,17 @@ func TestTasksRegister(t *testing.T) {
 	s, _, _ := newTestService(t, pilot)
 	task.NewScheduler(task.Options{}).Register(s.Tasks()...)
 }
+
+func TestWithScopes(t *testing.T) {
+	ctx := context.Background()
+	s, _, _ := newTestService(t, pilot)
+	if err := s.Store(ctx, result("esi-a.v1", "esi-b.v1")); err != nil {
+		t.Fatal(err)
+	}
+	if got, err := s.WithScopes(ctx, "esi-a.v1", "esi-b.v1"); err != nil || len(got) != 1 {
+		t.Fatalf("WithScopes = %v, %v", got, err)
+	}
+	if got, _ := s.WithScopes(ctx, "esi-a.v1", "esi-c.v1"); len(got) != 0 {
+		t.Fatalf("WithScopes = %v with a missing scope, want none", got)
+	}
+}
