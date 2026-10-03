@@ -6,9 +6,19 @@
 // @ts-ignore: Unused imports
 import { Create as $Create } from "@wailsio/runtime";
 
+// eslint-disable-next-line @typescript-eslint/ban-ts-comment
+// @ts-ignore: Unused imports
+import * as task$0 from "../../../../eve-online-tools/yulai/core/task/models.js";
+
 function configure() {
     Object.freeze(Object.assign($Create.Events, {
+        "progress:done": $$createType0,
+        "progress:start": $$createType0,
+        "progress:update": $$createType0,
     }));
 }
+
+// Private type creation functions
+const $$createType0 = task$0.ProgressEvent.createFrom;
 
 configure();

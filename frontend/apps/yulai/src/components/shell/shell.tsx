@@ -1,5 +1,6 @@
 import type { CSSProperties } from "react";
 import { Outlet } from "@tanstack/react-router";
+import { DataUpdate } from "../data-update";
 import { GettingStarted } from "../getting-started";
 import { NavIcon, NavItem } from "../nav-item";
 import { useSidebarWidth } from "./use-sidebar-width";
@@ -23,9 +24,12 @@ export function Shell() {
         </div>
         <div className={styles.handle} {...handleProps} />
       </aside>
-      <main className={styles.content}>
-        <Outlet />
-      </main>
+      <div className={styles.main}>
+        <main className={styles.content}>
+          <Outlet />
+        </main>
+        <DataUpdate />
+      </div>
     </div>
   );
 }

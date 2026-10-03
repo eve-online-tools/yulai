@@ -5,13 +5,22 @@
 // @ts-ignore: Unused imports
 import type { Events } from "@wailsio/runtime";
 
+// eslint-disable-next-line @typescript-eslint/ban-ts-comment
+// @ts-ignore: Unused imports
+import type * as task$0 from "../../../../eve-online-tools/yulai/core/task/models.js";
+
 declare module "@wailsio/runtime" {
     namespace Events {
         interface CustomEvents {
             "character:changed": {};
             "charactersheet:changed": {};
             "presence:changed": {};
+            "progress:done": task$0.ProgressEvent;
+            "progress:start": task$0.ProgressEvent;
+            "progress:update": task$0.ProgressEvent;
+            "sde:changed": {};
             "sync:jobs:changed": {};
+            "task:changed": {};
         }
     }
 }

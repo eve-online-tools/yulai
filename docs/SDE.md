@@ -135,13 +135,16 @@ A zip already on disk skips to 50%. The bar never goes back or becomes indetermi
 `sde.Service` (`SDEService`) has `Status()`: installed build and release date, latest build seen, last check and
 the last error. `CheckNow()` queues `Check`.
 
+From the `sde.update` start event to its done event, the shell and the welcome screen show a bar pinned below
+the scrolling content: "Updating data", the phase and item, and the update bar with its percentage.
+
 ## Steps
 
 1. `core/task`: `Progress`, `Report`, `Status.Progress`.
 2. Generator and generated schema.
 3. Converter and `Store`: build from a zip, indexes, `meta`, swap, progress.
 4. `Check` and `Update` tasks, `SDEService`, wiring in `app.New`, `task:changed` and `sde:changed` events.
-5. Frontend: static data section with progress bar.
+5. Frontend: updating-data bar in the shell and on the welcome screen.
 
 Later: use `changes/<build>.jsonl` to skip the download when no file changed, and a CI job that regenerates
 the schema against the latest SDE.
