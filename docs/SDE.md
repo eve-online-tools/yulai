@@ -136,7 +136,7 @@ A zip already on disk skips to 50%. The bar never goes back or becomes indetermi
 the last error. `CheckNow()` queues `Check`.
 
 While `Update` runs, the shell and the welcome screen show a bar pinned below the scrolling content:
-"Updating data", the phase and item, and a progress bar (indeterminate while the total is unknown).
+"Updating data", the phase and item, and the update bar with its percentage.
 
 ## Steps
 

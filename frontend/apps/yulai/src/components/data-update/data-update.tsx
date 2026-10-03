@@ -1,7 +1,7 @@
 import { useQuery } from "@tanstack/react-query";
-import { sdeQuery } from "../../queries";
 import type { Progress as TaskProgress } from "@bindings/github.com/eve-online-tools/yulai/core/task";
 import { Progress } from "@xaroth.nl/design/react";
+import { sdeQuery } from "../../queries";
 import styles from "./data-update.module.scss";
 
 const phases: Record<string, string> = {
@@ -10,7 +10,8 @@ const phases: Record<string, string> = {
   index: "Indexing",
 };
 
-// Bottom bar while static data updates. Renders nothing otherwise.
+// Bottom bar while static data updates. Renders nothing otherwise. The backend
+// reports one bar over the whole update, so it only moves forward.
 export function DataUpdate() {
   const { data: status } = useQuery(sdeQuery);
   if (!status?.updating) return null;
@@ -21,13 +22,7 @@ export function DataUpdate() {
         <span>Updating data</span>
         {p && <span className="muted small">{describe(p)}</span>}
       </div>
-      <Progress
-        label="Updating data"
-        size="sm"
-        value={p && p.total > 0 ? p.done : undefined}
-        max={p && p.total > 0 ? p.total : undefined}
-        showValue={!!p && p.total > 0}
-      />
+      <Progress label="Updating data" size="sm" value={p?.done ?? 0} max={p?.total || 1} showValue />
     </div>
   );
 }
