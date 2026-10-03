@@ -13,6 +13,7 @@ import (
 	"github.com/eve-online-tools/yulai/core/db"
 	"github.com/eve-online-tools/yulai/core/esi"
 	"github.com/eve-online-tools/yulai/core/keyring"
+	"github.com/eve-online-tools/yulai/core/task"
 	"github.com/eve-online-tools/yulai/feature"
 	"github.com/eve-online-tools/yulai/feature/character"
 	"github.com/eve-online-tools/yulai/feature/sync"
@@ -21,7 +22,10 @@ import (
 	"github.com/eve-online-tools/yulai/identity/token"
 )
 
-const syncWorkers = 4
+const (
+	syncWorkers = 4
+	taskWorkers = 8
+)
 
 func init() {
 	application.RegisterEvent[struct{}](character.EventChanged)
@@ -76,10 +80,13 @@ func New(ctx context.Context, cfg *Config, web fs.FS) (*App, error) {
 	}
 	app.Characters = character.NewService(conn, app.Login.URL(), browser{}, emitter{}, tokens, esiClient, features, app.Scheduler)
 
+	task.Default = task.NewScheduler(task.Options{Workers: taskWorkers})
+	task.Default.Register(app.Characters.Tasks()...)
+
 	return app, nil
 }
 
-// Start binds the login server, enrolls existing characters and runs the scheduler
+// Start binds the login server, enrolls existing characters and runs the schedulers
 // until ctx ends. A busy login port is fatal.
 func (a *App) Start(ctx context.Context) error {
 	if err := a.Login.Listen(); err != nil {
@@ -95,6 +102,11 @@ func (a *App) Start(ctx context.Context) error {
 		}
 	}
 	go a.Scheduler.Start(ctx)
+	go func() {
+		if err := task.Default.Start(ctx); err != nil {
+			slog.Error("task scheduler", "err", err)
+		}
+	}()
 	return nil
 }
 
