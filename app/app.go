@@ -17,6 +17,7 @@ import (
 	"github.com/eve-online-tools/yulai/feature"
 	"github.com/eve-online-tools/yulai/feature/character"
 	"github.com/eve-online-tools/yulai/feature/presence"
+	"github.com/eve-online-tools/yulai/feature/charactersheet"
 	"github.com/eve-online-tools/yulai/feature/sync"
 	"github.com/eve-online-tools/yulai/identity/login"
 	"github.com/eve-online-tools/yulai/identity/sso"
@@ -32,6 +33,7 @@ func init() {
 	application.RegisterEvent[struct{}](character.EventChanged)
 	application.RegisterEvent[struct{}](sync.EventJobsChanged)
 	application.RegisterEvent[struct{}](presence.EventChanged)
+	application.RegisterEvent[struct{}](charactersheet.EventChanged)
 }
 
 // App wires the packages together.
@@ -86,6 +88,8 @@ func New(ctx context.Context, cfg *Config, web fs.FS) (*App, error) {
 
 	task.Default = task.NewScheduler(task.Options{Workers: taskWorkers})
 	task.Default.Register(app.Characters.Tasks()...)
+	// Always on, so not in features: it needs no scopes and has nothing to opt into.
+	task.Default.Register(charactersheet.NewSheet(conn, esiClient, app.Characters, emitter{}).Tasks()...)
 	for _, f := range features {
 		task.Default.Register(f.Tasks()...)
 	}

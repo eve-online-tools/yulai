@@ -181,3 +181,34 @@ func (s *Service) MarkNeedsLogin(ctx context.Context, characterID int64, reason 
 	s.events.Emit(EventChanged)
 	return nil
 }
+
+// IDs lists every character, whatever its token status.
+//
+//wails:ignore
+func (s *Service) IDs(ctx context.Context) ([]int64, error) {
+	rows, err := s.List(ctx)
+	if err != nil {
+		return nil, err
+	}
+	out := make([]int64, 0, len(rows))
+	for _, r := range rows {
+		out = append(out, r.ID)
+	}
+	return out, nil
+}
+
+// SetAffiliation records a character's current corporation and alliance.
+//
+//wails:ignore
+func (s *Service) SetAffiliation(ctx context.Context, characterID, corporationID int64, allianceID *int64) error {
+	n, err := s.q.SetAffiliation(ctx, SetAffiliationParams{
+		CorporationID: corporationID, AllianceID: allianceID, UpdatedAt: time.Now().Unix(), ID: characterID,
+	})
+	if err != nil {
+		return err
+	}
+	if n > 0 {
+		s.events.Emit(EventChanged)
+	}
+	return nil
+}

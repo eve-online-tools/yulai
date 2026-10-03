@@ -84,3 +84,10 @@ sql:
         <<: *go
         package: "presence"
         out: "feature/presence"
+  - <<: *pkg
+    queries: "feature/charactersheet/queries.sql"
+    gen:
+      go:
+        <<: *go
+        package: "charactersheet"
+        out: "feature/charactersheet"
