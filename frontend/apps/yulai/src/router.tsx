@@ -7,8 +7,8 @@ import {
 } from "@tanstack/react-router";
 import { WindowFrame } from "./components/window-frame";
 import { Shell } from "./components/shell";
+import { OverviewPage } from "./pages/overview";
 import { CharactersPage } from "./pages/characters";
-import { AccountsPage } from "./pages/accounts";
 import { WelcomePage } from "./pages/welcome";
 import { SettingsPage } from "./pages/settings";
 import { charactersQuery, featuresQuery, queryClient, setupQuery, syncJobsQuery } from "./queries";
@@ -28,7 +28,7 @@ const indexRoute = createRoute({
   path: "/",
   beforeLoad: async () => {
     const characters = await queryClient.ensureQueryData(charactersQuery);
-    throw redirect({ to: characters.length === 0 ? "/welcome" : "/characters" });
+    throw redirect({ to: characters.length === 0 ? "/welcome" : "/overview" });
   },
 });
 
@@ -45,18 +45,18 @@ const welcomeRoute = createRoute({
   component: WelcomePage,
 });
 
+const overviewRoute = createRoute({
+  getParentRoute: () => layoutRoute,
+  path: "/overview",
+  loader: () => queryClient.ensureQueryData(charactersQuery),
+  component: OverviewPage,
+});
+
 const charactersRoute = createRoute({
   getParentRoute: () => layoutRoute,
   path: "/characters",
-  loader: () => queryClient.ensureQueryData(charactersQuery),
-  component: CharactersPage,
-});
-
-const accountsRoute = createRoute({
-  getParentRoute: () => layoutRoute,
-  path: "/accounts",
   loader: () => Promise.all([queryClient.ensureQueryData(charactersQuery), queryClient.ensureQueryData(featuresQuery)]),
-  component: AccountsPage,
+  component: CharactersPage,
 });
 
 const settingsRoute = createRoute({
@@ -66,7 +66,7 @@ const settingsRoute = createRoute({
 });
 
 export const router = createRouter({
-  routeTree: rootRoute.addChildren([welcomeRoute, layoutRoute.addChildren([indexRoute, charactersRoute, accountsRoute, settingsRoute])]),
+  routeTree: rootRoute.addChildren([welcomeRoute, layoutRoute.addChildren([indexRoute, overviewRoute, charactersRoute, settingsRoute])]),
   history: createHashHistory(),
   defaultPreload: "intent",
 });

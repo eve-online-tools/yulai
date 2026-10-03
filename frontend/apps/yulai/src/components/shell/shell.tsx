@@ -10,14 +10,14 @@ export function Shell() {
       <aside className={styles.sidebar}>
         <nav className={styles.nav} aria-label="Tools">
           <p className={styles.label}>Tools</p>
-          <NavItem to="/characters" icon="user">
-            Characters
+          <NavItem to="/overview" icon="user">
+            Overview
           </NavItem>
         </nav>
         <div className={styles.foot}>
           <GettingStarted />
-          <NavItem to="/accounts" icon="users">
-            Accounts
+          <NavItem to="/characters" icon="users">
+            Characters
           </NavItem>
           <NavItem to="/settings" icon="settings">
             Settings

@@ -10,6 +10,7 @@ import (
 	"github.com/wailsapp/wails/v3/pkg/application"
 
 	"github.com/eve-online-tools/yulai/core/crypt"
+	"github.com/eve-online-tools/yulai/core/db"
 	"github.com/eve-online-tools/yulai/core/esi"
 	"github.com/eve-online-tools/yulai/core/keyring"
 	"github.com/eve-online-tools/yulai/feature"
@@ -39,12 +40,14 @@ type App struct {
 
 // web is the apps/webserver build the login server serves.
 func New(ctx context.Context, cfg *Config, web fs.FS) (*App, error) {
-	// The database is opened here once core/db is implemented:
-	//   conn, err := db.Open(ctx, cfg.DBPath())
-	var conn *sql.DB
+	conn, err := db.Open(ctx, cfg.DBPath())
+	if err != nil {
+		return nil, err
+	}
 
 	sealer, err := crypt.Open(keyring.OS{Service: "eve-online-tools/" + Name, User: "master-key"})
 	if err != nil {
+		conn.Close()
 		return nil, err
 	}
 
@@ -71,7 +74,7 @@ func New(ctx context.Context, cfg *Config, web fs.FS) (*App, error) {
 	if err != nil {
 		return nil, err
 	}
-	app.Characters = character.NewService(conn, app.Login.URL(), browser{}, tokens, esiClient, features, app.Scheduler)
+	app.Characters = character.NewService(conn, app.Login.URL(), browser{}, emitter{}, tokens, esiClient, features, app.Scheduler)
 
 	return app, nil
 }
@@ -115,3 +118,8 @@ func (a *App) Close() error {
 type browser struct{}
 
 func (browser) OpenURL(url string) error { return application.Get().Browser.OpenURL(url) }
+
+// emitter implements character.Emitter.
+type emitter struct{}
+
+func (emitter) Emit(name string) { application.Get().Event.Emit(name, struct{}{}) }

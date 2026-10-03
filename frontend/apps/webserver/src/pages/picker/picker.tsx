@@ -7,7 +7,10 @@ export function PickerPage({ csrf, features }: { csrf: string; features: Feature
   return (
     <>
       <h1>Add character</h1>
-      <p className="muted">Pick what this character should share. Logging in again later replaces this choice.</p>
+      <p className="muted">
+        Log in to import a character into Yulai. If you want to add/remove features, you can always log in again to replace
+        your choices.
+      </p>
       <form method="post" action="/start" className={styles.form}>
         <input type="hidden" name="csrf" value={csrf} />
         {features.length > 0 ? (

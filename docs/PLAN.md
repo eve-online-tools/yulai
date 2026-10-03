@@ -24,16 +24,16 @@ Real features are out of scope for now. This plan describes where they plug in.
 | Package            | Responsibility                                                     | Skeleton state |
 |--------------------|--------------------------------------------------------------------|----------------|
 | `main.go`          | Load config, build `app.App`, create the Wails app and main window | done           |
-| `app`              | Config, wiring, event registration                                 | wiring done, db commented out |
-| `core/db`          | sqlite (glebarez, pure Go), WAL, single writer, goose migrations   | stub           |
-| `core/esi`         | lib-esi-go transport, rate limit + disk cache middleware, `Check`/`Fetch`/`ExpiresAt` | returns a bare `http.Client` |
-| `core/keyring`     | `Store` interface, OS impl via zalando/go-keyring                  | stub           |
-| `core/crypt`       | AES-GCM `Sealer`, master key in keyring                            | stub           |
+| `app`              | Config, wiring, event registration                                 | done           |
+| `core/db`          | sqlite (glebarez, pure Go), WAL, single writer, goose migrations   | done           |
+| `core/esi`         | lib-esi-go transport, rate limit + disk cache middleware, `Check`/`Fetch`/`ExpiresAt` | ported (tested) |
+| `core/keyring`     | `Store` interface, OS impl via zalando/go-keyring                  | done           |
+| `core/crypt`       | AES-GCM `Sealer`, master key in keyring                            | done (tested)  |
 | `identity/sso`     | Discovery, PKCE, exchange, refresh (`ErrInvalidGrant`), JWT verify | ported         |
 | `identity/login`   | Permanent loopback server: feature picker, SSO redirect, callback  | done (tested)   |
-| `identity/token`   | `tokens` table, sealed refresh tokens, `For()` → `RefreshableToken`| stub           |
+| `identity/token`   | `tokens` table, sealed refresh tokens, `For()` → `RefreshableToken`| ported         |
 | `feature`          | `Feature` contract (`Tasks() []task.Binding`), `Enabled()`         | done (tested), contract changes per SCHEDULER.md |
-| `feature/character`| `characters` table, add-character flow, list, remove, needs-login  | `Features()` real, rest stub |
+| `feature/character`| `characters` table, add-character flow, list, remove, needs-login  | done (tested), `Enroll` is a no-op until the scheduler is wired |
 | `core/task`        | Generic in-memory scheduler, `task_pauses` table (see SCHEDULER.md) | engine done (tested), not wired |
 | `feature/sync`     | Wails `SyncService` over the scheduler: list, pause, resume, trigger | old job registry, to be replaced |
 | `frontend`         | pnpm workspaces: `apps/yulai` (router, query layer, events, pages), `packages/ui` | done, renders stub data |
@@ -47,7 +47,7 @@ replace the asset-manager module path and `github.com/xaroth/lib-esi-go` with th
    build-time values, then `<config>/yulai/sso.json`, then `YULAI_SSO_*` environment variables.
    A missing client ID is fatal.
 2. `app.New()`:
-   1. `db.Open(DBPath)` runs migrations. Commented out until `core/db` is real.
+   1. `db.Open(DBPath)` runs migrations.
    2. `crypt.Open(keyring.OS{Service: "eve-online-tools/yulai", User: "master-key"})`
    3. SSO client → verifier → login flow → token store → ESI client
    4. Build the `[]feature.Feature` list. Its order is the UI order.
@@ -153,9 +153,8 @@ field names and JSON tags so the bindings don't change. `sqlc.yaml` is added tog
   because the pinned commit only lives on in the module proxy.
 - For local co-development, use a temporary `replace github.com/eve-online-tools/lib-esi-go => ../lib-esi-go`.
   Never commit it.
-- Imports in use: `middleware/authentication` (contracts). When `core/esi` is ported it will also use
-  the root package (`CompatibilityDate`), `transport`, `request`, `middleware/cache` and
-  `middleware/ratelimiting{,/memory}`.
+- Imports in use: the root package (`CompatibilityDate`), `transport`, `request`, `middleware/authentication`,
+  `middleware/cache`, `middleware/ratelimiting{,/memory}` and the generated `esi/*` endpoints.
 
 ## Milestones
 

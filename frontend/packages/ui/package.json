@@ -10,12 +10,12 @@
     "typecheck": "tsc"
   },
   "peerDependencies": {
-    "@xaroth.nl/design": "^0.2.0",
+    "@xaroth.nl/design": "^0.3.1",
     "react": "^19"
   },
   "devDependencies": {
     "@types/react": "^19.3.0",
-    "@xaroth.nl/design": "^0.2.0",
+    "@xaroth.nl/design": "^0.3.1",
     "typescript": "^5.2.2"
   }
 }
