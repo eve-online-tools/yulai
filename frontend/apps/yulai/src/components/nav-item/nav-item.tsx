@@ -27,17 +27,17 @@ export function NavItem({ to, icon, label, collapsed }: Props & { collapsed?: bo
   );
   if (!collapsed) return link;
   return (
-    <Tooltip id={id} text={label} className={styles.tip}>
+    <Tooltip id={id} text={label} placement="right" className={styles.tip}>
       {link}
     </Tooltip>
   );
 }
 
-// Small icon-only entry for the sidebar foot.
-export function NavIcon({ to, icon, label }: Props) {
+// Small icon-only entry for the sidebar foot. Collapsed, the icons stack, so the tooltip goes to the side.
+export function NavIcon({ to, icon, label, collapsed }: Props & { collapsed?: boolean }) {
   const id = useId();
   return (
-    <Tooltip id={id} text={label}>
+    <Tooltip id={id} text={label} placement={collapsed ? "right" : "top"}>
       <Link to={to} className={styles.icon} activeProps={{ className: styles.active, "aria-current": "page" }} aria-label={label}>
         <AppIcon name={icon} size={14} />
       </Link>
