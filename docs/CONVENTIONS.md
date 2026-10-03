@@ -24,7 +24,15 @@ if err := esi.ResponseError(resp); err != nil {
 data := resp.Data
 ```
 
-The same goes for helpers that wrap a `(value, error)` pair. Call, check, then use the value.
+The same goes for helpers that read a `(value, error)` pair. Call, then pass the error on its own:
+
+```go
+prev, err := f.q.GetShip(ctx, id)
+existed, err := db.Found(err) // no row is not an error
+if err != nil {
+	return PresenceShip{}, err
+}
+```
 
 ## ESI requests
 
@@ -66,4 +74,11 @@ Authenticated requests pass `authentication.WithToken(tokens.For(characterID))` 
 ## Events
 
 Emit `<feature>:changed` only when stored values change, not on every fetch, so the frontend does not
-refetch every tick.
+refetch every tick. Read the previous row before the upsert and compare with `db.Changed`, which ignores
+`FetchedAt`:
+
+```go
+if !existed || db.Changed(prev, row) {
+	f.events.Emit(EventChanged)
+}
+```

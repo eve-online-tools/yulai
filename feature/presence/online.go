@@ -7,6 +7,7 @@ import (
 	esicharacter "github.com/eve-online-tools/lib-esi-go/common/character"
 	"github.com/eve-online-tools/lib-esi-go/esi/getcharacterscharacteridonline"
 
+	"github.com/eve-online-tools/yulai/core/db"
 	"github.com/eve-online-tools/yulai/core/esi"
 	"github.com/eve-online-tools/yulai/core/task"
 )
@@ -31,7 +32,8 @@ func (f *Feature) online(ctx context.Context, in Input) (PresenceOnline, error) 
 	}
 	data := resp.Data
 
-	prev, err := stored(f.q.GetOnline(ctx, in.CharacterID))
+	prev, err := f.q.GetOnline(ctx, in.CharacterID)
+	existed, err := db.Found(err)
 	if err != nil {
 		return PresenceOnline{}, err
 	}
@@ -46,12 +48,11 @@ func (f *Feature) online(ctx context.Context, in Input) (PresenceOnline, error) 
 	if err != nil {
 		return PresenceOnline{}, err
 	}
-	if prev == nil || prev.Online != row.Online {
+	if !existed || prev.Online != row.Online {
 		// Location and ship switch pace with the online state.
 		f.forget(in.CharacterID, partLocation, partShip)
 	}
-	if prev == nil || prev.Online != row.Online || !eq(prev.LastLogin, row.LastLogin) ||
-		!eq(prev.LastLogout, row.LastLogout) || !eq(prev.Logins, row.Logins) {
+	if !existed || db.Changed(prev, row) {
 		f.events.Emit(EventChanged)
 	}
 	return row, nil

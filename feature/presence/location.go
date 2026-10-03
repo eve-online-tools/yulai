@@ -7,6 +7,7 @@ import (
 	esicharacter "github.com/eve-online-tools/lib-esi-go/common/character"
 	"github.com/eve-online-tools/lib-esi-go/esi/getcharacterscharacteridlocation"
 
+	"github.com/eve-online-tools/yulai/core/db"
 	"github.com/eve-online-tools/yulai/core/esi"
 	"github.com/eve-online-tools/yulai/core/task"
 )
@@ -31,7 +32,8 @@ func (f *Feature) location(ctx context.Context, in Input) (PresenceLocation, err
 	}
 	data := resp.Data
 
-	prev, err := stored(f.q.GetLocation(ctx, in.CharacterID))
+	prev, err := f.q.GetLocation(ctx, in.CharacterID)
+	existed, err := db.Found(err)
 	if err != nil {
 		return PresenceLocation{}, err
 	}
@@ -45,8 +47,7 @@ func (f *Feature) location(ctx context.Context, in Input) (PresenceLocation, err
 	if err != nil {
 		return PresenceLocation{}, err
 	}
-	if prev == nil || prev.SolarSystemID != row.SolarSystemID || !eq(prev.StationID, row.StationID) ||
-		!eq(prev.StructureID, row.StructureID) {
+	if !existed || db.Changed(prev, row) {
 		f.events.Emit(EventChanged)
 	}
 	return row, nil

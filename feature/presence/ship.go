@@ -7,6 +7,7 @@ import (
 	esicharacter "github.com/eve-online-tools/lib-esi-go/common/character"
 	"github.com/eve-online-tools/lib-esi-go/esi/getcharacterscharacteridship"
 
+	"github.com/eve-online-tools/yulai/core/db"
 	"github.com/eve-online-tools/yulai/core/esi"
 	"github.com/eve-online-tools/yulai/core/task"
 )
@@ -31,7 +32,8 @@ func (f *Feature) ship(ctx context.Context, in Input) (PresenceShip, error) {
 	}
 	data := resp.Data
 
-	prev, err := stored(f.q.GetShip(ctx, in.CharacterID))
+	prev, err := f.q.GetShip(ctx, in.CharacterID)
+	existed, err := db.Found(err)
 	if err != nil {
 		return PresenceShip{}, err
 	}
@@ -45,8 +47,7 @@ func (f *Feature) ship(ctx context.Context, in Input) (PresenceShip, error) {
 	if err != nil {
 		return PresenceShip{}, err
 	}
-	if prev == nil || prev.ShipItemID != row.ShipItemID || prev.ShipTypeID != row.ShipTypeID ||
-		prev.ShipName != row.ShipName {
+	if !existed || db.Changed(prev, row) {
 		f.events.Emit(EventChanged)
 	}
 	return row, nil

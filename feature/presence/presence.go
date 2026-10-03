@@ -5,7 +5,6 @@ package presence
 import (
 	"context"
 	"database/sql"
-	"errors"
 	"fmt"
 	"net/http"
 	"sync"
@@ -187,22 +186,4 @@ func (f *Feature) forget(characterID int64, ps ...part) {
 
 func (f *Feature) auth(characterID int64) request.RequestOption {
 	return authentication.WithToken(f.tokens.For(characterID))
-}
-
-// stored returns the row, or nil when there is none yet.
-func stored[T any](row T, err error) (*T, error) {
-	if errors.Is(err, sql.ErrNoRows) {
-		return nil, nil
-	}
-	if err != nil {
-		return nil, err
-	}
-	return &row, nil
-}
-
-func eq[T comparable](a, b *T) bool {
-	if a == nil || b == nil {
-		return a == b
-	}
-	return *a == *b
 }
