@@ -5,6 +5,7 @@ import (
 	"context"
 	"database/sql"
 	"net/http"
+	"strings"
 	"time"
 
 	esicharacter "github.com/eve-online-tools/lib-esi-go/common/character"
@@ -72,6 +73,30 @@ func (s *Service) List(ctx context.Context) ([]ListRow, error) {
 		rows = []ListRow{}
 	}
 	return rows, nil
+}
+
+// WithScopes lists characters with a working token that covers every scope.
+//
+//wails:ignore
+func (s *Service) WithScopes(ctx context.Context, scopes ...string) ([]int64, error) {
+	rows, err := s.List(ctx)
+	if err != nil {
+		return nil, err
+	}
+	var out []int64
+	for _, r := range rows {
+		if r.Status == StatusOK && r.TokenExpiresAt != nil && feature.Covers(strings.Fields(r.Scopes), scopes) {
+			out = append(out, r.ID)
+		}
+	}
+	return out, nil
+}
+
+// WithFeature lists characters with a working token that unlocks f.
+//
+//wails:ignore
+func (s *Service) WithFeature(ctx context.Context, f feature.Feature) ([]int64, error) {
+	return s.WithScopes(ctx, f.Scopes()...)
 }
 
 // Features lists every opt-in feature and the scopes it needs. The frontend diffs

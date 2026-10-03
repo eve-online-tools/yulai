@@ -4,7 +4,6 @@ package sync
 import (
 	"context"
 	"database/sql"
-	"fmt"
 	"time"
 
 	"github.com/eve-online-tools/lib-esi-go/middleware/authentication"
@@ -43,7 +42,6 @@ type SyncJob struct {
 type Scheduler struct {
 	conn     *sql.DB
 	features []feature.Feature
-	jobs     map[string]feature.Job
 	tokens   Tokens
 	workers  int
 	tick     time.Duration
@@ -51,24 +49,14 @@ type Scheduler struct {
 }
 
 func NewScheduler(conn *sql.DB, features []feature.Feature, tokens Tokens, workers int, onAuth OnAuthFailure) *Scheduler {
-	s := &Scheduler{
+	return &Scheduler{
 		conn:     conn,
 		features: features,
-		jobs:     map[string]feature.Job{},
 		tokens:   tokens,
 		workers:  workers,
 		tick:     time.Second,
 		onAuth:   onAuth,
 	}
-	for _, f := range features {
-		for _, j := range f.Jobs() {
-			if _, dup := s.jobs[j.Name]; dup {
-				panic(fmt.Sprintf("sync: duplicate job name %q", j.Name))
-			}
-			s.jobs[j.Name] = j
-		}
-	}
-	return s
 }
 
 // Enroll reconciles a character's job rows with the features its token unlocks.
@@ -87,8 +75,5 @@ func (s *Scheduler) Start(ctx context.Context) {
 
 // RunNow makes a job due on the next tick.
 func (s *Scheduler) RunNow(ctx context.Context, characterID int64, job string) error {
-	if _, ok := s.jobs[job]; !ok {
-		return fmt.Errorf("sync: unknown job %q", job)
-	}
 	return todo.ErrNotImplemented
 }
