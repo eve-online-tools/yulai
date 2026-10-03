@@ -1,4 +1,11 @@
-// Full bleed in the frame, no shell.
+// Full bleed in the frame, no shell. The status bar stays below the scrolling welcome.
+.page {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+}
+
 .welcome {
   flex: 1;
   min-height: 0;

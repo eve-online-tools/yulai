@@ -11,7 +11,9 @@ declare module "@wailsio/runtime" {
             "character:changed": {};
             "charactersheet:changed": {};
             "presence:changed": {};
+            "sde:changed": {};
             "sync:jobs:changed": {};
+            "task:changed": {};
         }
     }
 }

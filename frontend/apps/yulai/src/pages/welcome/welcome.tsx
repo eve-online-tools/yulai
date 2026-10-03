@@ -5,6 +5,7 @@ import { Service as Characters, type ListRow as Character } from "@bindings/gith
 import type { SyncJob } from "@bindings/github.com/eve-online-tools/yulai/feature/sync";
 import { Alert, Button, Panel, Progress } from "@xaroth.nl/design/react";
 import { Portrait } from "@yulai/ui";
+import { DataUpdate } from "../../components/data-update";
 import { charactersQuery, setupQuery, syncJobsQuery } from "../../queries";
 import styles from "./welcome.module.scss";
 
@@ -27,26 +28,29 @@ export function WelcomePage() {
   }, [current, navigate]);
 
   return (
-    <div className={styles.welcome}>
-      <Panel variant="raised" marks padding="lg" className={styles.panel}>
-        <p className={styles.eyebrow}>First run</p>
-        <h1>Welcome to Yulai</h1>
-        <ol className={styles.stepper}>
-          {steps.map((title, i) => (
-            <li key={title} className={styles.step} data-state={i < current ? "done" : i === current ? "active" : "todo"}>
-              <span className={styles.n}>{i < current ? "✓" : i + 1}</span>
-              <span className={styles.title}>{title}</span>
-            </li>
-          ))}
-        </ol>
-        <div className={styles.content}>
-          {current === 0 && <AddFirst loginUrl={setup.loginUrl} />}
-          {current === 1 && <Syncing character={first} jobs={myJobs} synced={synced} />}
-        </div>
-        <p className="muted small">
-          Login runs in your own browser, so Yulai never sees your password. Tokens are stored encrypted on this machine.
-        </p>
-      </Panel>
+    <div className={styles.page}>
+      <div className={styles.welcome}>
+        <Panel variant="raised" marks padding="lg" className={styles.panel}>
+          <p className={styles.eyebrow}>First run</p>
+          <h1>Welcome to Yulai</h1>
+          <ol className={styles.stepper}>
+            {steps.map((title, i) => (
+              <li key={title} className={styles.step} data-state={i < current ? "done" : i === current ? "active" : "todo"}>
+                <span className={styles.n}>{i < current ? "✓" : i + 1}</span>
+                <span className={styles.title}>{title}</span>
+              </li>
+            ))}
+          </ol>
+          <div className={styles.content}>
+            {current === 0 && <AddFirst loginUrl={setup.loginUrl} />}
+            {current === 1 && <Syncing character={first} jobs={myJobs} synced={synced} />}
+          </div>
+          <p className="muted small">
+            Login runs in your own browser, so Yulai never sees your password. Tokens are stored encrypted on this machine.
+          </p>
+        </Panel>
+      </div>
+      <DataUpdate />
     </div>
   );
 }
