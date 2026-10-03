@@ -2,13 +2,13 @@ package charactersheet
 
 import (
 	"context"
-	"errors"
 	"fmt"
 	"time"
 
 	"github.com/eve-online-tools/lib-esi-go/common/corporation"
 	"github.com/eve-online-tools/lib-esi-go/esi/getcorporationscorporationid"
 
+	"github.com/eve-online-tools/yulai/core/db"
 	"github.com/eve-online-tools/yulai/core/esi"
 	"github.com/eve-online-tools/yulai/core/task"
 )
@@ -22,46 +22,62 @@ var FetchCorporation = task.New(
 	task.WithTimeout(timeout),
 )
 
-func (s *Sheet) corporation(ctx context.Context, in CorporationInput) (struct{}, error) {
-	data, err := esi.Check(getcorporationscorporationid.Request(ctx, s.esi,
-		&getcorporationscorporationid.Input{Corporation: in.CorporationID}))
-	if err == nil && data == nil {
-		err = errors.New("charactersheet: empty corporation response")
-	}
-	if err == nil {
-		err = s.q.UpsertCorporation(ctx, UpsertCorporationParams{
-			ID:                in.CorporationID,
-			Name:              data.Name,
-			Ticker:            data.Ticker,
-			AllianceID:        data.Alliance,
-			CeoID:             data.Ceo,
-			CreatorID:         data.Creator,
-			EnlistedFactionID: data.EnlistedFaction,
-			HomeStationID:     data.HomeStation,
-			DateFounded:       data.DateFounded,
-			MemberCount:       data.MemberCount,
-			TaxRate:           data.TaxRates.Isk,
-			WarEligible:       data.WarEligible,
-			Url:               data.Url,
-			Description:       data.Description,
-			FetchedAt:         time.Now().UTC(),
-		})
-	}
-	if err != nil {
-		s.release(in.Subject())
-		return struct{}{}, err
-	}
-	s.events.Emit(EventChanged)
+func (s *Sheet) corporation(ctx context.Context, in CorporationInput) (_ Corporation, err error) {
+	// The next character tick retries a failed fetch.
+	defer func() {
+		if err != nil {
+			s.release(in.Subject())
+		}
+	}()
 
-	if data.Alliance == nil {
-		return struct{}{}, nil
+	input := &getcorporationscorporationid.Input{Corporation: in.CorporationID}
+	resp, err := getcorporationscorporationid.Request(ctx, s.esi, input)
+	if err != nil {
+		return Corporation{}, err
 	}
-	a := AllianceInput{AllianceID: *data.Alliance}
+	if err := esi.ResponseError(resp); err != nil {
+		return Corporation{}, err
+	}
+	data := resp.Data
+
+	prev, err := s.q.GetCorporation(ctx, in.CorporationID)
+	existed, err := db.Found(err)
+	if err != nil {
+		return Corporation{}, err
+	}
+	row, err := s.q.UpsertCorporation(ctx, UpsertCorporationParams{
+		ID:                in.CorporationID,
+		Name:              data.Name,
+		Ticker:            data.Ticker,
+		AllianceID:        data.Alliance,
+		CeoID:             data.Ceo,
+		CreatorID:         data.Creator,
+		EnlistedFactionID: data.EnlistedFaction,
+		HomeStationID:     data.HomeStation,
+		DateFounded:       data.DateFounded,
+		MemberCount:       data.MemberCount,
+		TaxRate:           data.TaxRates.Isk,
+		WarEligible:       data.WarEligible,
+		Url:               data.Url,
+		Description:       data.Description,
+		FetchedAt:         time.Now().UTC(),
+	})
+	if err != nil {
+		return Corporation{}, err
+	}
+	if !existed || db.Changed(prev, row) {
+		s.events.Emit(EventChanged)
+	}
+
+	if row.AllianceID == nil {
+		return row, nil
+	}
+	a := AllianceInput{AllianceID: *row.AllianceID}
 	if s.claim(a.Subject(), allianceEvery) {
 		if err := FetchAlliance.Queue(ctx, a); err != nil {
 			s.release(a.Subject())
-			return struct{}{}, err
+			return Corporation{}, err
 		}
 	}
-	return struct{}{}, nil
+	return row, nil
 }

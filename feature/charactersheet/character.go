@@ -2,13 +2,13 @@ package charactersheet
 
 import (
 	"context"
-	"errors"
 	"fmt"
 	"time"
 
 	esicharacter "github.com/eve-online-tools/lib-esi-go/common/character"
 	"github.com/eve-online-tools/lib-esi-go/esi/getcharacterscharacterid"
 
+	"github.com/eve-online-tools/yulai/core/db"
 	"github.com/eve-online-tools/yulai/core/esi"
 	"github.com/eve-online-tools/yulai/core/task"
 )
@@ -37,16 +37,23 @@ func (s *Sheet) characters(ctx context.Context) ([]CharacterInput, error) {
 	return out, nil
 }
 
-func (s *Sheet) character(ctx context.Context, in CharacterInput) (struct{}, error) {
-	data, err := esi.Check(getcharacterscharacterid.Request(ctx, s.esi,
-		&getcharacterscharacterid.Input{Character: esicharacter.Identifier(in.CharacterID)}))
+func (s *Sheet) character(ctx context.Context, in CharacterInput) (CharacterSheet, error) {
+	input := &getcharacterscharacterid.Input{Character: esicharacter.Identifier(in.CharacterID)}
+	resp, err := getcharacterscharacterid.Request(ctx, s.esi, input)
 	if err != nil {
-		return struct{}{}, err
+		return CharacterSheet{}, err
 	}
-	if data == nil {
-		return struct{}{}, errors.New("charactersheet: empty character response")
+	if err := esi.ResponseError(resp); err != nil {
+		return CharacterSheet{}, err
 	}
-	if err := s.q.UpsertCharacter(ctx, UpsertCharacterParams{
+	data := resp.Data
+
+	prev, err := s.q.GetCharacter(ctx, in.CharacterID)
+	existed, err := db.Found(err)
+	if err != nil {
+		return CharacterSheet{}, err
+	}
+	row, err := s.q.UpsertCharacter(ctx, UpsertCharacterParams{
 		CharacterID:    in.CharacterID,
 		CorporationID:  data.Corporation,
 		AllianceID:     data.Alliance,
@@ -59,20 +66,24 @@ func (s *Sheet) character(ctx context.Context, in CharacterInput) (struct{}, err
 		Title:          data.Title,
 		Description:    data.Description,
 		FetchedAt:      time.Now().UTC(),
-	}); err != nil {
-		return struct{}{}, err
+	})
+	if err != nil {
+		return CharacterSheet{}, err
 	}
-	if err := s.chars.SetAffiliation(ctx, in.CharacterID, int64(data.Corporation), (*int64)(data.Alliance)); err != nil {
-		return struct{}{}, err
+	err = s.chars.SetAffiliation(ctx, in.CharacterID, int64(row.CorporationID), (*int64)(row.AllianceID))
+	if err != nil {
+		return CharacterSheet{}, err
 	}
-	s.events.Emit(EventChanged)
+	if !existed || db.Changed(prev, row) {
+		s.events.Emit(EventChanged)
+	}
 
-	corp := CorporationInput{CorporationID: data.Corporation}
+	corp := CorporationInput{CorporationID: row.CorporationID}
 	if s.claim(corp.Subject(), corporationEvery) {
 		if err := FetchCorporation.Queue(ctx, corp); err != nil {
 			s.release(corp.Subject())
-			return struct{}{}, err
+			return CharacterSheet{}, err
 		}
 	}
-	return struct{}{}, nil
+	return row, nil
 }

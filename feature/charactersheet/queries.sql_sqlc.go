@@ -90,7 +90,7 @@ func (q *Queries) GetCorporation(ctx context.Context, id corporation.Identifier)
 	return i, err
 }
 
-const upsertAlliance = `-- name: UpsertAlliance :exec
+const upsertAlliance = `-- name: UpsertAlliance :one
 INSERT INTO alliances (id, name, ticker, creator_id, creator_corporation_id, executor_corporation_id,
     faction_id, date_founded, fetched_at)
 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
@@ -103,6 +103,7 @@ ON CONFLICT(id) DO UPDATE SET
     faction_id = excluded.faction_id,
     date_founded = excluded.date_founded,
     fetched_at = excluded.fetched_at
+RETURNING id, name, ticker, creator_id, creator_corporation_id, executor_corporation_id, faction_id, date_founded, fetched_at
 `
 
 type UpsertAllianceParams struct {
@@ -117,8 +118,8 @@ type UpsertAllianceParams struct {
 	FetchedAt             time.Time               `json:"fetchedAt"`
 }
 
-func (q *Queries) UpsertAlliance(ctx context.Context, arg UpsertAllianceParams) error {
-	_, err := q.db.ExecContext(ctx, upsertAlliance,
+func (q *Queries) UpsertAlliance(ctx context.Context, arg UpsertAllianceParams) (Alliance, error) {
+	row := q.db.QueryRowContext(ctx, upsertAlliance,
 		arg.ID,
 		arg.Name,
 		arg.Ticker,
@@ -129,10 +130,22 @@ func (q *Queries) UpsertAlliance(ctx context.Context, arg UpsertAllianceParams) 
 		arg.DateFounded,
 		arg.FetchedAt,
 	)
-	return err
+	var i Alliance
+	err := row.Scan(
+		&i.ID,
+		&i.Name,
+		&i.Ticker,
+		&i.CreatorID,
+		&i.CreatorCorporationID,
+		&i.ExecutorCorporationID,
+		&i.FactionID,
+		&i.DateFounded,
+		&i.FetchedAt,
+	)
+	return i, err
 }
 
-const upsertCharacter = `-- name: UpsertCharacter :exec
+const upsertCharacter = `-- name: UpsertCharacter :one
 INSERT INTO character_sheets (character_id, corporation_id, alliance_id, faction_id, birthday, bloodline_id,
     race_id, gender, security_status, title, description, fetched_at)
 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
@@ -148,6 +161,7 @@ ON CONFLICT(character_id) DO UPDATE SET
     title = excluded.title,
     description = excluded.description,
     fetched_at = excluded.fetched_at
+RETURNING character_id, corporation_id, alliance_id, faction_id, birthday, bloodline_id, race_id, gender, security_status, title, description, fetched_at
 `
 
 type UpsertCharacterParams struct {
@@ -165,8 +179,8 @@ type UpsertCharacterParams struct {
 	FetchedAt      time.Time              `json:"fetchedAt"`
 }
 
-func (q *Queries) UpsertCharacter(ctx context.Context, arg UpsertCharacterParams) error {
-	_, err := q.db.ExecContext(ctx, upsertCharacter,
+func (q *Queries) UpsertCharacter(ctx context.Context, arg UpsertCharacterParams) (CharacterSheet, error) {
+	row := q.db.QueryRowContext(ctx, upsertCharacter,
 		arg.CharacterID,
 		arg.CorporationID,
 		arg.AllianceID,
@@ -180,10 +194,25 @@ func (q *Queries) UpsertCharacter(ctx context.Context, arg UpsertCharacterParams
 		arg.Description,
 		arg.FetchedAt,
 	)
-	return err
+	var i CharacterSheet
+	err := row.Scan(
+		&i.CharacterID,
+		&i.CorporationID,
+		&i.AllianceID,
+		&i.FactionID,
+		&i.Birthday,
+		&i.BloodlineID,
+		&i.RaceID,
+		&i.Gender,
+		&i.SecurityStatus,
+		&i.Title,
+		&i.Description,
+		&i.FetchedAt,
+	)
+	return i, err
 }
 
-const upsertCorporation = `-- name: UpsertCorporation :exec
+const upsertCorporation = `-- name: UpsertCorporation :one
 INSERT INTO corporations (id, name, ticker, alliance_id, ceo_id, creator_id, enlisted_faction_id, home_station_id,
     date_founded, member_count, tax_rate, war_eligible, url, description, fetched_at)
 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
@@ -202,6 +231,7 @@ ON CONFLICT(id) DO UPDATE SET
     url = excluded.url,
     description = excluded.description,
     fetched_at = excluded.fetched_at
+RETURNING id, name, ticker, alliance_id, ceo_id, creator_id, enlisted_faction_id, home_station_id, date_founded, member_count, tax_rate, war_eligible, url, description, fetched_at
 `
 
 type UpsertCorporationParams struct {
@@ -222,8 +252,8 @@ type UpsertCorporationParams struct {
 	FetchedAt         time.Time              `json:"fetchedAt"`
 }
 
-func (q *Queries) UpsertCorporation(ctx context.Context, arg UpsertCorporationParams) error {
-	_, err := q.db.ExecContext(ctx, upsertCorporation,
+func (q *Queries) UpsertCorporation(ctx context.Context, arg UpsertCorporationParams) (Corporation, error) {
+	row := q.db.QueryRowContext(ctx, upsertCorporation,
 		arg.ID,
 		arg.Name,
 		arg.Ticker,
@@ -240,5 +270,23 @@ func (q *Queries) UpsertCorporation(ctx context.Context, arg UpsertCorporationPa
 		arg.Description,
 		arg.FetchedAt,
 	)
-	return err
+	var i Corporation
+	err := row.Scan(
+		&i.ID,
+		&i.Name,
+		&i.Ticker,
+		&i.AllianceID,
+		&i.CeoID,
+		&i.CreatorID,
+		&i.EnlistedFactionID,
+		&i.HomeStationID,
+		&i.DateFounded,
+		&i.MemberCount,
+		&i.TaxRate,
+		&i.WarEligible,
+		&i.Url,
+		&i.Description,
+		&i.FetchedAt,
+	)
+	return i, err
 }

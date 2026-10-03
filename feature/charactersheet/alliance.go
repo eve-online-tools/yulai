@@ -2,13 +2,13 @@ package charactersheet
 
 import (
 	"context"
-	"errors"
 	"fmt"
 	"time"
 
 	"github.com/eve-online-tools/lib-esi-go/common/alliance"
 	"github.com/eve-online-tools/lib-esi-go/esi/getalliancesallianceid"
 
+	"github.com/eve-online-tools/yulai/core/db"
 	"github.com/eve-online-tools/yulai/core/esi"
 	"github.com/eve-online-tools/yulai/core/task"
 )
@@ -22,29 +22,45 @@ var FetchAlliance = task.New(
 	task.WithTimeout(timeout),
 )
 
-func (s *Sheet) alliance(ctx context.Context, in AllianceInput) (struct{}, error) {
-	data, err := esi.Check(getalliancesallianceid.Request(ctx, s.esi,
-		&getalliancesallianceid.Input{Alliance: in.AllianceID}))
-	if err == nil && data == nil {
-		err = errors.New("charactersheet: empty alliance response")
-	}
-	if err == nil {
-		err = s.q.UpsertAlliance(ctx, UpsertAllianceParams{
-			ID:                    in.AllianceID,
-			Name:                  data.Name,
-			Ticker:                data.Ticker,
-			CreatorID:             data.Creator,
-			CreatorCorporationID:  data.CreatorCorporation,
-			ExecutorCorporationID: data.ExecutorCorporation,
-			FactionID:             data.Faction,
-			DateFounded:           data.DateFounded,
-			FetchedAt:             time.Now().UTC(),
-		})
-	}
+func (s *Sheet) alliance(ctx context.Context, in AllianceInput) (_ Alliance, err error) {
+	// The next corporation fetch retries a failed fetch.
+	defer func() {
+		if err != nil {
+			s.release(in.Subject())
+		}
+	}()
+
+	input := &getalliancesallianceid.Input{Alliance: in.AllianceID}
+	resp, err := getalliancesallianceid.Request(ctx, s.esi, input)
 	if err != nil {
-		s.release(in.Subject())
-		return struct{}{}, err
+		return Alliance{}, err
 	}
-	s.events.Emit(EventChanged)
-	return struct{}{}, nil
+	if err := esi.ResponseError(resp); err != nil {
+		return Alliance{}, err
+	}
+	data := resp.Data
+
+	prev, err := s.q.GetAlliance(ctx, in.AllianceID)
+	existed, err := db.Found(err)
+	if err != nil {
+		return Alliance{}, err
+	}
+	row, err := s.q.UpsertAlliance(ctx, UpsertAllianceParams{
+		ID:                    in.AllianceID,
+		Name:                  data.Name,
+		Ticker:                data.Ticker,
+		CreatorID:             data.Creator,
+		CreatorCorporationID:  data.CreatorCorporation,
+		ExecutorCorporationID: data.ExecutorCorporation,
+		FactionID:             data.Faction,
+		DateFounded:           data.DateFounded,
+		FetchedAt:             time.Now().UTC(),
+	})
+	if err != nil {
+		return Alliance{}, err
+	}
+	if !existed || db.Changed(prev, row) {
+		s.events.Emit(EventChanged)
+	}
+	return row, nil
 }
