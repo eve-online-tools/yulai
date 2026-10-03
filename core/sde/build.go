@@ -24,6 +24,9 @@ var schemaSQL string
 // reportEvery throttles build progress to one report per this many bytes decoded.
 const reportEvery = 1 << 20
 
+// recordBuffer is how many records the decoder may run ahead of the writer.
+const recordBuffer = 256
+
 // An update reports one bar from 0 to progressScale. Download fills it up to
 // downloaded, the build up to built, indexes the rest.
 const (
@@ -62,7 +65,7 @@ func build(ctx context.Context, src, dst string, log *slog.Logger) error {
 		return err
 	}
 	// A crash leaves a broken file behind, which Open deletes, so durability is not needed.
-	conn, err := sql.Open("sqlite", dst+"?_pragma=journal_mode(OFF)&_pragma=synchronous(OFF)")
+	conn, err := sql.Open("sqlite", dst+"?_pragma=journal_mode(OFF)&_pragma=synchronous(OFF)&_pragma=cache_size(-65536)")
 	if err != nil {
 		return err
 	}
@@ -166,12 +169,62 @@ type insert struct {
 	known  *known
 }
 
-func (b *builder) file(ctx context.Context, conn *sql.DB, f *zip.File, file string) error {
+// record is one decoded line of an export file, or the error that ended it.
+type record struct {
+	v   map[string]any
+	pos int64 // decoder offset after v
+	err error
+}
+
+// decode sends the records of f to out and closes it.
+func decode(ctx context.Context, f *zip.File, out chan<- record) {
+	defer close(out)
+	send := func(r record) bool {
+		select {
+		case out <- r:
+			return true
+		case <-ctx.Done():
+			return false
+		}
+	}
 	r, err := f.Open()
 	if err != nil {
-		return err
+		send(record{err: err})
+		return
 	}
 	defer r.Close()
+	dec := json.NewDecoder(r)
+	dec.UseNumber()
+	for {
+		var v map[string]any
+		err := dec.Decode(&v)
+		if errors.Is(err, io.EOF) {
+			return
+		}
+		if err != nil {
+			send(record{err: err})
+			return
+		}
+		// The decoder reads ahead, so its offset, not the bytes read, is the position.
+		if !send(record{v: v, pos: dec.InputOffset()}) {
+			return
+		}
+	}
+}
+
+func (b *builder) file(ctx context.Context, conn *sql.DB, f *zip.File, file string) error {
+	// Decoding runs alongside the inserts; it is about half the work.
+	ctx, cancel := context.WithCancel(ctx)
+	recs := make(chan record, recordBuffer)
+	done := make(chan struct{})
+	go func() {
+		decode(ctx, f, recs)
+		close(done)
+	}()
+	defer func() {
+		cancel()
+		<-done
+	}()
 
 	tx, err := conn.BeginTx(ctx, nil)
 	if err != nil {
@@ -197,39 +250,32 @@ func (b *builder) file(ctx context.Context, conn *sql.DB, f *zip.File, file stri
 		}
 	}
 
-	dec := json.NewDecoder(r)
-	dec.UseNumber()
 	item := path.Base(f.Name)
 	report(ctx, "build", item, downloaded, built, b.done, b.total)
 	var reported int64
-	for {
-		// The decoder reads ahead, so its offset, not the bytes read, is the position.
-		if pos := dec.InputOffset(); pos-reported >= reportEvery {
-			reported = pos
-			report(ctx, "build", item, downloaded, built, b.done+pos, b.total)
+	for rec := range recs {
+		if rec.err != nil {
+			return rec.err
 		}
-		var rec map[string]any
-		err := dec.Decode(&rec)
-		if errors.Is(err, io.EOF) {
-			break
+		if rec.pos-reported >= reportEvery {
+			reported = rec.pos
+			report(ctx, "build", item, downloaded, built, b.done+rec.pos, b.total)
 		}
-		if err != nil {
+		b.unknown(top, rec.v, nil)
+		if err := b.row(top, rec.v, rec.v["_key"], nil); err != nil {
 			return err
 		}
-		if err := ctx.Err(); err != nil {
-			return err
-		}
-		b.unknown(top, rec, nil)
-		if err := b.row(ctx, top, rec, rec["_key"], nil); err != nil {
-			return err
-		}
+	}
+	// decode stops early on cancel.
+	if err := ctx.Err(); err != nil {
+		return err
 	}
 	return tx.Commit()
 }
 
 // row inserts v into in's table and recurses into its child tables.
 // parent and pos are nil for a top table row.
-func (b *builder) row(ctx context.Context, in *insert, v any, parent any, pos any) error {
+func (b *builder) row(in *insert, v any, parent any, pos any) error {
 	args := make([]any, 0, len(in.t.cols)+3)
 	ref := parent
 	if in.t.parent >= 0 {
@@ -245,7 +291,8 @@ func (b *builder) row(ctx context.Context, in *insert, v any, parent any, pos an
 	for _, c := range in.t.cols {
 		args = append(args, b.value(in.t, c, lookup(v, c.path)))
 	}
-	if _, err := in.stmt.ExecContext(ctx, args...); err != nil {
+	// Cancel stops decode, which ends the record loop; ExecContext would start a goroutine per row.
+	if _, err := in.stmt.Exec(args...); err != nil {
 		return fmt.Errorf("%s: %w", in.t.name, err)
 	}
 	for _, kid := range in.kids {
@@ -256,7 +303,7 @@ func (b *builder) row(ctx context.Context, in *insert, v any, parent any, pos an
 				m, _ := el.(map[string]any)
 				pos = number(m["_key"])
 			}
-			if err := b.row(ctx, kid, el, ref, pos); err != nil {
+			if err := b.row(kid, el, ref, pos); err != nil {
 				return err
 			}
 		}
