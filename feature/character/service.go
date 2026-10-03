@@ -92,6 +92,13 @@ func (s *Service) WithScopes(ctx context.Context, scopes ...string) ([]int64, er
 	return out, nil
 }
 
+// WithFeature lists characters with a working token that unlocks f.
+//
+//wails:ignore
+func (s *Service) WithFeature(ctx context.Context, f feature.Feature) ([]int64, error) {
+	return s.WithScopes(ctx, f.Scopes()...)
+}
+
 // Features lists every opt-in feature and the scopes it needs. The frontend diffs
 // them against a character's token scopes to show what is enabled.
 func (s *Service) Features() []FeatureInfo {

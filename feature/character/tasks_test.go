@@ -43,4 +43,16 @@ func TestWithScopes(t *testing.T) {
 	if got, _ := s.WithScopes(ctx, "esi-a.v1", "esi-c.v1"); len(got) != 0 {
 		t.Fatalf("WithScopes = %v with a missing scope, want none", got)
 	}
+	if got, _ := s.WithFeature(ctx, scoped{"esi-b.v1"}); len(got) != 1 {
+		t.Fatalf("WithFeature = %v, want the pilot", got)
+	}
+	if got, _ := s.WithFeature(ctx, scoped{"esi-c.v1"}); len(got) != 0 {
+		t.Fatalf("WithFeature = %v with a missing scope, want none", got)
+	}
 }
+
+type scoped []string
+
+func (scoped) Name() string          { return "scoped" }
+func (f scoped) Scopes() []string    { return f }
+func (scoped) Tasks() []task.Binding { return nil }
