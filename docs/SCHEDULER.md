@@ -68,6 +68,9 @@ func (s *Scheduler) Pause(ctx context.Context, p Pause) error
 func (s *Scheduler) Resume(ctx context.Context, p Pause) error
 func (s *Scheduler) Trigger(ctx context.Context, name, subject string) error
 func (s *Scheduler) List() []Status
+
+// Inside a run: sets Status.Progress until the run ends. No-op elsewhere.
+func Report(ctx context.Context, p Progress) // Phase, Item, Done, Total (0: unknown)
 ```
 
 Go only allows a variadic parameter last, so the method comes first: `task.New((*Wallet).Balance, opts...)`.
@@ -133,7 +136,7 @@ success).
    Persisted through a `PauseStore` (`MemoryPauses` until the sqlite store backs `task_pauses`), loaded at
    `Start`, checked at dispatch.
 8. **Status.** `List()` returns, per task and key: running, last run, last error, last skip reason, backoff
-   until, paused, queued. Changes call `Options.OnChange` (debounced 250ms); `SyncService` turns that into the
+   until, paused, queued, and progress while running. Changes call `Options.OnChange` (debounced 250ms); `SyncService` turns that into the
    `task:changed` Wails event, so `core/task` does not import Wails.
 9. **Stop.** When the `Start` ctx ends, run contexts are cancelled, waiting `Run` callers get `ErrStopped` or
    the cancellation error, and `Start` returns once every run has.

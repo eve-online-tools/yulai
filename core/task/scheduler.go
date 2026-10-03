@@ -91,6 +91,7 @@ type state struct {
 	lastRun      time.Time
 	lastErr      string
 	lastSkip     string
+	progress     *Progress
 }
 
 type pending struct {
@@ -387,7 +388,8 @@ func (s *Scheduler) execute(e *entry, k stateKey, st *state, p *pending) {
 	s.mu.Unlock()
 	s.changed()
 
-	ctx, cancel := context.WithTimeout(WithScheduler(s.ctx, s), cmp.Or(e.cfg.timeout, DefaultTimeout))
+	ctx := context.WithValue(WithScheduler(s.ctx, s), progressKey{}, reporter{s, st})
+	ctx, cancel := context.WithTimeout(ctx, cmp.Or(e.cfg.timeout, DefaultTimeout))
 	out, err := safeRun(ctx, e, p.in)
 	cancel()
 	pl.Release()
@@ -396,6 +398,7 @@ func (s *Scheduler) execute(e *entry, k stateKey, st *state, p *pending) {
 	defer s.mu.Unlock()
 	now := time.Now()
 	st.executing = false
+	st.progress = nil
 	st.lastRun = now
 	if err != nil {
 		st.failures++
@@ -532,6 +535,8 @@ type Status struct {
 	LastSkip     string    `json:"lastSkip"`
 	Failures     int       `json:"failures"`
 	BackoffUntil time.Time `json:"backoffUntil"`
+	// Progress is set while running, if the task reports it.
+	Progress *Progress `json:"progress"`
 }
 
 // List returns the status of every task and subject seen this session, plus
@@ -555,6 +560,7 @@ func (s *Scheduler) List() []Status {
 			LastSkip:     st.lastSkip,
 			Failures:     st.failures,
 			BackoffUntil: st.backoffUntil,
+			Progress:     st.progress,
 		})
 	}
 	for _, e := range s.entries {

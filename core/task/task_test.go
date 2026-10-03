@@ -515,3 +515,43 @@ func TestOnChangeDebounced(t *testing.T) {
 		}
 	})
 }
+
+type reporting struct{ step chan struct{} }
+
+func (r *reporting) Do(ctx context.Context, _ struct{}) (struct{}, error) {
+	Report(ctx, Progress{Phase: "download", Done: 1, Total: 4})
+	<-r.step
+	Report(ctx, Progress{Phase: "build", Item: "types.jsonl", Done: 3, Total: 4})
+	<-r.step
+	return struct{}{}, nil
+}
+
+func TestProgress(t *testing.T) {
+	synctest.Test(t, func(t *testing.T) {
+		Report(t.Context(), Progress{Done: 1}) // outside a run: no-op
+
+		r := &reporting{step: make(chan struct{})}
+		tk := New((*reporting).Do)
+		s := newScheduler(Options{})
+		s.Register(tk.Bind(r))
+		progress := func() *Progress { return status(s, "").Progress }
+
+		if err := tk.On(s).Queue(t.Context(), struct{}{}); err != nil {
+			t.Fatal(err)
+		}
+		synctest.Wait()
+		if p := progress(); p == nil || *p != (Progress{Phase: "download", Done: 1, Total: 4}) {
+			t.Fatalf("progress = %+v", p)
+		}
+		r.step <- struct{}{}
+		synctest.Wait()
+		if p := progress(); p == nil || p.Item != "types.jsonl" || p.Done != 3 {
+			t.Fatalf("progress = %+v", p)
+		}
+		r.step <- struct{}{}
+		synctest.Wait()
+		if p := progress(); p != nil {
+			t.Fatalf("progress after run = %+v", p)
+		}
+	})
+}
