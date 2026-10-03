@@ -109,11 +109,16 @@ func Report(ctx context.Context, p Progress)
 `Report` stores the value on the running key's `Status.Progress`, cleared when the run ends, and goes through
 the debounced `OnChange`. `app` wires `OnChange` to the `task:changed` event.
 
-| `Update` phase | Done / Total |
-|---|---|
-| download | bytes on disk / size of the zip |
-| build | uncompressed bytes read / sum of entry sizes from the zip's central directory |
-| index | indexes created / indexes in the schema |
+`Update` reports one deterministic bar for the whole run: `Done / Total` is the overall fraction, scaled to
+10000, and `Phase` and `Item` name the current step. Each phase fills a fixed slice:
+
+| Phase | Slice | Fraction within the slice |
+|---|---|---|
+| download | 0-50% | bytes on disk / zip size (`Content-Length`, or the total in `Content-Range` when resuming) |
+| build | 50-90% | uncompressed bytes decoded so far (decoder input offset in the current file plus finished files) / sum of entry sizes in the zip's central directory |
+| index | 90-100% | indexes created / indexes in the schema |
+
+A zip already on disk skips to 50%. The bar never goes back or becomes indeterminate.
 
 `sde.Service` (`SDEService`) returns the installed build and the `Update` status with its progress. The settings
 page shows them with a progress bar and a "Check now" button, refreshed on `sde:changed` and `task:changed`.
