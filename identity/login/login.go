@@ -57,6 +57,8 @@ type pickerPage struct {
 	Page     string    `json:"page"`
 	CSRF     string    `json:"csrf"`
 	Features []Feature `json:"features"`
+	// Selected are the feature names checked initially.
+	Selected []string `json:"selected"`
 }
 
 // donePage carries the previous choice so "add another" can post straight to /start.
@@ -272,7 +274,25 @@ func (s *Server) picker(w http.ResponseWriter, r *http.Request) {
 	if features == nil {
 		features = []Feature{}
 	}
-	s.render(w, http.StatusOK, pickerPage{Page: "picker", CSRF: s.csrf, Features: features})
+	s.render(w, http.StatusOK, pickerPage{Page: "picker", CSRF: s.csrf, Features: features, Selected: selected(features, r.URL.Query())})
+}
+
+// selected reads ?feature= names to preselect, for logging in again with the same
+// choice. Without the parameter every feature is checked; "?feature=" checks none.
+func selected(features []Feature, q url.Values) []string {
+	out := []string{}
+	if !q.Has("feature") {
+		for _, f := range features {
+			out = append(out, f.Name)
+		}
+		return out
+	}
+	for _, name := range q["feature"] {
+		if slices.ContainsFunc(features, func(f Feature) bool { return f.Name == name }) {
+			out = append(out, name)
+		}
+	}
+	return out
 }
 
 func (s *Server) start(w http.ResponseWriter, r *http.Request) {

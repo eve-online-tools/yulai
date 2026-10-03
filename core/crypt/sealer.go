@@ -8,6 +8,7 @@ import (
 	"encoding/base64"
 	"errors"
 	"fmt"
+	"log/slog"
 
 	"github.com/eve-online-tools/yulai/core/keyring"
 )
@@ -23,6 +24,9 @@ func Open(store keyring.Store) (*Sealer, error) {
 	var key []byte
 	switch {
 	case errors.Is(err, keyring.ErrNotFound):
+		// Expected on first run. Otherwise tokens sealed with the lost key can no
+		// longer be read and those characters must log in again.
+		slog.Warn("crypt: no master key in keyring, creating a new one")
 		key = make([]byte, 32)
 		if _, err := rand.Read(key); err != nil {
 			return nil, err

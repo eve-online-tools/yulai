@@ -9,6 +9,8 @@ declare module "@wailsio/runtime" {
     namespace Events {
         interface CustomEvents {
             "character:changed": {};
+            "charactersheet:changed": {};
+            "presence:changed": {};
             "sync:jobs:changed": {};
         }
     }

@@ -3,7 +3,7 @@ import type { Feature } from "@yulai/ui";
 import styles from "./picker.module.scss";
 
 // A plain form post, so /start can redirect the browser straight to the SSO.
-export function PickerPage({ csrf, features }: { csrf: string; features: Feature[] }) {
+export function PickerPage({ csrf, features, selected }: { csrf: string; features: Feature[]; selected: string[] }) {
   return (
     <>
       <h1>Add character</h1>
@@ -16,7 +16,7 @@ export function PickerPage({ csrf, features }: { csrf: string; features: Feature
         {features.length > 0 ? (
           <CheckboxGroup id="features" legend="Features">
             {features.map((f) => (
-              <Checkbox key={f.name} name="feature" value={f.name} defaultChecked>
+              <Checkbox key={f.name} name="feature" value={f.name} defaultChecked={selected.includes(f.name)}>
                 <span>{f.name}</span>
                 <span className="muted small"> {f.scopes.join(", ")}</span>
               </Checkbox>

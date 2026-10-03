@@ -408,3 +408,17 @@ func TestNewRejectsWebWithoutSlot(t *testing.T) {
 		t.Error("accepted index.html without page-data element")
 	}
 }
+
+func TestPickerPreselect(t *testing.T) {
+	h := newHarness(t)
+	for path, want := range map[string]string{
+		"/":                                `"selected":["Assets","Wallet"]`,
+		"/?feature=Wallet&feature=Unknown": `"selected":["Wallet"]`,
+		"/?feature=":                       `"selected":[]`,
+	} {
+		resp, body := h.get(t, path)
+		if resp.StatusCode != http.StatusOK || !strings.Contains(body, want) {
+			t.Errorf("GET %s: %d, want %s in %s", path, resp.StatusCode, want, body)
+		}
+	}
+}

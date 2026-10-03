@@ -12,6 +12,8 @@ import (
 	"github.com/eve-online-tools/yulai/core/crypt"
 	"github.com/eve-online-tools/yulai/core/db"
 	"github.com/eve-online-tools/yulai/core/keyring"
+	"github.com/eve-online-tools/yulai/core/task"
+	"github.com/eve-online-tools/yulai/feature"
 	"github.com/eve-online-tools/yulai/identity/login"
 	"github.com/eve-online-tools/yulai/identity/sso"
 	"github.com/eve-online-tools/yulai/identity/token"
@@ -64,7 +66,7 @@ func newTestService(t *testing.T, esiBody string) (*Service, *token.Store, *nopE
 		t.Fatal(err)
 	}
 	client := sso.NewClient(sso.Config{ClientID: "test"})
-	tokens := token.NewStore(conn, client, sso.NewVerifier(client), sealer)
+	tokens := token.NewStore(conn, client, sso.NewVerifier(client), sealer, nil)
 	enroller := &nopEnroller{}
 	esiClient := &http.Client{Transport: fakeESI{body: esiBody}}
 	return NewService(conn, "", nil, nopEmitter{}, tokens, esiClient, nil, enroller), tokens, enroller
@@ -154,3 +156,34 @@ func TestStoreFailsOnESIError(t *testing.T) {
 type roundTripFunc func(*http.Request) (*http.Response, error)
 
 func (f roundTripFunc) RoundTrip(r *http.Request) (*http.Response, error) { return f(r) }
+
+type fakeFeature struct {
+	name   string
+	scopes []string
+}
+
+func (f fakeFeature) Name() string          { return f.name }
+func (f fakeFeature) Scopes() []string      { return f.scopes }
+func (f fakeFeature) Tasks() []task.Binding { return nil }
+
+type recordBrowser struct{ url string }
+
+func (b *recordBrowser) OpenURL(url string) error { b.url = url; return nil }
+
+func TestReloginPreselectsCurrentFeatures(t *testing.T) {
+	s, _, _ := newTestService(t, `{"corporation_id": 98000001}`)
+	ctx := context.Background()
+	b := &recordBrowser{}
+	s.browser, s.loginURL = b, "http://localhost:45538/"
+	s.features = []feature.Feature{fakeFeature{"A", []string{"esi-a.v1"}}, fakeFeature{"B", []string{"esi-b.v1"}}}
+	if err := s.Store(ctx, result("esi-a.v1")); err != nil {
+		t.Fatal(err)
+	}
+
+	if err := s.Relogin(ctx, 90000001); err != nil {
+		t.Fatal(err)
+	}
+	if want := "http://localhost:45538/?feature=&feature=A"; b.url != want {
+		t.Errorf("opened %q, want %q", b.url, want)
+	}
+}

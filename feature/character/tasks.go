@@ -7,6 +7,7 @@ import (
 
 	"github.com/eve-online-tools/yulai/core/task"
 	"github.com/eve-online-tools/yulai/identity/sso"
+	"github.com/eve-online-tools/yulai/identity/token"
 )
 
 // Input is one character for per-character tasks.
@@ -44,8 +45,9 @@ func (s *Service) withToken(ctx context.Context) ([]Input, error) {
 
 func (s *Service) refreshToken(ctx context.Context, in Input) (struct{}, error) {
 	err := s.tokens.Refresh(ctx, in.CharacterID)
-	if errors.Is(err, sso.ErrInvalidGrant) {
-		return struct{}{}, s.MarkNeedsLogin(ctx, in.CharacterID, err.Error())
+	// The token store already marked the character.
+	if errors.Is(err, sso.ErrInvalidGrant) || errors.Is(err, token.ErrUnreadable) {
+		return struct{}{}, nil
 	}
 	if err != nil {
 		return struct{}{}, err

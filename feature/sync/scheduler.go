@@ -26,9 +26,6 @@ type Tokens interface {
 	For(characterID int64) authentication.RefreshableToken
 }
 
-// OnAuthFailure is called when a job fails because the character's token is dead.
-type OnAuthFailure func(ctx context.Context, characterID int64, reason string)
-
 // SyncJob is one row of the sync_jobs table. sqlc will generate this.
 type SyncJob struct {
 	CharacterID int64   `json:"characterId"`
@@ -45,17 +42,15 @@ type Scheduler struct {
 	tokens   Tokens
 	workers  int
 	tick     time.Duration
-	onAuth   OnAuthFailure
 }
 
-func NewScheduler(conn *sql.DB, features []feature.Feature, tokens Tokens, workers int, onAuth OnAuthFailure) *Scheduler {
+func NewScheduler(conn *sql.DB, features []feature.Feature, tokens Tokens, workers int) *Scheduler {
 	return &Scheduler{
 		conn:     conn,
 		features: features,
 		tokens:   tokens,
 		workers:  workers,
 		tick:     time.Second,
-		onAuth:   onAuth,
 	}
 }
 

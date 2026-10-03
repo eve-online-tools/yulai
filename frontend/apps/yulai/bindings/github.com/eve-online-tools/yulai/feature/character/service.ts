@@ -33,6 +33,14 @@ export function List(): $CancellablePromise<$models.ListRow[]> {
     });
 }
 
+/**
+ * Relogin opens the feature picker with the character's current features checked,
+ * to replace a token that stopped working.
+ */
+export function Relogin(characterID: number): $CancellablePromise<void> {
+    return $Call.ByID(4067193629, characterID);
+}
+
 export function Remove(characterID: number): $CancellablePromise<void> {
     return $Call.ByID(2604506173, characterID);
 }
