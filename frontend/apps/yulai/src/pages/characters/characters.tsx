@@ -2,8 +2,8 @@ import { useState } from "react";
 import { useMutation, useSuspenseQuery } from "@tanstack/react-query";
 import { Service as Characters } from "@bindings/github.com/eve-online-tools/yulai/feature/character";
 import type { FeatureInfo, ListRow as Character } from "@bindings/github.com/eve-online-tools/yulai/feature/character";
-import { Alert, Button, ConfirmDialog, EmptyState, Icon, PageHead, Table, Tag } from "@xaroth.nl/design/react";
-import { Portrait, Tooltip, enabledFeatures } from "@yulai/ui";
+import { Alert, Button, ConfirmDialog, EmptyState, Icon, PageHead, Table, Tag, Tooltip } from "@xaroth.nl/design/react";
+import { Portrait, enabledFeatures } from "@yulai/ui";
 import { charactersQuery, featuresQuery } from "../../queries";
 
 const columns = [
