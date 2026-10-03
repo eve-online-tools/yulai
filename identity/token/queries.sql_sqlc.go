@@ -38,6 +38,57 @@ func (q *Queries) GetToken(ctx context.Context, characterID int64) (Token, error
 	return i, err
 }
 
+const rotateToken = `-- name: RotateToken :execrows
+UPDATE tokens SET access_token = ?, refresh_token_enc = ?, expires_at = ?
+WHERE character_id = ?4 AND refresh_token_enc = ?5
+`
+
+type RotateTokenParams struct {
+	AccessToken         string `json:"accessToken"`
+	RefreshTokenEnc     []byte `json:"refreshTokenEnc"`
+	ExpiresAt           int64  `json:"expiresAt"`
+	CharacterID         int64  `json:"characterId"`
+	PrevRefreshTokenEnc []byte `json:"prevRefreshTokenEnc"`
+}
+
+// Compare-and-swap on the sealed refresh token, so a refresh started before a new
+// login cannot overwrite it.
+func (q *Queries) RotateToken(ctx context.Context, arg RotateTokenParams) (int64, error) {
+	result, err := q.db.ExecContext(ctx, rotateToken,
+		arg.AccessToken,
+		arg.RefreshTokenEnc,
+		arg.ExpiresAt,
+		arg.CharacterID,
+		arg.PrevRefreshTokenEnc,
+	)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected()
+}
+
+const setScopes = `-- name: SetScopes :exec
+UPDATE tokens SET scopes = ?, issued_at = ?
+WHERE character_id = ?3 AND refresh_token_enc = ?4
+`
+
+type SetScopesParams struct {
+	Scopes          string `json:"scopes"`
+	IssuedAt        int64  `json:"issuedAt"`
+	CharacterID     int64  `json:"characterId"`
+	RefreshTokenEnc []byte `json:"refreshTokenEnc"`
+}
+
+func (q *Queries) SetScopes(ctx context.Context, arg SetScopesParams) error {
+	_, err := q.db.ExecContext(ctx, setScopes,
+		arg.Scopes,
+		arg.IssuedAt,
+		arg.CharacterID,
+		arg.RefreshTokenEnc,
+	)
+	return err
+}
+
 const upsertToken = `-- name: UpsertToken :exec
 INSERT INTO tokens (character_id, access_token, refresh_token_enc, expires_at, scopes, issued_at)
 VALUES (?, ?, ?, ?, ?, ?)
