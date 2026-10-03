@@ -95,6 +95,11 @@ func (s *Store) For(characterID int64) authentication.RefreshableToken {
 	return t
 }
 
+// Refresh renews the character's token now, regardless of expiry.
+func (s *Store) Refresh(ctx context.Context, characterID int64) error {
+	return s.For(characterID).(*refreshable).refresh(ctx, true)
+}
+
 // Forget drops the in-memory token so the next use reloads from the database.
 func (s *Store) Forget(characterID int64) {
 	s.mu.Lock()
@@ -132,7 +137,9 @@ func (t *refreshable) Scopes() []string {
 	return t.scopes
 }
 
-func (t *refreshable) RefreshIfNeeded(ctx context.Context) error {
+func (t *refreshable) RefreshIfNeeded(ctx context.Context) error { return t.refresh(ctx, false) }
+
+func (t *refreshable) refresh(ctx context.Context, force bool) error {
 	t.mu.Lock()
 	defer t.mu.Unlock()
 
@@ -143,7 +150,7 @@ func (t *refreshable) RefreshIfNeeded(ctx context.Context) error {
 		}
 		t.tokens, t.scopes = tk, scopes
 	}
-	if time.Until(t.tokens.ExpiresAt) > refreshMargin {
+	if !force && time.Until(t.tokens.ExpiresAt) > refreshMargin {
 		return nil
 	}
 
