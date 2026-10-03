@@ -119,11 +119,15 @@ func (s *Service) AddCharacter() error { return s.browser.OpenURL(s.loginURL) }
 //wails:ignore
 func (s *Service) Store(ctx context.Context, r *login.Result) error {
 	// Public info; no token needed.
-	info, err := esi.Check(getcharacterscharacterid.Request(ctx, s.esi,
-		&getcharacterscharacterid.Input{Character: esicharacter.Identifier(r.CharacterID)}))
+	input := &getcharacterscharacterid.Input{Character: esicharacter.Identifier(r.CharacterID)}
+	resp, err := getcharacterscharacterid.Request(ctx, s.esi, input)
 	if err != nil {
 		return err
 	}
+	if err := esi.ResponseError(resp); err != nil {
+		return err
+	}
+	info := resp.Data
 	var allianceID *int64
 	if info.Alliance != nil {
 		v := int64(*info.Alliance)

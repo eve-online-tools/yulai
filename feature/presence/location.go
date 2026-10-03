@@ -2,7 +2,6 @@ package presence
 
 import (
 	"context"
-	"errors"
 	"time"
 
 	esicharacter "github.com/eve-online-tools/lib-esi-go/common/character"
@@ -19,33 +18,36 @@ var Location = task.New(
 	task.WithTimeout(timeout),
 )
 
-func (f *Feature) location(ctx context.Context, in Input) (struct{}, error) {
+func (f *Feature) location(ctx context.Context, in Input) (PresenceLocation, error) {
 	f.mark(in.CharacterID, partLocation)
-	data, err := esi.Check(getcharacterscharacteridlocation.Request(ctx, f.esi,
-		&getcharacterscharacteridlocation.Input{Character: esicharacter.Identifier(in.CharacterID)},
-		f.auth(in.CharacterID)))
+
+	input := &getcharacterscharacteridlocation.Input{Character: esicharacter.Identifier(in.CharacterID)}
+	resp, err := getcharacterscharacteridlocation.Request(ctx, f.esi, input, f.auth(in.CharacterID))
 	if err != nil {
-		return struct{}{}, err
+		return PresenceLocation{}, err
 	}
-	if data == nil {
-		return struct{}{}, errors.New("presence: empty location response")
+	if err := esi.ResponseError(resp); err != nil {
+		return PresenceLocation{}, err
 	}
+	data := resp.Data
+
 	prev, err := stored(f.q.GetLocation(ctx, in.CharacterID))
 	if err != nil {
-		return struct{}{}, err
+		return PresenceLocation{}, err
 	}
-	if err := f.q.UpsertLocation(ctx, UpsertLocationParams{
+	row, err := f.q.UpsertLocation(ctx, UpsertLocationParams{
 		CharacterID:   in.CharacterID,
 		SolarSystemID: data.SolarSystem,
 		StationID:     data.Station,
 		StructureID:   data.Structure,
 		FetchedAt:     time.Now().UTC(),
-	}); err != nil {
-		return struct{}{}, err
+	})
+	if err != nil {
+		return PresenceLocation{}, err
 	}
-	if prev == nil || prev.SolarSystemID != data.SolarSystem || !eq(prev.StationID, data.Station) ||
-		!eq(prev.StructureID, data.Structure) {
+	if prev == nil || prev.SolarSystemID != row.SolarSystemID || !eq(prev.StationID, row.StationID) ||
+		!eq(prev.StructureID, row.StructureID) {
 		f.events.Emit(EventChanged)
 	}
-	return struct{}{}, nil
+	return row, nil
 }

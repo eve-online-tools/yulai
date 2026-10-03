@@ -2,7 +2,6 @@ package presence
 
 import (
 	"context"
-	"errors"
 	"time"
 
 	esicharacter "github.com/eve-online-tools/lib-esi-go/common/character"
@@ -19,33 +18,36 @@ var Ship = task.New(
 	task.WithTimeout(timeout),
 )
 
-func (f *Feature) ship(ctx context.Context, in Input) (struct{}, error) {
+func (f *Feature) ship(ctx context.Context, in Input) (PresenceShip, error) {
 	f.mark(in.CharacterID, partShip)
-	data, err := esi.Check(getcharacterscharacteridship.Request(ctx, f.esi,
-		&getcharacterscharacteridship.Input{Character: esicharacter.Identifier(in.CharacterID)},
-		f.auth(in.CharacterID)))
+
+	input := &getcharacterscharacteridship.Input{Character: esicharacter.Identifier(in.CharacterID)}
+	resp, err := getcharacterscharacteridship.Request(ctx, f.esi, input, f.auth(in.CharacterID))
 	if err != nil {
-		return struct{}{}, err
+		return PresenceShip{}, err
 	}
-	if data == nil {
-		return struct{}{}, errors.New("presence: empty ship response")
+	if err := esi.ResponseError(resp); err != nil {
+		return PresenceShip{}, err
 	}
+	data := resp.Data
+
 	prev, err := stored(f.q.GetShip(ctx, in.CharacterID))
 	if err != nil {
-		return struct{}{}, err
+		return PresenceShip{}, err
 	}
-	if err := f.q.UpsertShip(ctx, UpsertShipParams{
+	row, err := f.q.UpsertShip(ctx, UpsertShipParams{
 		CharacterID: in.CharacterID,
 		ShipItemID:  data.ShipItem,
 		ShipTypeID:  data.ShipType,
 		ShipName:    data.ShipName,
 		FetchedAt:   time.Now().UTC(),
-	}); err != nil {
-		return struct{}{}, err
+	})
+	if err != nil {
+		return PresenceShip{}, err
 	}
-	if prev == nil || prev.ShipItemID != data.ShipItem || prev.ShipTypeID != data.ShipType ||
-		prev.ShipName != data.ShipName {
+	if prev == nil || prev.ShipItemID != row.ShipItemID || prev.ShipTypeID != row.ShipTypeID ||
+		prev.ShipName != row.ShipName {
 		f.events.Emit(EventChanged)
 	}
-	return struct{}{}, nil
+	return row, nil
 }

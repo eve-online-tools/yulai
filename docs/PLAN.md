@@ -114,12 +114,10 @@ field names and JSON tags so the bindings don't change. `sqlc.yaml` is added tog
 ## Adding a feature (the extension point)
 
 1. `feature/<name>/`: a type implementing `feature.Feature` (`Name`, `Scopes`, `Tasks`).
-2. Tasks in `feature/<name>/tasks/`: a receiver type holding dependencies and `var X = task.New((*Recv).X, opts...)`. See `docs/SCHEDULER.md`.
+2. Tasks in the feature package: the feature type is the receiver holding dependencies, one file per ESI
+   endpoint with `var X = task.New((*Feature).x, opts...)`. See `docs/SCHEDULER.md`.
 3. Tables go in a new migration. Queries go in `feature/<name>/queries.sql` with a matching `sqlc.yaml` entry.
-   One table per ESI endpoint, with columns typed and nullable like its response, so sqlc params take ESI
-   output fields as they are. ESI ids use the column types mapped in `sqlc.yaml` (`TYPE_ID`, `ITEM_ID`,
-   `SOLAR_SYSTEM_ID`, ...) to lib-esi-go identifiers; add a pair there for a new id kind. Flags are `BOOLEAN`,
-   times are `TIMESTAMP` (stored as RFC 3339 text, write UTC).
+   Follow `docs/CONVENTIONS.md` for ESI calls, task results and table types.
 4. Optional Wails `Service` for the UI, with `ServiceName()`. Emit `<name>:changed` after writes and register
    the event in `app/app.go` `init()`.
 5. Register the feature in `app.New`'s `features` slice and its service in `Services()`.

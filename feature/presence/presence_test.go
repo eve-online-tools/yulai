@@ -110,11 +110,12 @@ func TestFetchPersists(t *testing.T) {
 	ctx := context.Background()
 	f, _, events := newTestFeature(t, fakeESI{"/online": onlineBody, "/location": locationBody, "/ship": shipBody})
 
-	if on, err := f.online(ctx, Input{pilot}); err != nil || !on {
+	if on, err := f.online(ctx, Input{pilot}); err != nil || !on.Online {
 		t.Fatalf("online = %v, %v", on, err)
 	}
-	if _, err := f.location(ctx, Input{pilot}); err != nil {
-		t.Fatal(err)
+	// Runs return the stored row, so on-demand callers get the data.
+	if row, err := f.location(ctx, Input{pilot}); err != nil || row.SolarSystemID != 30000142 {
+		t.Fatalf("location = %+v, %v", row, err)
 	}
 	if _, err := f.ship(ctx, Input{pilot}); err != nil {
 		t.Fatal(err)

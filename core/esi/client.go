@@ -4,6 +4,7 @@ package esi
 import (
 	"fmt"
 	"net/http"
+	"reflect"
 	"strconv"
 	"strings"
 	"time"
@@ -35,20 +36,20 @@ type Error struct {
 
 func (e *Error) Error() string { return fmt.Sprintf("esi: %d %s", e.Status, e.Message) }
 
-// Check turns a non-2xx response into an error. lib-esi-go does not do this itself.
-func Check[T any](resp *request.Response[T], err error) (T, error) {
-	var zero T
-	if err != nil {
-		return zero, err
-	}
+// ResponseError reports a non-2xx response, or a 2xx response without the body the
+// endpoint promises. lib-esi-go does neither itself.
+func ResponseError[T any](resp *request.Response[T]) error {
 	if resp.StatusCode >= 400 {
 		msg := resp.Status
 		if resp.ErrorData != nil {
 			msg = resp.ErrorData.ErrorMessage
 		}
-		return zero, &Error{Status: resp.StatusCode, Message: msg}
+		return &Error{Status: resp.StatusCode, Message: msg}
 	}
-	return resp.Data, nil
+	if v := reflect.ValueOf(resp.Data); v.Kind() == reflect.Pointer && v.IsNil() {
+		return &Error{Status: resp.StatusCode, Message: "empty response"}
+	}
+	return nil
 }
 
 // ExpiresAt reads when ESI says the data changes next. Cache-Control max-age wins,
@@ -83,13 +84,4 @@ func maxAge(cacheControl string) (time.Duration, bool) {
 		return time.Duration(secs) * time.Second, true
 	}
 	return 0, false
-}
-
-// Fetch is Check but also hands back the raw response, for cache headers.
-func Fetch[T any](resp *request.Response[T], err error) (T, *http.Response, error) {
-	data, err := Check(resp, err)
-	if err != nil {
-		return data, nil, err
-	}
-	return data, resp.Response, nil
 }
