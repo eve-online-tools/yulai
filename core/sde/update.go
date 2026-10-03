@@ -158,6 +158,8 @@ func (u *Updater) Update(ctx context.Context, b Build) (*Meta, error) {
 		if err := u.download(ctx, b, zipPath); err != nil {
 			return nil, err
 		}
+	} else {
+		report(ctx, "download", "", 0, downloaded, 1, 1)
 	}
 	if err := u.store.Install(ctx, zipPath); err != nil {
 		return nil, err
@@ -216,11 +218,12 @@ func (u *Updater) download(ctx context.Context, b Build, dst string) error {
 		return fmt.Errorf("sde: download: %s", resp.Status)
 	}
 
-	p := task.Progress{Phase: "download", Done: offset}
-	if resp.ContentLength >= 0 {
-		p.Total = offset + resp.ContentLength
+	size := offset + resp.ContentLength
+	if resp.StatusCode == http.StatusPartialContent {
+		size = rangeSize(resp)
 	}
-	task.Report(ctx, p)
+	done := offset
+	report(ctx, "download", "", 0, downloaded, done, size)
 	buf := make([]byte, 256<<10)
 	for {
 		n, err := resp.Body.Read(buf)
@@ -228,8 +231,8 @@ func (u *Updater) download(ctx context.Context, b Build, dst string) error {
 			if _, err := f.Write(buf[:n]); err != nil {
 				return err
 			}
-			p.Done += int64(n)
-			task.Report(ctx, p)
+			done += int64(n)
+			report(ctx, "download", "", 0, downloaded, done, size)
 		}
 		if errors.Is(err, io.EOF) {
 			break
@@ -238,13 +241,26 @@ func (u *Updater) download(ctx context.Context, b Build, dst string) error {
 			return err
 		}
 	}
-	if p.Total > 0 && p.Done != p.Total {
-		return fmt.Errorf("sde: download: got %d of %d bytes", p.Done, p.Total)
+	if size > 0 && done != size {
+		return fmt.Errorf("sde: download: got %d of %d bytes", done, size)
 	}
 	if err := f.Close(); err != nil {
 		return err
 	}
 	return os.Rename(part, dst)
+}
+
+// rangeSize reads the full size from a "bytes a-b/size" Content-Range, -1 if absent.
+func rangeSize(resp *http.Response) int64 {
+	_, size, ok := strings.Cut(resp.Header.Get("Content-Range"), "/")
+	if !ok {
+		return -1
+	}
+	n, err := strconv.ParseInt(size, 10, 64)
+	if err != nil {
+		return -1
+	}
+	return n
 }
 
 // removeZips deletes downloads other than keep and its .part.

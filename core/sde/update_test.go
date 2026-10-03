@@ -114,6 +114,7 @@ func TestCheckQueuesUpdate(t *testing.T) {
 }
 
 func TestUpdateResumesDownload(t *testing.T) {
+	got := recordProgress(t)
 	u, c, _, s := setup(t, 6)
 	old := filepath.Join(u.store.dir, "sde-1.zip.part")
 	part := filepath.Join(u.store.dir, "sde-6.zip.part")
@@ -133,6 +134,19 @@ func TestUpdateResumesDownload(t *testing.T) {
 	}
 	if len(c.ranges) != 1 || c.ranges[0] != "bytes=100-" {
 		t.Fatalf("ranges = %q", c.ranges)
+	}
+	// One bar: the download starts at the resumed offset and fills the first half.
+	resumed := int64(100 * downloaded * progressScale / float64(len(c.zip)))
+	checkProgress(t, *got, resumed, progressScale)
+	if first := (*got)[0]; first.Phase != "download" || first.Done != resumed {
+		t.Fatalf("first progress = %+v, want download at %d", first, resumed)
+	}
+	var halfway bool
+	for _, p := range *got {
+		halfway = halfway || p.Phase == "download" && p.Done == downloaded*progressScale
+	}
+	if !halfway {
+		t.Fatal("download did not reach 50%")
 	}
 	if _, err := os.Stat(old); !os.IsNotExist(err) {
 		t.Fatalf("download of another build kept: %v", err)
