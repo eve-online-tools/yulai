@@ -22,7 +22,7 @@ var FetchCorporation = task.New(
 	task.WithTimeout(timeout),
 )
 
-func (s *Sheet) corporation(ctx context.Context, in CorporationInput) (_ Corporation, err error) {
+func (s *Sheet) corporation(ctx context.Context, in CorporationInput) (_ *Corporation, err error) {
 	// The next character tick retries a failed fetch.
 	defer func() {
 		if err != nil {
@@ -37,17 +37,17 @@ func (s *Sheet) corporation(ctx context.Context, in CorporationInput) (_ Corpora
 		},
 	)
 	if err != nil {
-		return Corporation{}, err
+		return nil, err
 	}
 	if err := esi.ResponseError(resp); err != nil {
-		return Corporation{}, err
+		return nil, err
 	}
 	data := resp.Data
 
 	prev, err := s.q.GetCorporation(ctx, in.CorporationID)
 	existed, err := db.Found(err)
 	if err != nil {
-		return Corporation{}, err
+		return nil, err
 	}
 	row, err := s.q.UpsertCorporation(ctx, UpsertCorporationParams{
 		ID:                in.CorporationID,
@@ -67,21 +67,21 @@ func (s *Sheet) corporation(ctx context.Context, in CorporationInput) (_ Corpora
 		FetchedAt:         time.Now().UTC(),
 	})
 	if err != nil {
-		return Corporation{}, err
+		return nil, err
 	}
 	if !existed || db.Changed(prev, row) {
 		s.events.Emit(EventChanged)
 	}
 
 	if row.AllianceID == nil {
-		return row, nil
+		return &row, nil
 	}
 	a := AllianceInput{AllianceID: *row.AllianceID}
 	if s.claim(a.Subject(), allianceEvery) {
 		if err := FetchAlliance.Queue(ctx, a); err != nil {
 			s.release(a.Subject())
-			return Corporation{}, err
+			return nil, err
 		}
 	}
-	return row, nil
+	return &row, nil
 }

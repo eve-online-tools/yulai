@@ -22,7 +22,7 @@ var FetchAlliance = task.New(
 	task.WithTimeout(timeout),
 )
 
-func (s *Sheet) alliance(ctx context.Context, in AllianceInput) (_ Alliance, err error) {
+func (s *Sheet) alliance(ctx context.Context, in AllianceInput) (_ *Alliance, err error) {
 	// The next corporation fetch retries a failed fetch.
 	defer func() {
 		if err != nil {
@@ -37,17 +37,17 @@ func (s *Sheet) alliance(ctx context.Context, in AllianceInput) (_ Alliance, err
 		},
 	)
 	if err != nil {
-		return Alliance{}, err
+		return nil, err
 	}
 	if err := esi.ResponseError(resp); err != nil {
-		return Alliance{}, err
+		return nil, err
 	}
 	data := resp.Data
 
 	prev, err := s.q.GetAlliance(ctx, in.AllianceID)
 	existed, err := db.Found(err)
 	if err != nil {
-		return Alliance{}, err
+		return nil, err
 	}
 	row, err := s.q.UpsertAlliance(ctx, UpsertAllianceParams{
 		ID:                    in.AllianceID,
@@ -61,10 +61,10 @@ func (s *Sheet) alliance(ctx context.Context, in AllianceInput) (_ Alliance, err
 		FetchedAt:             time.Now().UTC(),
 	})
 	if err != nil {
-		return Alliance{}, err
+		return nil, err
 	}
 	if !existed || db.Changed(prev, row) {
 		s.events.Emit(EventChanged)
 	}
-	return row, nil
+	return &row, nil
 }

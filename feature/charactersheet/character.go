@@ -37,7 +37,7 @@ func (s *Sheet) characters(ctx context.Context) ([]CharacterInput, error) {
 	return out, nil
 }
 
-func (s *Sheet) character(ctx context.Context, in CharacterInput) (CharacterSheet, error) {
+func (s *Sheet) character(ctx context.Context, in CharacterInput) (*CharacterSheet, error) {
 	resp, err := getcharacter.Request(
 		ctx, s.esi,
 		&getcharacter.Input{
@@ -45,17 +45,17 @@ func (s *Sheet) character(ctx context.Context, in CharacterInput) (CharacterShee
 		},
 	)
 	if err != nil {
-		return CharacterSheet{}, err
+		return nil, err
 	}
 	if err := esi.ResponseError(resp); err != nil {
-		return CharacterSheet{}, err
+		return nil, err
 	}
 	data := resp.Data
 
 	prev, err := s.q.GetCharacter(ctx, in.CharacterID)
 	existed, err := db.Found(err)
 	if err != nil {
-		return CharacterSheet{}, err
+		return nil, err
 	}
 	row, err := s.q.UpsertCharacter(ctx, UpsertCharacterParams{
 		CharacterID:    in.CharacterID,
@@ -72,11 +72,11 @@ func (s *Sheet) character(ctx context.Context, in CharacterInput) (CharacterShee
 		FetchedAt:      time.Now().UTC(),
 	})
 	if err != nil {
-		return CharacterSheet{}, err
+		return nil, err
 	}
 	err = s.chars.SetAffiliation(ctx, in.CharacterID, int64(row.CorporationID), (*int64)(row.AllianceID))
 	if err != nil {
-		return CharacterSheet{}, err
+		return nil, err
 	}
 	if !existed || db.Changed(prev, row) {
 		s.events.Emit(EventChanged)
@@ -86,8 +86,8 @@ func (s *Sheet) character(ctx context.Context, in CharacterInput) (CharacterShee
 	if s.claim(corp.Subject(), corporationEvery) {
 		if err := FetchCorporation.Queue(ctx, corp); err != nil {
 			s.release(corp.Subject())
-			return CharacterSheet{}, err
+			return nil, err
 		}
 	}
-	return row, nil
+	return &row, nil
 }
