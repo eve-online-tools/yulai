@@ -1,4 +1,59 @@
 version: "2"
+# Feature tables declare ESI ids with these column types, so sqlc uses the lib-esi-go
+# identifier types and ESI responses map onto query params without conversion.
+overrides:
+  go:
+    overrides:
+      - db_type: "TYPE_ID"
+        go_type: { import: "github.com/eve-online-tools/lib-esi-go/common/typeid", type: "Identifier" }
+      - db_type: "TYPE_ID"
+        nullable: true
+        go_type: { import: "github.com/eve-online-tools/lib-esi-go/common/typeid", type: "Identifier", pointer: true }
+      - db_type: "ITEM_ID"
+        go_type: { import: "github.com/eve-online-tools/lib-esi-go/common/item", type: "Identifier" }
+      - db_type: "ITEM_ID"
+        nullable: true
+        go_type: { import: "github.com/eve-online-tools/lib-esi-go/common/item", type: "Identifier", pointer: true }
+      - db_type: "SOLAR_SYSTEM_ID"
+        go_type: { import: "github.com/eve-online-tools/lib-esi-go/common/solarsystem", type: "Identifier" }
+      - db_type: "SOLAR_SYSTEM_ID"
+        nullable: true
+        go_type: { import: "github.com/eve-online-tools/lib-esi-go/common/solarsystem", type: "Identifier", pointer: true }
+      - db_type: "STATION_ID"
+        go_type: { import: "github.com/eve-online-tools/lib-esi-go/common/station", type: "Identifier" }
+      - db_type: "STATION_ID"
+        nullable: true
+        go_type: { import: "github.com/eve-online-tools/lib-esi-go/common/station", type: "Identifier", pointer: true }
+      - db_type: "CHARACTER_ID"
+        go_type: { import: "github.com/eve-online-tools/lib-esi-go/common/character", type: "Identifier" }
+      - db_type: "CHARACTER_ID"
+        nullable: true
+        go_type: { import: "github.com/eve-online-tools/lib-esi-go/common/character", type: "Identifier", pointer: true }
+      - db_type: "CORPORATION_ID"
+        go_type: { import: "github.com/eve-online-tools/lib-esi-go/common/corporation", type: "Identifier" }
+      - db_type: "CORPORATION_ID"
+        nullable: true
+        go_type: { import: "github.com/eve-online-tools/lib-esi-go/common/corporation", type: "Identifier", pointer: true }
+      - db_type: "ALLIANCE_ID"
+        go_type: { import: "github.com/eve-online-tools/lib-esi-go/common/alliance", type: "Identifier" }
+      - db_type: "ALLIANCE_ID"
+        nullable: true
+        go_type: { import: "github.com/eve-online-tools/lib-esi-go/common/alliance", type: "Identifier", pointer: true }
+      - db_type: "FACTION_ID"
+        go_type: { import: "github.com/eve-online-tools/lib-esi-go/common/faction", type: "Identifier" }
+      - db_type: "FACTION_ID"
+        nullable: true
+        go_type: { import: "github.com/eve-online-tools/lib-esi-go/common/faction", type: "Identifier", pointer: true }
+      - db_type: "BLOODLINE_ID"
+        go_type: { import: "github.com/eve-online-tools/lib-esi-go/common/bloodline", type: "Identifier" }
+      - db_type: "BLOODLINE_ID"
+        nullable: true
+        go_type: { import: "github.com/eve-online-tools/lib-esi-go/common/bloodline", type: "Identifier", pointer: true }
+      - db_type: "RACE_ID"
+        go_type: { import: "github.com/eve-online-tools/lib-esi-go/common/race", type: "Identifier" }
+      - db_type: "RACE_ID"
+        nullable: true
+        go_type: { import: "github.com/eve-online-tools/lib-esi-go/common/race", type: "Identifier", pointer: true }
 sql:
   - &pkg
     engine: "sqlite"
@@ -22,3 +77,10 @@ sql:
         <<: *go
         package: "character"
         out: "feature/character"
+  - <<: *pkg
+    queries: "feature/presence/queries.sql"
+    gen:
+      go:
+        <<: *go
+        package: "presence"
+        out: "feature/presence"
