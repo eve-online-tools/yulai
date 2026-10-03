@@ -3,7 +3,7 @@ import { useMutation, useSuspenseQuery } from "@tanstack/react-query";
 import { useNavigate } from "@tanstack/react-router";
 import { Service as Characters, type ListRow as Character } from "@bindings/github.com/eve-online-tools/yulai/feature/character";
 import type { SyncJob } from "@bindings/github.com/eve-online-tools/yulai/feature/sync";
-import { Alert, Button, Panel, Progress } from "@xaroth.nl/design/react";
+import { Alert, Button, Panel } from "@xaroth.nl/design/react";
 import { Portrait } from "@yulai/ui";
 import { DataUpdate } from "../../components/data-update";
 import { charactersQuery, sdeQuery, setupQuery, syncJobsQuery } from "../../queries";
@@ -45,7 +45,7 @@ export function WelcomePage() {
           </ol>
           <div className={styles.content}>
             {current === 0 && <AddFirst loginUrl={setup.loginUrl} />}
-            {current === 1 && <Syncing character={first} jobs={myJobs} synced={synced} sdeInstalled={sdeInstalled} sdeError={sde.lastError} />}
+            {current === 1 && <Syncing character={first} jobs={myJobs} sdeInstalled={sdeInstalled} sdeError={sde.lastError} />}
           </div>
         </Panel>
       </div>
@@ -78,12 +78,11 @@ function AddFirst({ loginUrl }: { loginUrl: string }) {
 type SyncingProps = {
   character: Character;
   jobs: SyncJob[];
-  synced: number;
   sdeInstalled: boolean;
   sdeError: string;
 };
 
-function Syncing({ character, jobs, synced, sdeInstalled, sdeError }: SyncingProps) {
+function Syncing({ character, jobs, sdeInstalled, sdeError }: SyncingProps) {
   const failed = jobs.find((j) => j.lastError);
   return (
     <>
@@ -91,7 +90,6 @@ function Syncing({ character, jobs, synced, sdeInstalled, sdeError }: SyncingPro
         <Portrait id={character.id} size={48} />
         <span>Welcome, {character.name}. Fetching your character data and the static game data.</span>
       </div>
-      <Progress label="Synchronizing" value={synced} max={jobs.length} showValue />
       {!sdeInstalled && <p className="muted small">Static data is downloading, see progress below.</p>}
       {failed && <Alert tone="warning">{failed.job}: {failed.lastError}</Alert>}
       {!sdeInstalled && sdeError && <Alert tone="warning">Static data: {sdeError}</Alert>}
