@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useMutation, useSuspenseQuery } from "@tanstack/react-query";
 import { Service as Characters } from "@bindings/github.com/eve-online-tools/yulai/feature/character";
 import type { FeatureInfo, ListRow as Character } from "@bindings/github.com/eve-online-tools/yulai/feature/character";
@@ -9,7 +9,6 @@ import { charactersQuery, featuresQuery } from "../../queries";
 const columns = [
   { key: "character", label: "Character" },
   { key: "token", label: "Token" },
-  { key: "refreshed", label: "Last refreshed" },
   { key: "features", label: "Features" },
   { key: "remove", label: "", align: "end" as const },
 ];
@@ -18,16 +17,18 @@ export function CharactersPage() {
   const { data: characters } = useSuspenseQuery(charactersQuery);
   const { data: features } = useSuspenseQuery(featuresQuery);
   const add = useMutation({ mutationFn: () => Characters.AddCharacter() });
+  const now = useNow();
 
   return (
     <>
       <PageHead
         title="Characters"
-        lead="Login continues in your browser."
         actions={
-          <Button onClick={() => add.mutate()} start={<Icon name="plus" />}>
-            Add character
-          </Button>
+          <Tooltip id="add-character" text="Login continues in your browser." placement="bottom">
+            <Button onClick={() => add.mutate()} start={<Icon name="plus" />}>
+              Add character
+            </Button>
+          </Tooltip>
         }
       />
       {add.isError && <Alert tone="danger">{String(add.error)}</Alert>}
@@ -35,17 +36,17 @@ export function CharactersPage() {
       {characters.length === 0 ? (
         <EmptyState title="No characters yet" />
       ) : (
-        <Table label="Characters" hover columns={columns} rows={characters.map((c) => characterRow(c, features))} />
+        <Table label="Characters" hover columns={columns} rows={characters.map((c) => characterRow(c, features, now))} />
       )}
     </>
   );
 }
 
-function characterRow(c: Character, features: FeatureInfo[]) {
+function characterRow(c: Character, features: FeatureInfo[], nowSec: number) {
   const enabled = enabledFeatures(features, c.scopes);
-  const nowSec = Date.now() / 1000;
   const active = c.status === "ok" && c.tokenExpiresAt != null && c.tokenExpiresAt > nowSec;
   const tokenLabel = c.status !== "ok" ? "needs login" : active ? "active" : "expired, refreshes on use";
+  const refreshed = `Last refreshed ${c.tokenIssuedAt ? timeAgo(nowSec - c.tokenIssuedAt) : "never"}`;
 
   return {
     character: (
@@ -55,11 +56,12 @@ function characterRow(c: Character, features: FeatureInfo[]) {
       </div>
     ),
     token: (
-      <span className={c.status !== "ok" ? "warn" : active ? "ok" : "muted"} title={c.statusError ?? ""}>
-        {tokenLabel}
-      </span>
+      <Tooltip id={`token-${c.id}`} text={c.statusError ? `${c.statusError}. ${refreshed}` : refreshed}>
+        <span className={c.status !== "ok" ? "warn" : active ? "ok" : "muted"} tabIndex={0}>
+          {tokenLabel}
+        </span>
+      </Tooltip>
     ),
-    refreshed: <span className="muted">{c.tokenIssuedAt ? new Date(c.tokenIssuedAt * 1000).toLocaleString() : "?"}</span>,
     features: (
       <div className="row">
         {enabled.length === 0 && <span className="muted">none</span>}
@@ -102,4 +104,22 @@ function RemoveButton({ id, name }: { id: number; name: string }) {
       </ConfirmDialog>
     </>
   );
+}
+
+// Seconds since epoch, ticking every minute so relative times stay current.
+function useNow() {
+  const [now, setNow] = useState(() => Date.now() / 1000);
+  useEffect(() => {
+    const t = setInterval(() => setNow(Date.now() / 1000), 60_000);
+    return () => clearInterval(t);
+  }, []);
+  return now;
+}
+
+function timeAgo(sec: number) {
+  const plural = (n: number, unit: string) => `${n} ${unit}${n === 1 ? "" : "s"} ago`;
+  if (sec < 60) return "just now";
+  if (sec < 3600) return `${Math.floor(sec / 60)} min ago`;
+  if (sec < 86400) return plural(Math.floor(sec / 3600), "hour");
+  return plural(Math.floor(sec / 86400), "day");
 }
