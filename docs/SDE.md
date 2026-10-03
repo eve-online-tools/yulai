@@ -46,7 +46,7 @@ Typed tables with a column per field, generated from the data:
 - Indexes on every `parent` column.
 - `meta(build, release_date, schema)`. `schema` is a hash of `schema.sql`.
 
-Measured on build 3569502: 218 tables, 361 MB before indexes. `types` is 163 MB (descriptions in 8 languages),
+Measured on build 3569502: 229 tables, 343 MB with indexes, built in about 55 s. `types` is 163 MB (descriptions in 8 languages),
 `mapMoons` 65 MB, `missions_messages` 57 MB. SQLite with a pure Go driver has no page compression;
 zstd-compressing long text values per row would save ~45 MB on `types` but makes them unsearchable, so it is
 not done.
@@ -64,7 +64,7 @@ Files not in the schema are skipped. Regenerating against a newer SDE picks up s
 
 ### Reading
 
-`sde.Store` holds the open database (`query_only`, several connections) behind a read/write lock.
+`sde.Store` holds the open database (`query_only`) behind a read/write lock.
 `Store.Read(ctx, fn)` runs `fn` with the sqlc `*Queries` under the read lock, so a swap never closes a database
 mid-query. Before the first install it returns `sde.ErrNotInstalled`; `sde.Installed` is a `task.Condition` for
 tasks that need static data. Queries go in `core/sde/queries.sql`, with an `sqlc.yaml` entry over
