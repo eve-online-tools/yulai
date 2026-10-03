@@ -1,21 +1,31 @@
 -- +goose Up
--- Owned by feature/presence. *_at columns are when that part was last fetched.
-CREATE TABLE presence (
-    character_id    INTEGER PRIMARY KEY REFERENCES characters(id) ON DELETE CASCADE,
-    online          INTEGER NOT NULL DEFAULT 0,
-    last_login      INTEGER,
-    last_logout     INTEGER,
-    logins          INTEGER,
-    solar_system_id INTEGER,
-    station_id      INTEGER,
-    structure_id    INTEGER,
-    ship_type_id    INTEGER,
-    ship_item_id    INTEGER,
-    ship_name       TEXT,
-    online_at       INTEGER,
-    location_at     INTEGER,
-    ship_at         INTEGER
+-- Owned by feature/presence. One table per ESI endpoint, typed like its response.
+CREATE TABLE presence_online (
+    character_id INTEGER   PRIMARY KEY REFERENCES characters(id) ON DELETE CASCADE,
+    online       BOOLEAN   NOT NULL,
+    last_login   TIMESTAMP,
+    last_logout  TIMESTAMP,
+    logins       INTEGER,
+    fetched_at   TIMESTAMP NOT NULL
+);
+
+CREATE TABLE presence_locations (
+    character_id    INTEGER         PRIMARY KEY REFERENCES characters(id) ON DELETE CASCADE,
+    solar_system_id SOLAR_SYSTEM_ID NOT NULL,
+    station_id      STATION_ID,
+    structure_id    ITEM_ID,
+    fetched_at      TIMESTAMP       NOT NULL
+);
+
+CREATE TABLE presence_ships (
+    character_id INTEGER   PRIMARY KEY REFERENCES characters(id) ON DELETE CASCADE,
+    ship_item_id ITEM_ID   NOT NULL,
+    ship_type_id TYPE_ID   NOT NULL,
+    ship_name    TEXT      NOT NULL,
+    fetched_at   TIMESTAMP NOT NULL
 );
 
 -- +goose Down
-DROP TABLE presence;
+DROP TABLE presence_ships;
+DROP TABLE presence_locations;
+DROP TABLE presence_online;

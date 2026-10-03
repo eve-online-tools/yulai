@@ -1,33 +1,39 @@
--- name: List :many
-SELECT * FROM presence ORDER BY character_id;
+-- name: ListOnline :many
+SELECT * FROM presence_online;
 
--- name: Get :one
-SELECT * FROM presence WHERE character_id = ?;
+-- name: GetOnline :one
+SELECT * FROM presence_online WHERE character_id = ?;
+
+-- name: GetLocation :one
+SELECT * FROM presence_locations WHERE character_id = ?;
+
+-- name: GetShip :one
+SELECT * FROM presence_ships WHERE character_id = ?;
 
 -- name: UpsertOnline :exec
-INSERT INTO presence (character_id, online, last_login, last_logout, logins, online_at)
+INSERT INTO presence_online (character_id, online, last_login, last_logout, logins, fetched_at)
 VALUES (?, ?, ?, ?, ?, ?)
 ON CONFLICT(character_id) DO UPDATE SET
     online = excluded.online,
     last_login = excluded.last_login,
     last_logout = excluded.last_logout,
     logins = excluded.logins,
-    online_at = excluded.online_at;
+    fetched_at = excluded.fetched_at;
 
 -- name: UpsertLocation :exec
-INSERT INTO presence (character_id, solar_system_id, station_id, structure_id, location_at)
+INSERT INTO presence_locations (character_id, solar_system_id, station_id, structure_id, fetched_at)
 VALUES (?, ?, ?, ?, ?)
 ON CONFLICT(character_id) DO UPDATE SET
     solar_system_id = excluded.solar_system_id,
     station_id = excluded.station_id,
     structure_id = excluded.structure_id,
-    location_at = excluded.location_at;
+    fetched_at = excluded.fetched_at;
 
 -- name: UpsertShip :exec
-INSERT INTO presence (character_id, ship_type_id, ship_item_id, ship_name, ship_at)
+INSERT INTO presence_ships (character_id, ship_item_id, ship_type_id, ship_name, fetched_at)
 VALUES (?, ?, ?, ?, ?)
 ON CONFLICT(character_id) DO UPDATE SET
-    ship_type_id = excluded.ship_type_id,
     ship_item_id = excluded.ship_item_id,
+    ship_type_id = excluded.ship_type_id,
     ship_name = excluded.ship_name,
-    ship_at = excluded.ship_at;
+    fetched_at = excluded.fetched_at;

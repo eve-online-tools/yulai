@@ -34,7 +34,7 @@ Real features are out of scope for now. This plan describes where they plug in.
 | `identity/token`   | `tokens` table, sealed refresh tokens, `For()` → `RefreshableToken`| ported         |
 | `feature`          | `Feature` contract (`Tasks() []task.Binding`), `Enabled()`, `Covers()` | done (tested) |
 | `feature/character`| `characters` table, add-character flow, list, remove, needs-login  | done (tested), `Enroll` is a no-op until the scheduler is wired |
-| `feature/presence` | `presence` table: online, location, ship. Paced by online state     | sync done (tested), no UI yet |
+| `feature/presence` | `presence_online`, `presence_locations`, `presence_ships`. Paced by online state | sync done (tested), no UI yet |
 | `core/task`        | Generic in-memory scheduler, `task_pauses` table (see SCHEDULER.md) | engine done (tested), not wired |
 | `feature/sync`     | Wails `SyncService` over the scheduler: list, pause, resume, trigger | old job registry, to be replaced |
 | `frontend`         | pnpm workspaces: `apps/yulai` (router, query layer, events, pages), `packages/ui` | done, renders stub data |
@@ -106,7 +106,7 @@ Ported from asset-manager, minus `presence`:
   scopes (space separated `scp`), issued_at (`iat`)
 - `task_pauses`: (kind, value) PK. kind is `task` or `subject`. Scheduling itself is not persisted, see `docs/SCHEDULER.md`.
 
-Each feature then adds its own tables in a new migration (`00002_presence.sql`: `presence`). Once a table exists, the hand-written
+Each feature then adds its own tables in a new migration (`00002_presence.sql`: `presence_online`, `presence_locations`, `presence_ships`). Once a table exists, the hand-written
 `ListRow` / `SyncJob` structs are replaced by sqlc-generated ones (`sqlc_*.go`, `*_sqlc.go`). Keep the
 field names and JSON tags so the bindings don't change. `sqlc.yaml` is added together with the first
 `queries.sql` (copy asset-manager's anchor-based layout).
@@ -116,6 +116,10 @@ field names and JSON tags so the bindings don't change. `sqlc.yaml` is added tog
 1. `feature/<name>/`: a type implementing `feature.Feature` (`Name`, `Scopes`, `Tasks`).
 2. Tasks in `feature/<name>/tasks/`: a receiver type holding dependencies and `var X = task.New((*Recv).X, opts...)`. See `docs/SCHEDULER.md`.
 3. Tables go in a new migration. Queries go in `feature/<name>/queries.sql` with a matching `sqlc.yaml` entry.
+   One table per ESI endpoint, with columns typed and nullable like its response, so sqlc params take ESI
+   output fields as they are. ESI ids use the column types mapped in `sqlc.yaml` (`TYPE_ID`, `ITEM_ID`,
+   `SOLAR_SYSTEM_ID`, ...) to lib-esi-go identifiers; add a pair there for a new id kind. Flags are `BOOLEAN`,
+   times are `TIMESTAMP` (stored as RFC 3339 text, write UTC).
 4. Optional Wails `Service` for the UI, with `ServiceName()`. Emit `<name>:changed` after writes and register
    the event in `app/app.go` `init()`.
 5. Register the feature in `app.New`'s `features` slice and its service in `Services()`.

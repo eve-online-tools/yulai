@@ -7,62 +7,86 @@ package presence
 
 import (
 	"context"
+	"time"
+
+	"github.com/eve-online-tools/lib-esi-go/common/item"
+	"github.com/eve-online-tools/lib-esi-go/common/solarsystem"
+	"github.com/eve-online-tools/lib-esi-go/common/station"
+	"github.com/eve-online-tools/lib-esi-go/common/typeid"
 )
 
-const get = `-- name: Get :one
-SELECT character_id, online, last_login, last_logout, logins, solar_system_id, station_id, structure_id, ship_type_id, ship_item_id, ship_name, online_at, location_at, ship_at FROM presence WHERE character_id = ?
+const getLocation = `-- name: GetLocation :one
+SELECT character_id, solar_system_id, station_id, structure_id, fetched_at FROM presence_locations WHERE character_id = ?
 `
 
-func (q *Queries) Get(ctx context.Context, characterID int64) (Presence, error) {
-	row := q.db.QueryRowContext(ctx, get, characterID)
-	var i Presence
+func (q *Queries) GetLocation(ctx context.Context, characterID int64) (PresenceLocation, error) {
+	row := q.db.QueryRowContext(ctx, getLocation, characterID)
+	var i PresenceLocation
+	err := row.Scan(
+		&i.CharacterID,
+		&i.SolarSystemID,
+		&i.StationID,
+		&i.StructureID,
+		&i.FetchedAt,
+	)
+	return i, err
+}
+
+const getOnline = `-- name: GetOnline :one
+SELECT character_id, online, last_login, last_logout, logins, fetched_at FROM presence_online WHERE character_id = ?
+`
+
+func (q *Queries) GetOnline(ctx context.Context, characterID int64) (PresenceOnline, error) {
+	row := q.db.QueryRowContext(ctx, getOnline, characterID)
+	var i PresenceOnline
 	err := row.Scan(
 		&i.CharacterID,
 		&i.Online,
 		&i.LastLogin,
 		&i.LastLogout,
 		&i.Logins,
-		&i.SolarSystemID,
-		&i.StationID,
-		&i.StructureID,
-		&i.ShipTypeID,
-		&i.ShipItemID,
-		&i.ShipName,
-		&i.OnlineAt,
-		&i.LocationAt,
-		&i.ShipAt,
+		&i.FetchedAt,
 	)
 	return i, err
 }
 
-const list = `-- name: List :many
-SELECT character_id, online, last_login, last_logout, logins, solar_system_id, station_id, structure_id, ship_type_id, ship_item_id, ship_name, online_at, location_at, ship_at FROM presence ORDER BY character_id
+const getShip = `-- name: GetShip :one
+SELECT character_id, ship_item_id, ship_type_id, ship_name, fetched_at FROM presence_ships WHERE character_id = ?
 `
 
-func (q *Queries) List(ctx context.Context) ([]Presence, error) {
-	rows, err := q.db.QueryContext(ctx, list)
+func (q *Queries) GetShip(ctx context.Context, characterID int64) (PresenceShip, error) {
+	row := q.db.QueryRowContext(ctx, getShip, characterID)
+	var i PresenceShip
+	err := row.Scan(
+		&i.CharacterID,
+		&i.ShipItemID,
+		&i.ShipTypeID,
+		&i.ShipName,
+		&i.FetchedAt,
+	)
+	return i, err
+}
+
+const listOnline = `-- name: ListOnline :many
+SELECT character_id, online, last_login, last_logout, logins, fetched_at FROM presence_online
+`
+
+func (q *Queries) ListOnline(ctx context.Context) ([]PresenceOnline, error) {
+	rows, err := q.db.QueryContext(ctx, listOnline)
 	if err != nil {
 		return nil, err
 	}
 	defer rows.Close()
-	var items []Presence
+	var items []PresenceOnline
 	for rows.Next() {
-		var i Presence
+		var i PresenceOnline
 		if err := rows.Scan(
 			&i.CharacterID,
 			&i.Online,
 			&i.LastLogin,
 			&i.LastLogout,
 			&i.Logins,
-			&i.SolarSystemID,
-			&i.StationID,
-			&i.StructureID,
-			&i.ShipTypeID,
-			&i.ShipItemID,
-			&i.ShipName,
-			&i.OnlineAt,
-			&i.LocationAt,
-			&i.ShipAt,
+			&i.FetchedAt,
 		); err != nil {
 			return nil, err
 		}
@@ -78,21 +102,21 @@ func (q *Queries) List(ctx context.Context) ([]Presence, error) {
 }
 
 const upsertLocation = `-- name: UpsertLocation :exec
-INSERT INTO presence (character_id, solar_system_id, station_id, structure_id, location_at)
+INSERT INTO presence_locations (character_id, solar_system_id, station_id, structure_id, fetched_at)
 VALUES (?, ?, ?, ?, ?)
 ON CONFLICT(character_id) DO UPDATE SET
     solar_system_id = excluded.solar_system_id,
     station_id = excluded.station_id,
     structure_id = excluded.structure_id,
-    location_at = excluded.location_at
+    fetched_at = excluded.fetched_at
 `
 
 type UpsertLocationParams struct {
-	CharacterID   int64  `json:"characterId"`
-	SolarSystemID *int64 `json:"solarSystemId"`
-	StationID     *int64 `json:"stationId"`
-	StructureID   *int64 `json:"structureId"`
-	LocationAt    *int64 `json:"locationAt"`
+	CharacterID   int64                  `json:"characterId"`
+	SolarSystemID solarsystem.Identifier `json:"solarSystemId"`
+	StationID     *station.Identifier    `json:"stationId"`
+	StructureID   *item.Identifier       `json:"structureId"`
+	FetchedAt     time.Time              `json:"fetchedAt"`
 }
 
 func (q *Queries) UpsertLocation(ctx context.Context, arg UpsertLocationParams) error {
@@ -101,29 +125,29 @@ func (q *Queries) UpsertLocation(ctx context.Context, arg UpsertLocationParams) 
 		arg.SolarSystemID,
 		arg.StationID,
 		arg.StructureID,
-		arg.LocationAt,
+		arg.FetchedAt,
 	)
 	return err
 }
 
 const upsertOnline = `-- name: UpsertOnline :exec
-INSERT INTO presence (character_id, online, last_login, last_logout, logins, online_at)
+INSERT INTO presence_online (character_id, online, last_login, last_logout, logins, fetched_at)
 VALUES (?, ?, ?, ?, ?, ?)
 ON CONFLICT(character_id) DO UPDATE SET
     online = excluded.online,
     last_login = excluded.last_login,
     last_logout = excluded.last_logout,
     logins = excluded.logins,
-    online_at = excluded.online_at
+    fetched_at = excluded.fetched_at
 `
 
 type UpsertOnlineParams struct {
-	CharacterID int64  `json:"characterId"`
-	Online      int64  `json:"online"`
-	LastLogin   *int64 `json:"lastLogin"`
-	LastLogout  *int64 `json:"lastLogout"`
-	Logins      *int64 `json:"logins"`
-	OnlineAt    *int64 `json:"onlineAt"`
+	CharacterID int64      `json:"characterId"`
+	Online      bool       `json:"online"`
+	LastLogin   *time.Time `json:"lastLogin"`
+	LastLogout  *time.Time `json:"lastLogout"`
+	Logins      *int64     `json:"logins"`
+	FetchedAt   time.Time  `json:"fetchedAt"`
 }
 
 func (q *Queries) UpsertOnline(ctx context.Context, arg UpsertOnlineParams) error {
@@ -133,36 +157,36 @@ func (q *Queries) UpsertOnline(ctx context.Context, arg UpsertOnlineParams) erro
 		arg.LastLogin,
 		arg.LastLogout,
 		arg.Logins,
-		arg.OnlineAt,
+		arg.FetchedAt,
 	)
 	return err
 }
 
 const upsertShip = `-- name: UpsertShip :exec
-INSERT INTO presence (character_id, ship_type_id, ship_item_id, ship_name, ship_at)
+INSERT INTO presence_ships (character_id, ship_item_id, ship_type_id, ship_name, fetched_at)
 VALUES (?, ?, ?, ?, ?)
 ON CONFLICT(character_id) DO UPDATE SET
-    ship_type_id = excluded.ship_type_id,
     ship_item_id = excluded.ship_item_id,
+    ship_type_id = excluded.ship_type_id,
     ship_name = excluded.ship_name,
-    ship_at = excluded.ship_at
+    fetched_at = excluded.fetched_at
 `
 
 type UpsertShipParams struct {
-	CharacterID int64   `json:"characterId"`
-	ShipTypeID  *int64  `json:"shipTypeId"`
-	ShipItemID  *int64  `json:"shipItemId"`
-	ShipName    *string `json:"shipName"`
-	ShipAt      *int64  `json:"shipAt"`
+	CharacterID int64             `json:"characterId"`
+	ShipItemID  item.Identifier   `json:"shipItemId"`
+	ShipTypeID  typeid.Identifier `json:"shipTypeId"`
+	ShipName    string            `json:"shipName"`
+	FetchedAt   time.Time         `json:"fetchedAt"`
 }
 
 func (q *Queries) UpsertShip(ctx context.Context, arg UpsertShipParams) error {
 	_, err := q.db.ExecContext(ctx, upsertShip,
 		arg.CharacterID,
-		arg.ShipTypeID,
 		arg.ShipItemID,
+		arg.ShipTypeID,
 		arg.ShipName,
-		arg.ShipAt,
+		arg.FetchedAt,
 	)
 	return err
 }

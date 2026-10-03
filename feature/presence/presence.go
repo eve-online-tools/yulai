@@ -11,13 +11,9 @@ import (
 	"sync"
 	"time"
 
-	esicharacter "github.com/eve-online-tools/lib-esi-go/common/character"
-	"github.com/eve-online-tools/lib-esi-go/esi/getcharacterscharacteridlocation"
-	"github.com/eve-online-tools/lib-esi-go/esi/getcharacterscharacteridonline"
-	"github.com/eve-online-tools/lib-esi-go/esi/getcharacterscharacteridship"
 	"github.com/eve-online-tools/lib-esi-go/middleware/authentication"
+	"github.com/eve-online-tools/lib-esi-go/request"
 
-	"github.com/eve-online-tools/yulai/core/esi"
 	"github.com/eve-online-tools/yulai/core/task"
 	"github.com/eve-online-tools/yulai/feature"
 )
@@ -78,33 +74,6 @@ const (
 	partShip
 )
 
-// Every task ticks at the same rate; the seeds decide who is due.
-var (
-	Online = task.New(
-		(*Feature).online,
-		task.WithStartup(),
-		task.WithInterval(tick),
-		task.WithTimeout(timeout),
-		task.Pausable("presence.online"),
-	)
-
-	Location = task.New(
-		(*Feature).location,
-		task.WithStartup(),
-		task.WithInterval(tick),
-		task.WithTimeout(timeout),
-		task.Pausable("presence.location"),
-	)
-
-	Ship = task.New(
-		(*Feature).ship,
-		task.WithStartup(),
-		task.WithInterval(tick),
-		task.WithTimeout(timeout),
-		task.Pausable("presence.ship"),
-	)
-)
-
 type Feature struct {
 	q      *Queries
 	esi    *http.Client
@@ -152,11 +121,11 @@ func (f *Feature) due(p part) task.Seed[Input] {
 		if err != nil || len(ids) == 0 {
 			return nil, err
 		}
-		rows, err := f.q.List(ctx)
+		rows, err := f.q.ListOnline(ctx)
 		if err != nil {
 			return nil, err
 		}
-		stored := make(map[int64]*Presence, len(rows))
+		stored := make(map[int64]*PresenceOnline, len(rows))
 		for i := range rows {
 			stored[rows[i].CharacterID] = &rows[i]
 		}
@@ -175,9 +144,9 @@ func (f *Feature) due(p part) task.Seed[Input] {
 	}
 }
 
-// interval is how often a part is fetched given the stored presence, nil if none.
-func interval(p part, r *Presence, now time.Time) time.Duration {
-	online := r != nil && r.Online != 0
+// interval is how often a part is fetched given the stored online state, nil if none.
+func interval(p part, r *PresenceOnline, now time.Time) time.Duration {
+	online := r != nil && r.Online
 	switch p {
 	case partOnline:
 		if r == nil || online || !loggedOutFor(r, now, slowAfter) {
@@ -197,8 +166,8 @@ func interval(p part, r *Presence, now time.Time) time.Duration {
 }
 
 // loggedOutFor treats an unknown logout time as long ago.
-func loggedOutFor(r *Presence, now time.Time, d time.Duration) bool {
-	return r.LastLogout == nil || now.Sub(time.Unix(*r.LastLogout, 0)) >= d
+func loggedOutFor(r *PresenceOnline, now time.Time, d time.Duration) bool {
+	return r.LastLogout == nil || now.Sub(*r.LastLogout) >= d
 }
 
 func (f *Feature) mark(characterID int64, p part) {
@@ -216,158 +185,24 @@ func (f *Feature) forget(characterID int64, ps ...part) {
 	}
 }
 
-func (f *Feature) stored(ctx context.Context, characterID int64) (*Presence, error) {
-	r, err := f.q.Get(ctx, characterID)
+func (f *Feature) auth(characterID int64) request.RequestOption {
+	return authentication.WithToken(f.tokens.For(characterID))
+}
+
+// stored returns the row, or nil when there is none yet.
+func stored[T any](row T, err error) (*T, error) {
 	if errors.Is(err, sql.ErrNoRows) {
 		return nil, nil
 	}
 	if err != nil {
 		return nil, err
 	}
-	return &r, nil
+	return &row, nil
 }
-
-func (f *Feature) online(ctx context.Context, in Input) (bool, error) {
-	f.mark(in.CharacterID, partOnline)
-	data, err := esi.Check(getcharacterscharacteridonline.Request(ctx, f.esi,
-		&getcharacterscharacteridonline.Input{Character: esicharacter.Identifier(in.CharacterID)},
-		authentication.WithToken(f.tokens.For(in.CharacterID))))
-	if err != nil {
-		return false, err
-	}
-	if data == nil {
-		return false, errors.New("presence: empty online response")
-	}
-	prev, err := f.stored(ctx, in.CharacterID)
-	if err != nil {
-		return false, err
-	}
-	next := Presence{
-		Online:     b2i(data.Online),
-		LastLogin:  unixPtr(data.LastLogin),
-		LastLogout: unixPtr(data.LastLogout),
-		Logins:     data.Logins,
-	}
-	if err := f.q.UpsertOnline(ctx, UpsertOnlineParams{
-		CharacterID: in.CharacterID,
-		Online:      next.Online,
-		LastLogin:   next.LastLogin,
-		LastLogout:  next.LastLogout,
-		Logins:      next.Logins,
-		OnlineAt:    ptr(time.Now().Unix()),
-	}); err != nil {
-		return false, err
-	}
-	if prev == nil || prev.Online != next.Online {
-		// Location and ship switch pace with the online state.
-		f.forget(in.CharacterID, partLocation, partShip)
-	}
-	if prev == nil || prev.Online != next.Online || !eq(prev.LastLogin, next.LastLogin) ||
-		!eq(prev.LastLogout, next.LastLogout) || !eq(prev.Logins, next.Logins) {
-		f.events.Emit(EventChanged)
-	}
-	return data.Online, nil
-}
-
-func (f *Feature) location(ctx context.Context, in Input) (struct{}, error) {
-	f.mark(in.CharacterID, partLocation)
-	data, err := esi.Check(getcharacterscharacteridlocation.Request(ctx, f.esi,
-		&getcharacterscharacteridlocation.Input{Character: esicharacter.Identifier(in.CharacterID)},
-		authentication.WithToken(f.tokens.For(in.CharacterID))))
-	if err != nil {
-		return struct{}{}, err
-	}
-	if data == nil {
-		return struct{}{}, errors.New("presence: empty location response")
-	}
-	prev, err := f.stored(ctx, in.CharacterID)
-	if err != nil {
-		return struct{}{}, err
-	}
-	next := Presence{
-		SolarSystemID: ptr(int64(data.SolarSystem)),
-		StationID:     idPtr(data.Station),
-		StructureID:   idPtr(data.Structure),
-	}
-	if err := f.q.UpsertLocation(ctx, UpsertLocationParams{
-		CharacterID:   in.CharacterID,
-		SolarSystemID: next.SolarSystemID,
-		StationID:     next.StationID,
-		StructureID:   next.StructureID,
-		LocationAt:    ptr(time.Now().Unix()),
-	}); err != nil {
-		return struct{}{}, err
-	}
-	if prev == nil || !eq(prev.SolarSystemID, next.SolarSystemID) || !eq(prev.StationID, next.StationID) ||
-		!eq(prev.StructureID, next.StructureID) {
-		f.events.Emit(EventChanged)
-	}
-	return struct{}{}, nil
-}
-
-func (f *Feature) ship(ctx context.Context, in Input) (struct{}, error) {
-	f.mark(in.CharacterID, partShip)
-	data, err := esi.Check(getcharacterscharacteridship.Request(ctx, f.esi,
-		&getcharacterscharacteridship.Input{Character: esicharacter.Identifier(in.CharacterID)},
-		authentication.WithToken(f.tokens.For(in.CharacterID))))
-	if err != nil {
-		return struct{}{}, err
-	}
-	if data == nil {
-		return struct{}{}, errors.New("presence: empty ship response")
-	}
-	prev, err := f.stored(ctx, in.CharacterID)
-	if err != nil {
-		return struct{}{}, err
-	}
-	next := Presence{
-		ShipTypeID: ptr(int64(data.ShipType)),
-		ShipItemID: ptr(int64(data.ShipItem)),
-		ShipName:   ptr(data.ShipName),
-	}
-	if err := f.q.UpsertShip(ctx, UpsertShipParams{
-		CharacterID: in.CharacterID,
-		ShipTypeID:  next.ShipTypeID,
-		ShipItemID:  next.ShipItemID,
-		ShipName:    next.ShipName,
-		ShipAt:      ptr(time.Now().Unix()),
-	}); err != nil {
-		return struct{}{}, err
-	}
-	if prev == nil || !eq(prev.ShipTypeID, next.ShipTypeID) || !eq(prev.ShipItemID, next.ShipItemID) ||
-		!eq(prev.ShipName, next.ShipName) {
-		f.events.Emit(EventChanged)
-	}
-	return struct{}{}, nil
-}
-
-func ptr[T any](v T) *T { return &v }
 
 func eq[T comparable](a, b *T) bool {
 	if a == nil || b == nil {
 		return a == b
 	}
 	return *a == *b
-}
-
-func b2i(b bool) int64 {
-	if b {
-		return 1
-	}
-	return 0
-}
-
-func unixPtr(t *time.Time) *int64 {
-	if t == nil {
-		return nil
-	}
-	return ptr(t.Unix())
-}
-
-// idPtr converts an optional lib-esi-go identifier to a plain int64 pointer.
-func idPtr[T ~int64](v *T) *int64 {
-	if v == nil {
-		return nil
-	}
-	return ptr(int64(*v))
 }

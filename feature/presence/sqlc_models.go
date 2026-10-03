@@ -4,19 +4,36 @@
 
 package presence
 
-type Presence struct {
-	CharacterID   int64   `json:"characterId"`
-	Online        int64   `json:"online"`
-	LastLogin     *int64  `json:"lastLogin"`
-	LastLogout    *int64  `json:"lastLogout"`
-	Logins        *int64  `json:"logins"`
-	SolarSystemID *int64  `json:"solarSystemId"`
-	StationID     *int64  `json:"stationId"`
-	StructureID   *int64  `json:"structureId"`
-	ShipTypeID    *int64  `json:"shipTypeId"`
-	ShipItemID    *int64  `json:"shipItemId"`
-	ShipName      *string `json:"shipName"`
-	OnlineAt      *int64  `json:"onlineAt"`
-	LocationAt    *int64  `json:"locationAt"`
-	ShipAt        *int64  `json:"shipAt"`
+import (
+	"time"
+
+	"github.com/eve-online-tools/lib-esi-go/common/item"
+	"github.com/eve-online-tools/lib-esi-go/common/solarsystem"
+	"github.com/eve-online-tools/lib-esi-go/common/station"
+	"github.com/eve-online-tools/lib-esi-go/common/typeid"
+)
+
+type PresenceLocation struct {
+	CharacterID   int64                  `json:"characterId"`
+	SolarSystemID solarsystem.Identifier `json:"solarSystemId"`
+	StationID     *station.Identifier    `json:"stationId"`
+	StructureID   *item.Identifier       `json:"structureId"`
+	FetchedAt     time.Time              `json:"fetchedAt"`
+}
+
+type PresenceOnline struct {
+	CharacterID int64      `json:"characterId"`
+	Online      bool       `json:"online"`
+	LastLogin   *time.Time `json:"lastLogin"`
+	LastLogout  *time.Time `json:"lastLogout"`
+	Logins      *int64     `json:"logins"`
+	FetchedAt   time.Time  `json:"fetchedAt"`
+}
+
+type PresenceShip struct {
+	CharacterID int64             `json:"characterId"`
+	ShipItemID  item.Identifier   `json:"shipItemId"`
+	ShipTypeID  typeid.Identifier `json:"shipTypeId"`
+	ShipName    string            `json:"shipName"`
+	FetchedAt   time.Time         `json:"fetchedAt"`
 }

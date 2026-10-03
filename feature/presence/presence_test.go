@@ -76,23 +76,23 @@ const (
 
 func TestInterval(t *testing.T) {
 	now := time.Unix(1_800_000_000, 0)
-	recent := now.Add(-5 * time.Minute).Unix()
-	long := now.Add(-20 * time.Minute).Unix()
-	online := &Presence{Online: 1}
-	offlineRecent := &Presence{LastLogout: &recent}
-	offlineLong := &Presence{LastLogout: &long}
+	recent := now.Add(-5 * time.Minute)
+	long := now.Add(-20 * time.Minute)
+	online := &PresenceOnline{Online: true}
+	offlineRecent := &PresenceOnline{LastLogout: &recent}
+	offlineLong := &PresenceOnline{LastLogout: &long}
 
 	cases := []struct {
 		name string
 		p    part
-		r    *Presence
+		r    *PresenceOnline
 		want time.Duration
 	}{
 		{"online unknown", partOnline, nil, onlineFast},
 		{"online while online", partOnline, online, onlineFast},
 		{"online just logged out", partOnline, offlineRecent, onlineFast},
 		{"online logged out long ago", partOnline, offlineLong, onlineSlow},
-		{"online no logout time", partOnline, &Presence{}, onlineSlow},
+		{"online no logout time", partOnline, &PresenceOnline{}, onlineSlow},
 		{"location online", partLocation, online, locationFast},
 		{"location offline", partLocation, offlineRecent, offlineEvery},
 		{"location unknown", partLocation, nil, offlineEvery},
@@ -119,13 +119,17 @@ func TestFetchPersists(t *testing.T) {
 	if _, err := f.ship(ctx, Input{pilot}); err != nil {
 		t.Fatal(err)
 	}
-	r, err := f.q.Get(ctx, pilot)
-	if err != nil {
-		t.Fatal(err)
+	on, err := f.q.GetOnline(ctx, pilot)
+	if err != nil || !on.Online || *on.Logins != 7 || !on.LastLogout.Equal(time.Date(2026, 10, 2, 10, 0, 0, 0, time.UTC)) {
+		t.Fatalf("online = %+v, %v", on, err)
 	}
-	if r.Online != 1 || *r.Logins != 7 || *r.SolarSystemID != 30000142 || *r.StationID != 60003760 ||
-		r.StructureID != nil || *r.ShipTypeID != 670 || *r.ShipName != "Pod" || r.OnlineAt == nil {
-		t.Fatalf("stored %+v", r)
+	loc, err := f.q.GetLocation(ctx, pilot)
+	if err != nil || loc.SolarSystemID != 30000142 || *loc.StationID != 60003760 || loc.StructureID != nil {
+		t.Fatalf("location = %+v, %v", loc, err)
+	}
+	ship, err := f.q.GetShip(ctx, pilot)
+	if err != nil || ship.ShipTypeID != 670 || ship.ShipName != "Pod" || ship.FetchedAt.IsZero() {
+		t.Fatalf("ship = %+v, %v", ship, err)
 	}
 	if events.n != 3 {
 		t.Fatalf("events = %d, want 3", events.n)
@@ -176,7 +180,7 @@ func TestDue(t *testing.T) {
 	if _, err := conn.Exec(`DELETE FROM characters WHERE id = ?`, pilot); err != nil {
 		t.Fatal(err)
 	}
-	if rows, _ := f.q.List(ctx); len(rows) != 0 {
+	if rows, _ := f.q.ListOnline(ctx); len(rows) != 0 {
 		t.Fatalf("presence rows = %v after delete, want none", rows)
 	}
 }
