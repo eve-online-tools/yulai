@@ -6,7 +6,7 @@ import type { SyncJob } from "@bindings/github.com/eve-online-tools/yulai/featur
 import { Alert, Button, Panel, Progress } from "@xaroth.nl/design/react";
 import { Portrait } from "@yulai/ui";
 import { DataUpdate } from "../../components/data-update";
-import { charactersQuery, setupQuery, syncJobsQuery } from "../../queries";
+import { charactersQuery, sdeQuery, setupQuery, syncJobsQuery } from "../../queries";
 import styles from "./welcome.module.scss";
 
 const steps = ["Add a character", "Synchronizing", "Complete"];
@@ -16,12 +16,14 @@ export function WelcomePage() {
   const { data: setup } = useSuspenseQuery(setupQuery);
   const { data: characters } = useSuspenseQuery(charactersQuery);
   const { data: jobs } = useSuspenseQuery(syncJobsQuery);
+  const { data: sde } = useSuspenseQuery(sdeQuery);
   const navigate = useNavigate();
 
   const first = characters[0];
   const myJobs = first ? jobs.filter((j) => j.characterId === first.id) : [];
   const synced = myJobs.filter((j) => j.lastRun != null).length;
-  const current = !first ? 0 : synced < myJobs.length ? 1 : 2;
+  const sdeInstalled = sde.build > 0;
+  const current = !first ? 0 : synced < myJobs.length || !sdeInstalled ? 1 : 2;
 
   useEffect(() => {
     if (current === 2) navigate({ to: "/overview", replace: true });
@@ -43,11 +45,8 @@ export function WelcomePage() {
           </ol>
           <div className={styles.content}>
             {current === 0 && <AddFirst loginUrl={setup.loginUrl} />}
-            {current === 1 && <Syncing character={first} jobs={myJobs} synced={synced} />}
+            {current === 1 && <Syncing character={first} jobs={myJobs} synced={synced} sdeInstalled={sdeInstalled} sdeError={sde.lastError} />}
           </div>
-          <p className="muted small">
-            Login runs in your own browser, so Yulai never sees your password. Tokens are stored encrypted on this machine.
-          </p>
         </Panel>
       </div>
       <DataUpdate />
@@ -76,16 +75,26 @@ function AddFirst({ loginUrl }: { loginUrl: string }) {
   );
 }
 
-function Syncing({ character, jobs, synced }: { character: Character; jobs: SyncJob[]; synced: number }) {
+type SyncingProps = {
+  character: Character;
+  jobs: SyncJob[];
+  synced: number;
+  sdeInstalled: boolean;
+  sdeError: string;
+};
+
+function Syncing({ character, jobs, synced, sdeInstalled, sdeError }: SyncingProps) {
   const failed = jobs.find((j) => j.lastError);
   return (
     <>
       <div className="row">
         <Portrait id={character.id} size={48} />
-        <span>Welcome, {character.name}. Loading your character data.</span>
+        <span>Welcome, {character.name}. Fetching your character data and the static game data.</span>
       </div>
       <Progress label="Synchronizing" value={synced} max={jobs.length} showValue />
+      {!sdeInstalled && <p className="muted small">Static data is downloading, see progress below.</p>}
       {failed && <Alert tone="warning">{failed.job}: {failed.lastError}</Alert>}
+      {!sdeInstalled && sdeError && <Alert tone="warning">Static data: {sdeError}</Alert>}
     </>
   );
 }
