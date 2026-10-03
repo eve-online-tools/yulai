@@ -132,8 +132,8 @@ func Report(ctx context.Context, p Progress)
 
 A zip already on disk skips to 50%. The bar never goes back or becomes indeterminate.
 
-`sde.Service` (`SDEService`) returns the installed build and the `Update` status with its progress. The settings
-page shows them with a progress bar and a "Check now" button, refreshed on `sde:changed` and `task:changed`.
+`sde.Service` (`SDEService`) has `Status()`: installed build and release date, latest build seen, last check and
+the last error. `CheckNow()` queues `Check`.
 
 ## Steps
 
