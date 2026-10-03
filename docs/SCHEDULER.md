@@ -353,7 +353,7 @@ func TestBalance(t *testing.T) {
 
 1. Done: `core/task` and `core/task/pool` with tests (synctest).
 2. `task_pauses` in the first migration, sqlite `PauseStore` with sqlc queries (needs `core/db`).
-3. `feature.Feature` gets `Tasks() []task.Binding`. Remove `Job`, `Run`, `Outcome` and update `feature_test.go`.
+3. Done: `feature.Feature` gets `Tasks() []task.Binding`. Remove `Job`, `Run`, `Outcome` and update `feature_test.go`.
 4. `core/esi` gates, pool, `Cached`. `identity/token` seed helpers, `Use`, invalid-grant hook.
 5. Replace `feature/sync` with the thin `SyncService` and wire everything in `app.New`. Then the frontend query key,
    event listener and status per task.
