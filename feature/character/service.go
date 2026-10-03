@@ -4,7 +4,9 @@ package character
 import (
 	"context"
 	"database/sql"
+	"errors"
 	"net/http"
+	"net/url"
 	"strings"
 	"time"
 
@@ -112,6 +114,22 @@ func (s *Service) Features() []FeatureInfo {
 // AddCharacter opens the login server's feature picker in the system browser.
 // Completed logins arrive through Store and are reported through EventChanged.
 func (s *Service) AddCharacter() error { return s.browser.OpenURL(s.loginURL) }
+
+// Relogin opens the feature picker with the character's current features checked,
+// to replace a token that stopped working.
+func (s *Service) Relogin(ctx context.Context, characterID int64) error {
+	scopes, err := s.tokens.Scopes(ctx, characterID)
+	if err != nil && !errors.Is(err, sql.ErrNoRows) {
+		return err
+	}
+	q := url.Values{"feature": {""}}
+	for _, f := range s.features {
+		if feature.Covers(scopes, f.Scopes()) {
+			q.Add("feature", f.Name())
+		}
+	}
+	return s.browser.OpenURL(s.loginURL + "?" + q.Encode())
+}
 
 // Store upserts the character and saves its tokens, replacing earlier scopes, then
 // enrolls it. It is the login server's handler.

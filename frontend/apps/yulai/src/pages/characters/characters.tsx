@@ -17,6 +17,7 @@ export function CharactersPage() {
   const { data: characters } = useSuspenseQuery(charactersQuery);
   const { data: features } = useSuspenseQuery(featuresQuery);
   const add = useMutation({ mutationFn: () => Characters.AddCharacter() });
+  const relogin = useMutation({ mutationFn: (id: number) => Characters.Relogin(id) });
   const now = useNow();
   const [removing, setRemoving] = useState<Character | null>(null);
 
@@ -33,18 +34,25 @@ export function CharactersPage() {
         }
       />
       {add.isError && <Alert tone="danger">{String(add.error)}</Alert>}
+      {relogin.isError && <Alert tone="danger">{String(relogin.error)}</Alert>}
 
       {characters.length === 0 ? (
         <EmptyState title="No characters yet" />
       ) : (
-        <Table label="Characters" hover columns={columns} rows={characters.map((c) => characterRow(c, features, now, setRemoving))} />
+        <Table label="Characters" hover columns={columns} rows={characters.map((c) => characterRow(c, features, now, relogin.mutate, setRemoving))} />
       )}
       <RemoveDialog character={removing} onClose={() => setRemoving(null)} />
     </>
   );
 }
 
-function characterRow(c: Character, features: FeatureInfo[], nowSec: number, onRemove: (c: Character) => void) {
+function characterRow(
+  c: Character,
+  features: FeatureInfo[],
+  nowSec: number,
+  onRelogin: (id: number) => void,
+  onRemove: (c: Character) => void,
+) {
   const enabled = enabledFeatures(features, c.scopes);
   const active = c.status === "ok" && c.tokenExpiresAt != null && c.tokenExpiresAt > nowSec;
   const tokenLabel = c.status !== "ok" ? "needs login" : active ? "active" : "expired, refreshes on use";
@@ -58,11 +66,20 @@ function characterRow(c: Character, features: FeatureInfo[], nowSec: number, onR
       </div>
     ),
     token: (
-      <Tooltip id={`token-${c.id}`} text={c.statusError ? `${c.statusError}. ${refreshed}` : refreshed}>
-        <span className={c.status !== "ok" ? "warn" : active ? "ok" : "muted"} tabIndex={0}>
-          {tokenLabel}
-        </span>
-      </Tooltip>
+      <div className="row">
+        <Tooltip id={`token-${c.id}`} text={c.statusError ? `${c.statusError}. ${refreshed}` : refreshed}>
+          <span className={c.status !== "ok" ? "warn" : active ? "ok" : "muted"} tabIndex={0}>
+            {tokenLabel}
+          </span>
+        </Tooltip>
+        {c.status !== "ok" && (
+          <Tooltip id={`relogin-${c.id}`} text="Login continues in your browser.">
+            <Button variant="secondary" size="sm" onClick={() => onRelogin(c.id)}>
+              Log in again
+            </Button>
+          </Tooltip>
+        )}
+      </div>
     ),
     features: (
       <div className="row">

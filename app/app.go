@@ -64,19 +64,20 @@ func New(ctx context.Context, cfg *Config, web fs.FS) (*App, error) {
 
 	ssoClient := sso.NewClient(cfg.SSO)
 	verifier := sso.NewVerifier(ssoClient)
-	tokens := token.NewStore(conn, ssoClient, verifier, sealer)
-	esiClient := esi.NewClient(cfg.SSO.Name, cfg.SSO.Description, cfg.CachePath())
-
 	app := &App{Config: cfg, conn: conn}
+	tokens := token.NewStore(conn, ssoClient, verifier, sealer, func(ctx context.Context, id int64, reason string) {
+		if err := app.Characters.MarkNeedsLogin(ctx, id, reason); err != nil {
+			slog.Warn("mark needs login", "character", id, "err", err)
+		}
+	})
+	esiClient := esi.NewClient(cfg.SSO.Name, cfg.SSO.Description, cfg.CachePath())
 
 	// Every opt-in feature is registered here. Order is what the UI shows.
 	features := []feature.Feature{
 		presence.NewFeature(conn, esiClient, tokens, characters{app}, emitter{}),
 	}
 
-	app.Scheduler = sync.NewScheduler(conn, features, tokens, syncWorkers, func(ctx context.Context, id int64, reason string) {
-		_ = app.Characters.MarkNeedsLogin(ctx, id, reason)
-	})
+	app.Scheduler = sync.NewScheduler(conn, features, tokens, syncWorkers)
 	loginFeatures := make([]login.Feature, 0, len(features))
 	for _, f := range features {
 		loginFeatures = append(loginFeatures, login.Feature{Name: f.Name(), Scopes: f.Scopes()})
