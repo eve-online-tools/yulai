@@ -279,28 +279,28 @@ func (u *Universe) Structure(ctx context.Context, in StructureInput) (db.Structu
 s, err := tasks.Structure.Run(ctx, tasks.StructureInput{ID: 1035466617946, Via: charID})
 ```
 
-Global, not ESI, `feature/sde/tasks/tasks.go`:
+Global, not ESI, `core/sde` (see `docs/SDE.md`):
 
 ```go
-var Check = task.New((*SDE).Check,
+var Check = task.New((*Updater).Check,
 	task.WithStartup(),
-	task.WithInterval(6*time.Hour),
-	task.When(esi.Offline),
+	task.WithInterval(time.Hour),
+	task.Pausable("sde.check"),
 )
 
-var Install = task.New((*SDE).Install,
-	task.WithTimeout(15*time.Minute),
-	task.WithPool(downloads),
+var Update = task.New((*Updater).Update,
+	task.WithTimeout(30*time.Minute),
 )
 
-var downloads = pool.Create(1)
-
-func (s *SDE) Check(ctx context.Context, _ struct{}) (struct{}, error) {
-	latest, err := s.Store.LatestBuild(ctx)
-	if err != nil || latest <= s.Store.Installed() {
-		return struct{}{}, err
+func (u *Updater) Check(ctx context.Context, _ struct{}) (*Build, error) {
+	latest, err := u.latest(ctx)
+	if err != nil {
+		return nil, err
 	}
-	return struct{}{}, Install.Queue(ctx, struct{}{})
+	if !u.store.Outdated(latest) {
+		return latest, nil
+	}
+	return latest, Update.Queue(ctx, *latest)
 }
 ```
 
