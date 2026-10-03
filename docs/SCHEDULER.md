@@ -68,6 +68,10 @@ func (s *Scheduler) Pause(ctx context.Context, p Pause) error
 func (s *Scheduler) Resume(ctx context.Context, p Pause) error
 func (s *Scheduler) Trigger(ctx context.Context, name, subject string) error
 func (s *Scheduler) List() []Status
+func (s *Scheduler) Progress(key, subject string) (Progress, bool) // while a WithProgress task runs
+
+// Inside a run of a WithProgress task, or a sub-task it queued: sets its progress. No-op elsewhere.
+func Report(ctx context.Context, p Progress) // Phase, Item, Done, Total (0: unknown)
 ```
 
 Go only allows a variadic parameter last, so the method comes first: `task.New((*Wallet).Balance, opts...)`.
@@ -84,6 +88,7 @@ Go only allows a variadic parameter last, so the method comes first: `task.New((
 | `When(cond...)` | Conditions checked before every run, e.g. gates |
 | `WithCheck(fn)` | Per-input check with the receiver's dependencies, `func(R, context.Context, I) Verdict` |
 | `Pausable(name)` | Stable name: user can pause the task and the UI can trigger it by name |
+| `WithProgress(key)` | Runs report progress under `key` (unique per scheduler), see Progress below |
 
 Validation happens in `New` and panics, so it fails on process or test start:
 
@@ -135,7 +140,13 @@ success).
 8. **Status.** `List()` returns, per task and key: running, last run, last error, last skip reason, backoff
    until, paused, queued. Changes call `Options.OnChange` (debounced 250ms); `SyncService` turns that into the
    `task:changed` Wails event, so `core/task` does not import Wails.
-9. **Stop.** When the `Start` ctx ends, run contexts are cancelled, waiting `Run` callers get `ErrStopped` or
+9. **Progress.** Opt-in with `WithProgress(key)`. A run emits `ProgressStart` when it starts executing,
+   `ProgressUpdate` on `Report` (at most every 100ms) and `ProgressDone` (with the last progress and the error)
+   when it ends, through `Options.OnProgress`, so a UI shows a bar on start and hides it on done.
+   `Report` finds the run through ctx; a sub-task queued with that ctx and no key of its own reports into the
+   same run, without start or done of its own. `Progress(key, subject)` gives the current value to a UI that
+   opens mid-run.
+10. **Stop.** When the `Start` ctx ends, run contexts are cancelled, waiting `Run` callers get `ErrStopped` or
    the cancellation error, and `Start` returns once every run has.
 
 ## Layout

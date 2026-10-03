@@ -16,6 +16,7 @@ type Option func(*config)
 
 type config struct {
 	name     string
+	progress string
 	interval time.Duration
 	startup  bool
 	timeout  time.Duration
@@ -67,4 +68,10 @@ func WithCheck[R, I any](check func(R, context.Context, I) Verdict) Option {
 // trigger it. Names must be unique per scheduler.
 func Pausable(name string) Option {
 	return func(c *config) { c.name = name }
+}
+
+// WithProgress lets the task report progress under key. Its runs emit start,
+// update and done events through Options.OnProgress. Keys are unique per scheduler.
+func WithProgress(key string) Option {
+	return func(c *config) { c.progress = key }
 }

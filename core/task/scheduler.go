@@ -52,13 +52,16 @@ type Options struct {
 	Log    *slog.Logger
 	// OnChange is called, debounced, after run status changes.
 	OnChange func()
+	// OnProgress is called for runs of tasks with WithProgress, from the run's goroutine.
+	OnProgress func(ProgressEvent)
 }
 
 type Scheduler struct {
-	log      *slog.Logger
-	pool     *pool.Pool
-	pauses   PauseStore
-	onChange func()
+	log        *slog.Logger
+	pool       *pool.Pool
+	pauses     PauseStore
+	onChange   func()
+	onProgress func(ProgressEvent)
 
 	ctx    context.Context
 	cancel context.CancelFunc
@@ -69,6 +72,7 @@ type Scheduler struct {
 	stopping bool
 	entries  map[any]*entry
 	names    map[string]*entry
+	progress map[string]*entry // by WithProgress key
 	states   map[stateKey]*state
 	paused   map[Pause]bool
 
@@ -91,12 +95,16 @@ type state struct {
 	lastRun      time.Time
 	lastErr      string
 	lastSkip     string
+	progress     Progress
+	progressSent time.Time
 }
 
 type pending struct {
 	in      any
 	user    bool
 	waiters []chan<- result
+	// parent is the progress of the run that queued this one, if any.
+	parent *reporter
 }
 
 type result struct {
@@ -116,16 +124,18 @@ func NewScheduler(o Options) *Scheduler {
 	}
 	ctx, cancel := context.WithCancel(context.Background())
 	return &Scheduler{
-		log:      o.Log,
-		pool:     pool.Create(o.Workers),
-		pauses:   o.Pauses,
-		onChange: o.OnChange,
-		ctx:      ctx,
-		cancel:   cancel,
-		entries:  map[any]*entry{},
-		names:    map[string]*entry{},
-		states:   map[stateKey]*state{},
-		paused:   map[Pause]bool{},
+		log:        o.Log,
+		pool:       pool.Create(o.Workers),
+		pauses:     o.Pauses,
+		onChange:   o.OnChange,
+		onProgress: o.OnProgress,
+		ctx:        ctx,
+		cancel:     cancel,
+		entries:    map[any]*entry{},
+		names:      map[string]*entry{},
+		progress:   map[string]*entry{},
+		states:     map[stateKey]*state{},
+		paused:     map[Pause]bool{},
 	}
 }
 
@@ -147,6 +157,12 @@ func (s *Scheduler) Register(bs ...Binding) {
 				panic(fmt.Sprintf("task %s: duplicate Pausable name", e.name))
 			}
 			s.names[e.name] = e
+		}
+		if k := e.cfg.progress; k != "" {
+			if _, dup := s.progress[k]; dup {
+				panic(fmt.Sprintf("task %s: duplicate progress key %q", e.name, k))
+			}
+			s.progress[k] = e
 		}
 		s.entries[e.key] = e
 	}
@@ -317,6 +333,7 @@ func (s *Scheduler) submit(ctx context.Context, e *entry, in any, user bool, wai
 			st.next = &pending{user: true}
 		}
 		st.next.in = in
+		st.next.parent = parentProgress(ctx)
 		if waiter != nil {
 			st.next.waiters = append(st.next.waiters, waiter)
 		}
@@ -324,7 +341,7 @@ func (s *Scheduler) submit(ctx context.Context, e *entry, in any, user bool, wai
 	}
 	st.lastSkip = ""
 	st.running = true
-	p := &pending{in: in, user: user}
+	p := &pending{in: in, user: user, parent: parentProgress(ctx)}
 	if waiter != nil {
 		p.waiters = append(p.waiters, waiter)
 	}
@@ -387,10 +404,32 @@ func (s *Scheduler) execute(e *entry, k stateKey, st *state, p *pending) {
 	s.mu.Unlock()
 	s.changed()
 
-	ctx, cancel := context.WithTimeout(WithScheduler(s.ctx, s), cmp.Or(e.cfg.timeout, DefaultTimeout))
+	ctx := WithScheduler(s.ctx, s)
+	var rep *reporter
+	switch {
+	case e.cfg.progress != "":
+		rep = &reporter{s: s, st: st, key: e.cfg.progress, subject: k.subject}
+		ctx = context.WithValue(ctx, progressCtxKey{}, *rep)
+		rep.emit(ProgressStart, Progress{}, "")
+	case p.parent != nil:
+		// A sub-task without its own key reports into the bar of the run that queued it.
+		ctx = context.WithValue(ctx, progressCtxKey{}, *p.parent)
+	}
+	ctx, cancel := context.WithTimeout(ctx, cmp.Or(e.cfg.timeout, DefaultTimeout))
 	out, err := safeRun(ctx, e, p.in)
 	cancel()
 	pl.Release()
+	if rep != nil {
+		s.mu.Lock()
+		last := st.progress
+		st.progress, st.progressSent = Progress{}, time.Time{}
+		s.mu.Unlock()
+		var msg string
+		if err != nil {
+			msg = err.Error()
+		}
+		rep.emit(ProgressDone, last, msg)
+	}
 
 	s.mu.Lock()
 	defer s.mu.Unlock()
