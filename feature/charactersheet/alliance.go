@@ -6,7 +6,7 @@ import (
 	"time"
 
 	"github.com/eve-online-tools/lib-esi-go/common/alliance"
-	"github.com/eve-online-tools/lib-esi-go/esi/getalliancesallianceid"
+	getalliance "github.com/eve-online-tools/lib-esi-go/esi/getalliancesallianceid"
 
 	"github.com/eve-online-tools/yulai/core/db"
 	"github.com/eve-online-tools/yulai/core/esi"
@@ -30,8 +30,12 @@ func (s *Sheet) alliance(ctx context.Context, in AllianceInput) (_ Alliance, err
 		}
 	}()
 
-	input := &getalliancesallianceid.Input{Alliance: in.AllianceID}
-	resp, err := getalliancesallianceid.Request(ctx, s.esi, input)
+	resp, err := getalliance.Request(
+		ctx, s.esi,
+		&getalliance.Input{
+			Alliance: in.AllianceID,
+		},
+	)
 	if err != nil {
 		return Alliance{}, err
 	}

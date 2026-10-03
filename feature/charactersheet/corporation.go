@@ -6,7 +6,7 @@ import (
 	"time"
 
 	"github.com/eve-online-tools/lib-esi-go/common/corporation"
-	"github.com/eve-online-tools/lib-esi-go/esi/getcorporationscorporationid"
+	getcorporation "github.com/eve-online-tools/lib-esi-go/esi/getcorporationscorporationid"
 
 	"github.com/eve-online-tools/yulai/core/db"
 	"github.com/eve-online-tools/yulai/core/esi"
@@ -30,8 +30,12 @@ func (s *Sheet) corporation(ctx context.Context, in CorporationInput) (_ Corpora
 		}
 	}()
 
-	input := &getcorporationscorporationid.Input{Corporation: in.CorporationID}
-	resp, err := getcorporationscorporationid.Request(ctx, s.esi, input)
+	resp, err := getcorporation.Request(
+		ctx, s.esi,
+		&getcorporation.Input{
+			Corporation: in.CorporationID,
+		},
+	)
 	if err != nil {
 		return Corporation{}, err
 	}

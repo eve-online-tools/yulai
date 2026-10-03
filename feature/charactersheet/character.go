@@ -6,7 +6,7 @@ import (
 	"time"
 
 	esicharacter "github.com/eve-online-tools/lib-esi-go/common/character"
-	"github.com/eve-online-tools/lib-esi-go/esi/getcharacterscharacterid"
+	getcharacter "github.com/eve-online-tools/lib-esi-go/esi/getcharacterscharacterid"
 
 	"github.com/eve-online-tools/yulai/core/db"
 	"github.com/eve-online-tools/yulai/core/esi"
@@ -38,8 +38,12 @@ func (s *Sheet) characters(ctx context.Context) ([]CharacterInput, error) {
 }
 
 func (s *Sheet) character(ctx context.Context, in CharacterInput) (CharacterSheet, error) {
-	input := &getcharacterscharacterid.Input{Character: esicharacter.Identifier(in.CharacterID)}
-	resp, err := getcharacterscharacterid.Request(ctx, s.esi, input)
+	resp, err := getcharacter.Request(
+		ctx, s.esi,
+		&getcharacter.Input{
+			Character: esicharacter.Identifier(in.CharacterID),
+		},
+	)
 	if err != nil {
 		return CharacterSheet{}, err
 	}
