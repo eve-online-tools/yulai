@@ -5,7 +5,9 @@ package token
 import (
 	"context"
 	"database/sql"
+	"errors"
 	"fmt"
+	"log/slog"
 	"strings"
 	"sync"
 	"time"
@@ -18,6 +20,10 @@ import (
 
 // refreshMargin is how early before expiry we refresh.
 const refreshMargin = 60 * time.Second
+
+// ErrReplaced means the stored token changed during a refresh, by a new login or
+// removal. The next use loads the stored one.
+var ErrReplaced = errors.New("token: replaced during refresh")
 
 type Store struct {
 	q        *Queries
@@ -66,7 +72,7 @@ func (s *Store) Scopes(ctx context.Context, characterID int64) ([]string, error)
 	return strings.Fields(raw), nil
 }
 
-func (s *Store) load(ctx context.Context, characterID int64) (*sso.Tokens, []string, error) {
+func (s *Store) load(ctx context.Context, characterID int64) (*Token, *sso.Tokens, error) {
 	row, err := s.q.GetToken(ctx, characterID)
 	if err != nil {
 		return nil, nil, err
@@ -75,11 +81,34 @@ func (s *Store) load(ctx context.Context, characterID int64) (*sso.Tokens, []str
 	if err != nil {
 		return nil, nil, fmt.Errorf("token: decrypt refresh token: %w", err)
 	}
-	return &sso.Tokens{
+	return &row, &sso.Tokens{
 		AccessToken:  row.AccessToken,
 		RefreshToken: refresh,
 		ExpiresAt:    time.Unix(row.ExpiresAt, 0),
-	}, strings.Fields(row.Scopes), nil
+	}, nil
+}
+
+// rotate stores refreshed tokens if the row still holds prev, and returns the new
+// sealed refresh token.
+func (s *Store) rotate(ctx context.Context, characterID int64, prev []byte, t *sso.Tokens) ([]byte, error) {
+	enc, err := s.sealer.Seal(t.RefreshToken)
+	if err != nil {
+		return nil, err
+	}
+	n, err := s.q.RotateToken(ctx, RotateTokenParams{
+		AccessToken:         t.AccessToken,
+		RefreshTokenEnc:     enc,
+		ExpiresAt:           t.ExpiresAt.Unix(),
+		CharacterID:         characterID,
+		PrevRefreshTokenEnc: prev,
+	})
+	if err != nil {
+		return nil, err
+	}
+	if n == 0 {
+		return nil, ErrReplaced
+	}
+	return enc, nil
 }
 
 // For returns the shared refreshable token for a character, for use with
@@ -116,6 +145,8 @@ type refreshable struct {
 	mu     sync.Mutex
 	tokens *sso.Tokens
 	scopes []string
+	// sealed is the stored refresh token blob, compared on rotate.
+	sealed []byte
 }
 
 func (t *refreshable) Owner() int64 { return t.characterID }
@@ -144,11 +175,11 @@ func (t *refreshable) refresh(ctx context.Context, force bool) error {
 	defer t.mu.Unlock()
 
 	if t.tokens == nil {
-		tk, scopes, err := t.store.load(ctx, t.characterID)
+		row, tk, err := t.store.load(ctx, t.characterID)
 		if err != nil {
 			return err
 		}
-		t.tokens, t.scopes = tk, scopes
+		t.tokens, t.scopes, t.sealed = tk, strings.Fields(row.Scopes), row.RefreshTokenEnc
 	}
 	if !force && time.Until(t.tokens.ExpiresAt) > refreshMargin {
 		return nil
@@ -158,14 +189,34 @@ func (t *refreshable) refresh(ctx context.Context, force bool) error {
 	if err != nil {
 		return err
 	}
-	// Scopes ride on the access token; re-read them so consent stays accurate.
-	id, err := t.store.verifier.Verify(ctx, fresh.AccessToken)
+	// SSO may have rotated the refresh token, so the old one could be dead already.
+	// Store the new one before anything else can fail, even if ctx ends.
+	sealed, err := t.store.rotate(context.WithoutCancel(ctx), t.characterID, t.sealed, fresh)
+	if errors.Is(err, ErrReplaced) {
+		t.tokens, t.scopes, t.sealed = nil, nil, nil
+		return err
+	}
 	if err != nil {
 		return err
 	}
-	if err := t.store.persist(ctx, t.characterID, fresh, id); err != nil {
-		return err
+	t.tokens, t.sealed = fresh, sealed
+
+	// Scopes ride on the access token; re-read them so consent stays accurate. On
+	// failure the stored scopes stay and the next refresh tries again.
+	id, err := t.store.verifier.Verify(ctx, fresh.AccessToken)
+	if err != nil {
+		slog.Warn("token: verify refreshed token", "character", t.characterID, "err", err)
+		return nil
 	}
-	t.tokens, t.scopes = fresh, id.Scopes
+	if err := t.store.q.SetScopes(context.WithoutCancel(ctx), SetScopesParams{
+		Scopes:          strings.Join(id.Scopes, " "),
+		IssuedAt:        id.IssuedAt.Unix(),
+		CharacterID:     t.characterID,
+		RefreshTokenEnc: sealed,
+	}); err != nil {
+		slog.Warn("token: store scopes", "character", t.characterID, "err", err)
+		return nil
+	}
+	t.scopes = id.Scopes
 	return nil
 }
