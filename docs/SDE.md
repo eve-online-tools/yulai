@@ -132,8 +132,8 @@ func Report(ctx context.Context, p Progress)
 
 A zip already on disk skips to 50%. The bar never goes back or becomes indeterminate.
 
-`sde.Service` (`SDEService`) has `Status()`: installed build and release date, latest build seen, last check,
-whether `Update` is queued or running, its progress and the last error. `CheckNow()` queues `Check`.
+`sde.Service` (`SDEService`) has `Status()`: installed build and release date, latest build seen, last check and
+the last error. `CheckNow()` queues `Check`.
 
 ## Steps
 

@@ -13,10 +13,8 @@ type Status struct {
 	Build       int64     `json:"build"`
 	ReleaseDate time.Time `json:"releaseDate"`
 	// Latest is the build the last check saw, 0 before it.
-	Latest    int64          `json:"latest"`
-	LastCheck time.Time      `json:"lastCheck"`
-	Updating  bool           `json:"updating"`
-	Progress  *task.Progress `json:"progress"`
+	Latest    int64     `json:"latest"`
+	LastCheck time.Time `json:"lastCheck"`
 	// LastError is the error of the last failed check or update.
 	LastError string `json:"lastError"`
 }
@@ -50,8 +48,6 @@ func (s *Service) Status() Status {
 				out.LastError = st.LastError
 			}
 		case Update.Name():
-			out.Updating = st.Running || st.Queued
-			out.Progress = st.Progress
 			if st.LastError != "" {
 				out.LastError = st.LastError
 			}

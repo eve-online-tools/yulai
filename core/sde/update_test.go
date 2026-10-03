@@ -170,7 +170,7 @@ func TestUpdateRestartsBadPart(t *testing.T) {
 func TestServiceStatus(t *testing.T) {
 	u, _, _, s := setup(t, 8)
 	svc := NewService(u, s.List)
-	if st := svc.Status(); st.Build != 0 || st.Updating {
+	if st := svc.Status(); st.Build != 0 {
 		t.Fatalf("status before check = %+v", st)
 	}
 	b, err := Check.On(s).Run(task.WithScheduler(t.Context(), s), struct{}{})
@@ -181,7 +181,31 @@ func TestServiceStatus(t *testing.T) {
 		t.Fatal(err)
 	}
 	st := svc.Status()
-	if st.Build != 8 || st.Latest != 8 || st.LastCheck.IsZero() || st.Updating || st.Progress != nil || st.LastError != "" {
+	if st.Build != 8 || st.Latest != 8 || st.LastCheck.IsZero() || st.LastError != "" {
 		t.Fatalf("status = %+v", st)
+	}
+}
+
+func TestUpdateEmitsProgress(t *testing.T) {
+	u, _, _, _ := setup(t, 9)
+	var mu sync.Mutex
+	var events []task.ProgressEvent
+	s := task.NewScheduler(task.Options{Log: quiet, OnProgress: func(ev task.ProgressEvent) {
+		mu.Lock()
+		defer mu.Unlock()
+		events = append(events, ev)
+	}})
+	s.Register(u.Tasks()...)
+	if _, err := Update.On(s).Run(t.Context(), Build{Number: 9}); err != nil {
+		t.Fatal(err)
+	}
+	mu.Lock()
+	defer mu.Unlock()
+	first, last := events[0], events[len(events)-1]
+	if first.Key != ProgressKey || first.State != task.ProgressStart {
+		t.Fatalf("first event = %+v", first)
+	}
+	if last.State != task.ProgressDone || last.Error != "" || last.Progress.Done != progressScale {
+		t.Fatalf("last event = %+v", last)
 	}
 }

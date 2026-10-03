@@ -41,6 +41,9 @@ func init() {
 	application.RegisterEvent[struct{}](charactersheet.EventChanged)
 	application.RegisterEvent[struct{}](sde.EventChanged)
 	application.RegisterEvent[struct{}](EventTasksChanged)
+	application.RegisterEvent[task.ProgressEvent](EventProgressStart)
+	application.RegisterEvent[task.ProgressEvent](EventProgressUpdate)
+	application.RegisterEvent[task.ProgressEvent](EventProgressDone)
 }
 
 // App wires the packages together.
@@ -110,6 +113,9 @@ func New(ctx context.Context, cfg *Config, web fs.FS) (*App, error) {
 	task.Default = task.NewScheduler(task.Options{
 		Workers:  taskWorkers,
 		OnChange: func() { emitter{}.Emit(EventTasksChanged) },
+		OnProgress: func(ev task.ProgressEvent) {
+			application.Get().Event.Emit(progressEvents[ev.State], ev)
+		},
 	})
 	task.Default.Register(app.SDE.Tasks()...)
 	task.Default.Register(app.Characters.Tasks()...)
@@ -155,6 +161,7 @@ func (a *App) Services() []application.Service {
 		application.NewService(sync.NewService(a.Scheduler)),
 		application.NewService(newSetupService(a.Config, a.Login.URL())),
 		application.NewService(sde.NewService(a.SDE, task.Default.List)),
+		application.NewService(&ProgressService{s: task.Default}),
 	}
 }
 

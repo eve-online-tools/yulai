@@ -20,6 +20,9 @@ import (
 
 const EventChanged = "sde:changed"
 
+// ProgressKey is the task.WithProgress key of Update.
+const ProgressKey = "sde.update"
+
 const (
 	baseURL   = "https://developers.eveonline.com/static-data/tranquility/"
 	userAgent = "yulai (+https://github.com/eve-online-tools/yulai)"
@@ -142,6 +145,7 @@ func parseLatest(r io.Reader) (*Build, error) {
 
 var Update = task.New((*Updater).Update,
 	task.WithTimeout(30*time.Minute),
+	task.WithProgress(ProgressKey),
 )
 
 // Update downloads build b and installs it. An interrupted download resumes on
