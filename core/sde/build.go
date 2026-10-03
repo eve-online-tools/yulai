@@ -21,8 +21,28 @@ import (
 //go:embed schema.sql
 var schemaSQL string
 
-// reportEvery throttles build progress to one report per this many bytes read.
+// reportEvery throttles build progress to one report per this many bytes decoded.
 const reportEvery = 1 << 20
+
+// An update reports one bar from 0 to progressScale. Download fills it up to
+// downloaded, the build up to built, indexes the rest.
+const (
+	progressScale = 10000
+	downloaded    = 0.5
+	built         = 0.9
+)
+
+// report sets the bar to done/total of the slice from..to.
+func report(ctx context.Context, phase, item string, from, to float64, done, total int64) {
+	frac := from
+	if total > 0 {
+		frac += (to - from) * float64(min(done, total)) / float64(total)
+	}
+	reportFn(ctx, task.Progress{Phase: phase, Item: item, Done: int64(frac * progressScale), Total: progressScale})
+}
+
+// reportFn is swapped in tests.
+var reportFn = task.Report
 
 // Build is an SDE release as latest.jsonl and _sde.jsonl describe it.
 type Build struct {
@@ -76,18 +96,18 @@ func build(ctx context.Context, src, dst string, log *slog.Logger) error {
 			return fmt.Errorf("%s: %w", f.Name, err)
 		}
 		b.done += int64(f.UncompressedSize64)
-		b.read = 0
 	}
 	if release == nil {
 		return errors.New("sde: export has no _sde.jsonl")
 	}
 
 	for i, stmt := range indexes {
-		task.Report(ctx, task.Progress{Phase: "index", Done: int64(i), Total: int64(len(indexes))})
+		report(ctx, "index", "", built, 1, int64(i), int64(len(indexes)))
 		if _, err := conn.ExecContext(ctx, stmt); err != nil {
 			return fmt.Errorf("%s: %w", stmt, err)
 		}
 	}
+	report(ctx, "index", "", built, 1, 1, 1)
 	_, err = conn.ExecContext(ctx, `INSERT INTO meta (build, release_date, schema) VALUES (?, ?, ?)`,
 		release.Number, release.ReleaseDate.UTC(), schemaHash)
 	if err != nil {
@@ -132,31 +152,9 @@ func readRelease(f *zip.File) (*Build, error) {
 
 type builder struct {
 	log *slog.Logger
-	// done counts bytes of finished files, read those of the current one.
-	done, read, total int64
-	reported          int64
-	warned            map[string]bool
-}
-
-// count adds the bytes of the current file and reports progress.
-func (b *builder) count(ctx context.Context, item string, n int) {
-	b.read += int64(n)
-	if b.read-b.reported < reportEvery {
-		return
-	}
-	b.reported = b.read
-	task.Report(ctx, task.Progress{Phase: "build", Item: item, Done: b.done + b.read, Total: b.total})
-}
-
-type countingReader struct {
-	r    io.Reader
-	read func(n int)
-}
-
-func (c countingReader) Read(p []byte) (int, error) {
-	n, err := c.r.Read(p)
-	c.read(n)
-	return n, err
+	// done counts the uncompressed bytes of finished files.
+	done, total int64
+	warned      map[string]bool
 }
 
 // insert holds the statement and next id of one table while a file is loaded.
@@ -199,10 +197,17 @@ func (b *builder) file(ctx context.Context, conn *sql.DB, f *zip.File, file stri
 		}
 	}
 
-	b.reported = 0
-	dec := json.NewDecoder(countingReader{r, func(n int) { b.count(ctx, f.Name, n) }})
+	dec := json.NewDecoder(r)
 	dec.UseNumber()
+	item := path.Base(f.Name)
+	report(ctx, "build", item, downloaded, built, b.done, b.total)
+	var reported int64
 	for {
+		// The decoder reads ahead, so its offset, not the bytes read, is the position.
+		if pos := dec.InputOffset(); pos-reported >= reportEvery {
+			reported = pos
+			report(ctx, "build", item, downloaded, built, b.done+pos, b.total)
+		}
 		var rec map[string]any
 		err := dec.Decode(&rec)
 		if errors.Is(err, io.EOF) {

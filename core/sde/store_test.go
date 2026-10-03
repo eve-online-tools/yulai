@@ -3,6 +3,7 @@ package sde
 import (
 	"archive/zip"
 	"bytes"
+	"context"
 	"errors"
 	"io"
 	"log/slog"
@@ -10,8 +11,11 @@ import (
 	"path/filepath"
 	"strconv"
 	"strings"
+	"sync"
 	"testing"
 	"time"
+
+	"github.com/eve-online-tools/yulai/core/task"
 )
 
 var quiet = slog.New(slog.NewTextHandler(io.Discard, nil))
@@ -200,6 +204,7 @@ func TestInstallExport(t *testing.T) {
 	if src == "" {
 		t.Skip("SDE_ZIP not set")
 	}
+	got := recordProgress(t)
 	dir := t.TempDir()
 	s, err := Open(t.Context(), dir, slog.Default())
 	if err != nil {
@@ -214,5 +219,58 @@ func TestInstallExport(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
+	checkProgress(t, *got, downloaded*progressScale, progressScale)
+	t.Logf("%d progress reports", len(*got))
 	t.Logf("build %d in %s, %d MB", s.Meta().Build, time.Since(start).Round(time.Second), fi.Size()>>20)
+}
+
+// recordProgress captures reports for the rest of the test.
+func recordProgress(t *testing.T) *[]task.Progress {
+	var mu sync.Mutex
+	var got []task.Progress
+	reportFn = func(_ context.Context, p task.Progress) {
+		mu.Lock()
+		defer mu.Unlock()
+		got = append(got, p)
+	}
+	t.Cleanup(func() { reportFn = task.Report })
+	return &got
+}
+
+// checkProgress asserts reports only move forward within [from, to] of the bar.
+func checkProgress(t *testing.T, got []task.Progress, from, to int64) {
+	t.Helper()
+	if len(got) == 0 {
+		t.Fatal("no progress reported")
+	}
+	last := from
+	for _, p := range got {
+		if p.Total != progressScale || p.Done < last || p.Done > to {
+			t.Fatalf("progress %+v after %d, want within %d..%d of %d", p, last, from, to, progressScale)
+		}
+		last = p.Done
+	}
+}
+
+func TestInstallProgress(t *testing.T) {
+	got := recordProgress(t)
+	s, err := Open(t.Context(), t.TempDir(), quiet)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer s.Close()
+	if err := s.Install(t.Context(), writeZip(t, t.TempDir(), fixture(4))); err != nil {
+		t.Fatal(err)
+	}
+	checkProgress(t, *got, downloaded*progressScale, progressScale)
+	if last := (*got)[len(*got)-1]; last.Done != progressScale {
+		t.Fatalf("last progress = %+v", last)
+	}
+	phases := map[string]bool{}
+	for _, p := range *got {
+		phases[p.Phase] = true
+	}
+	if !phases["build"] || !phases["index"] {
+		t.Fatalf("phases = %v", phases)
+	}
 }
