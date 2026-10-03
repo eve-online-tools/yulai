@@ -37,10 +37,6 @@ export class FeatureInfo {
     }
 }
 
-/**
- * ListRow is one character as the UI sees it. sqlc will generate this from
- * queries.sql once the characters table exists.
- */
 export class ListRow {
     "id": number;
     "name": string;
