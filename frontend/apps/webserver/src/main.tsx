@@ -13,7 +13,7 @@ const data = readPageData();
 ReactDOM.createRoot(document.getElementById("root") as HTMLElement).render(
   <React.StrictMode>
     <Page>
-      {data.page === "picker" && <PickerPage csrf={data.csrf} features={data.features} />}
+      {data.page === "picker" && <PickerPage csrf={data.csrf} features={data.features} selected={data.selected} />}
       {data.page === "done" && <DonePage id={data.id} name={data.name} csrf={data.csrf} features={data.features} />}
       {data.page === "error" && <ErrorPage message={data.message} />}
     </Page>

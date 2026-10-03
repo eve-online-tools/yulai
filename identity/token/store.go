@@ -21,22 +21,31 @@ import (
 // refreshMargin is how early before expiry we refresh.
 const refreshMargin = 60 * time.Second
 
+// ErrUnreadable means the stored refresh token cannot be decrypted, usually because
+// the master key in the OS keyring was lost and a new one was created.
+var ErrUnreadable = errors.New("token: stored refresh token cannot be decrypted")
+
 // ErrReplaced means the stored token changed during a refresh, by a new login or
 // removal. The next use loads the stored one.
 var ErrReplaced = errors.New("token: replaced during refresh")
+
+// OnDead is called when a character's stored token can no longer be used: SSO
+// rejected the refresh token, or it cannot be decrypted. Only a new login fixes it.
+type OnDead func(ctx context.Context, characterID int64, reason string)
 
 type Store struct {
 	q        *Queries
 	sso      *sso.Client
 	verifier *sso.Verifier
 	sealer   *crypt.Sealer
+	onDead   OnDead
 
 	mu    sync.Mutex
 	cache map[int64]*refreshable
 }
 
-func NewStore(conn *sql.DB, client *sso.Client, verifier *sso.Verifier, sealer *crypt.Sealer) *Store {
-	return &Store{q: New(conn), sso: client, verifier: verifier, sealer: sealer, cache: map[int64]*refreshable{}}
+func NewStore(conn *sql.DB, client *sso.Client, verifier *sso.Verifier, sealer *crypt.Sealer, onDead OnDead) *Store {
+	return &Store{q: New(conn), sso: client, verifier: verifier, sealer: sealer, onDead: onDead, cache: map[int64]*refreshable{}}
 }
 
 // Save persists tokens and their scopes for a character. The character row must exist.
@@ -63,6 +72,13 @@ func (s *Store) persist(ctx context.Context, characterID int64, t *sso.Tokens, i
 	})
 }
 
+func (s *Store) dead(ctx context.Context, characterID int64, err error) {
+	slog.Warn("token: needs login", "character", characterID, "err", err)
+	if s.onDead != nil {
+		s.onDead(context.WithoutCancel(ctx), characterID, err.Error())
+	}
+}
+
 // Scopes returns what the character's current token is allowed to do.
 func (s *Store) Scopes(ctx context.Context, characterID int64) ([]string, error) {
 	raw, err := s.q.GetScopes(ctx, characterID)
@@ -79,7 +95,7 @@ func (s *Store) load(ctx context.Context, characterID int64) (*Token, *sso.Token
 	}
 	refresh, err := s.sealer.Unseal(row.RefreshTokenEnc)
 	if err != nil {
-		return nil, nil, fmt.Errorf("token: decrypt refresh token: %w", err)
+		return nil, nil, fmt.Errorf("%w: %w", ErrUnreadable, err)
 	}
 	return &row, &sso.Tokens{
 		AccessToken:  row.AccessToken,
@@ -176,6 +192,9 @@ func (t *refreshable) refresh(ctx context.Context, force bool) error {
 
 	if t.tokens == nil {
 		row, tk, err := t.store.load(ctx, t.characterID)
+		if errors.Is(err, ErrUnreadable) {
+			t.store.dead(ctx, t.characterID, err)
+		}
 		if err != nil {
 			return err
 		}
@@ -186,6 +205,9 @@ func (t *refreshable) refresh(ctx context.Context, force bool) error {
 	}
 
 	fresh, err := t.store.sso.Refresh(ctx, t.tokens.RefreshToken)
+	if errors.Is(err, sso.ErrInvalidGrant) {
+		t.store.dead(ctx, t.characterID, err)
+	}
 	if err != nil {
 		return err
 	}
