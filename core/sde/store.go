@@ -10,7 +10,7 @@ import (
 	"path/filepath"
 	"sync"
 
-	_ "github.com/glebarez/go-sqlite"
+	_ "modernc.org/sqlite"
 
 	"github.com/eve-online-tools/yulai/core/task"
 )

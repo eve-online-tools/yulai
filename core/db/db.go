@@ -8,8 +8,8 @@ import (
 	"embed"
 	"fmt"
 
-	_ "github.com/glebarez/go-sqlite"
 	"github.com/pressly/goose/v3"
+	_ "modernc.org/sqlite"
 )
 
 //go:embed migrations/*.sql

@@ -5,12 +5,12 @@ go 1.25.2
 require (
 	github.com/adrg/xdg v0.5.3
 	github.com/eve-online-tools/lib-esi-go v1.0.1-0.20261001221054-bcddf34454dc
-	github.com/glebarez/go-sqlite v1.23.0
 	github.com/lestrrat-go/httprc/v3 v3.0.6
 	github.com/lestrrat-go/jwx/v3 v3.3.0
 	github.com/pressly/goose/v3 v3.26.0
 	github.com/wailsapp/wails/v3 v3.0.0-beta.27
 	github.com/zalando/go-keyring v0.2.8
+	modernc.org/sqlite v1.57.0
 )
 
 require (
@@ -19,6 +19,7 @@ require (
 	github.com/danieljoos/wincred v1.2.3 // indirect
 	github.com/decred/dcrd/dcrec/secp256k1/v4 v4.4.1 // indirect
 	github.com/dustin/go-humanize v1.0.1 // indirect
+	github.com/glebarez/go-sqlite v1.23.0 // indirect
 	github.com/go-ole/go-ole v1.3.0 // indirect
 	github.com/goccy/go-json v0.10.6 // indirect
 	github.com/godbus/dbus/v5 v5.2.2 // indirect
@@ -45,5 +46,4 @@ require (
 	modernc.org/libc v1.75.6 // indirect
 	modernc.org/mathutil v1.7.1 // indirect
 	modernc.org/memory v1.12.1 // indirect
-	modernc.org/sqlite v1.57.0 // indirect
 )

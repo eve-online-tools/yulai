@@ -25,7 +25,7 @@ Real features are out of scope for now. This plan describes where they plug in.
 |--------------------|--------------------------------------------------------------------|----------------|
 | `main.go`          | Load config, build `app.App`, create the Wails app and main window | done           |
 | `app`              | Config, wiring, event registration                                 | done           |
-| `core/db`          | sqlite (glebarez, pure Go), WAL, single writer, goose migrations   | done           |
+| `core/db`          | sqlite (modernc, pure Go), WAL, single writer, goose migrations   | done           |
 | `core/esi`         | lib-esi-go transport, rate limit + disk cache middleware, `Check`/`Fetch`/`ExpiresAt` | ported (tested) |
 | `core/keyring`     | `Store` interface, OS impl via zalando/go-keyring                  | done           |
 | `core/crypt`       | AES-GCM `Sealer`, master key in keyring                            | done (tested)  |
