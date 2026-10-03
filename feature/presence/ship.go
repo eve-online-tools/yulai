@@ -19,7 +19,7 @@ var Ship = task.New(
 	task.WithTimeout(timeout),
 )
 
-func (f *Feature) ship(ctx context.Context, in Input) (PresenceShip, error) {
+func (f *Feature) ship(ctx context.Context, in Input) (*PresenceShip, error) {
 	f.mark(in.CharacterID, partShip)
 
 	resp, err := getship.Request(
@@ -30,17 +30,17 @@ func (f *Feature) ship(ctx context.Context, in Input) (PresenceShip, error) {
 		f.auth(in.CharacterID),
 	)
 	if err != nil {
-		return PresenceShip{}, err
+		return nil, err
 	}
 	if err := esi.ResponseError(resp); err != nil {
-		return PresenceShip{}, err
+		return nil, err
 	}
 	data := resp.Data
 
 	prev, err := f.q.GetShip(ctx, in.CharacterID)
 	existed, err := db.Found(err)
 	if err != nil {
-		return PresenceShip{}, err
+		return nil, err
 	}
 	row, err := f.q.UpsertShip(ctx, UpsertShipParams{
 		CharacterID: in.CharacterID,
@@ -50,10 +50,10 @@ func (f *Feature) ship(ctx context.Context, in Input) (PresenceShip, error) {
 		FetchedAt:   time.Now().UTC(),
 	})
 	if err != nil {
-		return PresenceShip{}, err
+		return nil, err
 	}
 	if !existed || db.Changed(prev, row) {
 		f.events.Emit(EventChanged)
 	}
-	return row, nil
+	return &row, nil
 }

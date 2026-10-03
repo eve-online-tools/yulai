@@ -19,7 +19,7 @@ var Online = task.New(
 	task.WithTimeout(timeout),
 )
 
-func (f *Feature) online(ctx context.Context, in Input) (PresenceOnline, error) {
+func (f *Feature) online(ctx context.Context, in Input) (*PresenceOnline, error) {
 	f.mark(in.CharacterID, partOnline)
 
 	resp, err := getonline.Request(
@@ -30,17 +30,17 @@ func (f *Feature) online(ctx context.Context, in Input) (PresenceOnline, error) 
 		f.auth(in.CharacterID),
 	)
 	if err != nil {
-		return PresenceOnline{}, err
+		return nil, err
 	}
 	if err := esi.ResponseError(resp); err != nil {
-		return PresenceOnline{}, err
+		return nil, err
 	}
 	data := resp.Data
 
 	prev, err := f.q.GetOnline(ctx, in.CharacterID)
 	existed, err := db.Found(err)
 	if err != nil {
-		return PresenceOnline{}, err
+		return nil, err
 	}
 	row, err := f.q.UpsertOnline(ctx, UpsertOnlineParams{
 		CharacterID: in.CharacterID,
@@ -51,7 +51,7 @@ func (f *Feature) online(ctx context.Context, in Input) (PresenceOnline, error) 
 		FetchedAt:   time.Now().UTC(),
 	})
 	if err != nil {
-		return PresenceOnline{}, err
+		return nil, err
 	}
 	if !existed || prev.Online != row.Online {
 		// Location and ship switch pace with the online state.
@@ -60,5 +60,5 @@ func (f *Feature) online(ctx context.Context, in Input) (PresenceOnline, error) 
 	if !existed || db.Changed(prev, row) {
 		f.events.Emit(EventChanged)
 	}
-	return row, nil
+	return &row, nil
 }

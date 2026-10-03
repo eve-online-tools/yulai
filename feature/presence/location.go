@@ -19,7 +19,7 @@ var Location = task.New(
 	task.WithTimeout(timeout),
 )
 
-func (f *Feature) location(ctx context.Context, in Input) (PresenceLocation, error) {
+func (f *Feature) location(ctx context.Context, in Input) (*PresenceLocation, error) {
 	f.mark(in.CharacterID, partLocation)
 
 	resp, err := getlocation.Request(
@@ -30,17 +30,17 @@ func (f *Feature) location(ctx context.Context, in Input) (PresenceLocation, err
 		f.auth(in.CharacterID),
 	)
 	if err != nil {
-		return PresenceLocation{}, err
+		return nil, err
 	}
 	if err := esi.ResponseError(resp); err != nil {
-		return PresenceLocation{}, err
+		return nil, err
 	}
 	data := resp.Data
 
 	prev, err := f.q.GetLocation(ctx, in.CharacterID)
 	existed, err := db.Found(err)
 	if err != nil {
-		return PresenceLocation{}, err
+		return nil, err
 	}
 	row, err := f.q.UpsertLocation(ctx, UpsertLocationParams{
 		CharacterID:   in.CharacterID,
@@ -50,10 +50,10 @@ func (f *Feature) location(ctx context.Context, in Input) (PresenceLocation, err
 		FetchedAt:     time.Now().UTC(),
 	})
 	if err != nil {
-		return PresenceLocation{}, err
+		return nil, err
 	}
 	if !existed || db.Changed(prev, row) {
 		f.events.Emit(EventChanged)
 	}
-	return row, nil
+	return &row, nil
 }
