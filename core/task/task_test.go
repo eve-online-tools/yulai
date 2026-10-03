@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"io"
 	"log/slog"
+	"slices"
 	"strings"
 	"sync"
 	"sync/atomic"
@@ -512,6 +513,134 @@ func TestOnChangeDebounced(t *testing.T) {
 		time.Sleep(time.Second)
 		if got := n.Load(); got != 1 {
 			t.Fatalf("OnChange called %d times, want 1", got)
+		}
+	})
+}
+
+type reporting struct {
+	step chan struct{}
+	fail error
+}
+
+func (r *reporting) Do(ctx context.Context, _ struct{}) (struct{}, error) {
+	Report(ctx, Progress{Phase: "download", Done: 1, Total: 4})
+	Report(ctx, Progress{Phase: "download", Done: 2, Total: 4}) // within progressEvery: no event
+	<-r.step
+	time.Sleep(progressEvery)
+	Report(ctx, Progress{Phase: "build", Item: "types.jsonl", Done: 3, Total: 4})
+	<-r.step
+	return struct{}{}, r.fail
+}
+
+func TestProgress(t *testing.T) {
+	synctest.Test(t, func(t *testing.T) {
+		Report(t.Context(), Progress{Done: 1}) // outside a run: no-op
+
+		var mu sync.Mutex
+		var events []ProgressEvent
+		r := &reporting{step: make(chan struct{}), fail: errors.New("boom")}
+		tk := New((*reporting).Do, WithProgress("sde.update"))
+		s := newScheduler(Options{OnProgress: func(ev ProgressEvent) {
+			mu.Lock()
+			defer mu.Unlock()
+			events = append(events, ev)
+		}})
+		s.Register(tk.Bind(r))
+		if _, ok := s.Progress("sde.update", ""); ok {
+			t.Fatal("progress before run")
+		}
+
+		if err := tk.On(s).Queue(t.Context(), struct{}{}); err != nil {
+			t.Fatal(err)
+		}
+		synctest.Wait()
+		if p, ok := s.Progress("sde.update", ""); !ok || p.Done != 2 {
+			t.Fatalf("progress = %+v, %v", p, ok)
+		}
+		r.step <- struct{}{}
+		synctest.Wait()
+		r.step <- struct{}{}
+		synctest.Wait()
+		if _, ok := s.Progress("sde.update", ""); ok {
+			t.Fatal("progress after run")
+		}
+
+		want := []ProgressEvent{
+			{Key: "sde.update", State: ProgressStart},
+			{Key: "sde.update", State: ProgressUpdate, Progress: Progress{Phase: "download", Done: 1, Total: 4}},
+			{Key: "sde.update", State: ProgressUpdate, Progress: Progress{Phase: "build", Item: "types.jsonl", Done: 3, Total: 4}},
+			{Key: "sde.update", State: ProgressDone, Progress: Progress{Phase: "build", Item: "types.jsonl", Done: 3, Total: 4}, Error: "boom"},
+		}
+		mu.Lock()
+		defer mu.Unlock()
+		if fmt.Sprint(events) != fmt.Sprint(want) {
+			t.Fatalf("events\n%+v\nwant\n%+v", events, want)
+		}
+	})
+}
+
+func TestProgressIsOptIn(t *testing.T) {
+	synctest.Test(t, func(t *testing.T) {
+		var n atomic.Int32
+		r := &reporting{step: make(chan struct{})}
+		tk := New((*reporting).Do)
+		s := newScheduler(Options{OnProgress: func(ProgressEvent) { n.Add(1) }})
+		s.Register(tk.Bind(r))
+		go func() { r.step <- struct{}{}; r.step <- struct{}{} }()
+		if _, err := tk.On(s).Run(t.Context(), struct{}{}); err != nil {
+			t.Fatal(err)
+		}
+		if n.Load() != 0 {
+			t.Fatalf("%d progress events without WithProgress", n.Load())
+		}
+	})
+}
+
+func TestDuplicateProgressKey(t *testing.T) {
+	s := newScheduler(Options{})
+	mustPanic(t, "duplicate progress key", func() {
+		s.Register(
+			New((*reporting).Do, WithProgress("k")).Bind(&reporting{}),
+			New((*recv).Do, WithProgress("k")).Bind(&recv{}),
+		)
+	})
+}
+
+type parentTask struct{}
+
+func (parentTask) Run(ctx context.Context, _ struct{}) (struct{}, error) {
+	Report(ctx, Progress{Phase: "download", Done: 1, Total: 2})
+	time.Sleep(progressEvery)
+	_, err := childTask.Run(ctx, struct{}{})
+	return struct{}{}, err
+}
+
+func (parentTask) Child(ctx context.Context, _ struct{}) (struct{}, error) {
+	Report(ctx, Progress{Phase: "build", Done: 2, Total: 2})
+	return struct{}{}, nil
+}
+
+var childTask = New(parentTask.Child)
+
+func TestSubTaskSharesProgress(t *testing.T) {
+	synctest.Test(t, func(t *testing.T) {
+		var mu sync.Mutex
+		var states []string
+		parent := New(parentTask.Run, WithProgress("parent"))
+		s := newScheduler(Options{OnProgress: func(ev ProgressEvent) {
+			mu.Lock()
+			defer mu.Unlock()
+			states = append(states, ev.Key+" "+ev.State+" "+ev.Progress.Phase)
+		}})
+		s.Register(parent.Bind(parentTask{}), childTask.Bind(parentTask{}))
+		if _, err := parent.On(s).Run(t.Context(), struct{}{}); err != nil {
+			t.Fatal(err)
+		}
+		mu.Lock()
+		defer mu.Unlock()
+		want := []string{"parent start ", "parent update download", "parent update build", "parent done build"}
+		if !slices.Equal(states, want) {
+			t.Fatalf("events = %q, want %q", states, want)
 		}
 	})
 }
