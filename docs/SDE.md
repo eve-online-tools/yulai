@@ -93,21 +93,33 @@ Opening the store deletes a leftover `sde.sqlite.tmp` and zips of other builds; 
 
 ## Progress
 
-Progress is a `core/task` feature, so any long task can report it:
+Progress is a `core/task` feature. A task opts in with a named key, and the UI tracks bars by key:
 
 ```go
+var Update = task.New((*Updater).Update,
+	task.WithTimeout(30*time.Minute),
+	task.WithProgress("sde.update"),
+)
+
 type Progress struct {
 	Phase string `json:"phase"` // e.g. "download", "build", "index"
 	Item  string `json:"item"`  // e.g. "types.jsonl"
 	Done  int64  `json:"done"`
-	Total int64  `json:"total"` // 0: unknown, indeterminate bar
+	Total int64  `json:"total"`
 }
 
 func Report(ctx context.Context, p Progress)
 ```
 
-`Report` stores the value on the running key's `Status.Progress`, cleared when the run ends, and goes through
-the debounced `OnChange`. `app` wires `OnChange` to the `task:changed` event.
+- A run of a task with `WithProgress(key)` emits **start** when it begins and **done** (last progress, error)
+  when it ends. The UI shows the bar for `key` on start and hides it on done.
+- In between, the task reports through `task.Report(ctx, …)`, which emits **update** (at most every 100 ms).
+  Functions it calls get the same ctx, and sub-tasks it queues without a key of their own report into the same
+  bar.
+- `Report` outside such a run does nothing, so progress is opt-in.
+- `app` forwards the three as `progress:start`, `progress:update` and `progress:done` Wails events carrying
+  `{key, subject, state, progress, error}`. `ProgressService.Get(key)` returns the current progress for a UI that
+  opens mid-run.
 
 `Update` reports one deterministic bar for the whole run: `Done / Total` is the overall fraction, scaled to
 10000, and `Phase` and `Item` name the current step. Each phase fills a fixed slice:
