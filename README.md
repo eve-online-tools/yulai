@@ -73,5 +73,5 @@ frontend/       pnpm workspaces, Vite + React
     bindings/   generated Wails bindings, imported as @bindings/...
   apps/webserver/  loopback server pages (login), builds to frontend/dist/webserver
   packages/ui/  @yulai/ui: shared styles and components, no Wails imports
-docs/           PLAN.md, SCHEDULER.md, DESIGN.md
+docs/           PLAN.md, SCHEDULER.md, SDE.md, DESIGN.md
 ```
