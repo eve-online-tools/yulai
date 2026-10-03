@@ -1,28 +1,27 @@
+import type { CSSProperties } from "react";
 import { Outlet } from "@tanstack/react-router";
 import { GettingStarted } from "../getting-started";
-import { NavItem } from "../nav-item";
+import { NavIcon, NavItem } from "../nav-item";
+import { useSidebarWidth } from "./use-sidebar-width";
 import styles from "./shell.module.scss";
 
 // App shell inside the frame: tool navigation on the left, the page on the right.
 export function Shell() {
+  const { width, collapsed, handleProps } = useSidebarWidth();
   return (
-    <div className={styles.shell}>
-      <aside className={styles.sidebar}>
+    <div className={styles.shell} style={{ "--sidebar-w": `${width}px` } as CSSProperties}>
+      <aside className={styles.sidebar} data-collapsed={collapsed || undefined}>
         <nav className={styles.nav} aria-label="Tools">
-          <p className={styles.label}>Tools</p>
-          <NavItem to="/overview" icon="user">
-            Overview
-          </NavItem>
+          <NavItem to="/overview" icon="user" label="Overview" collapsed={collapsed} />
         </nav>
         <div className={styles.foot}>
-          <GettingStarted />
-          <NavItem to="/characters" icon="users">
-            Characters
-          </NavItem>
-          <NavItem to="/settings" icon="settings">
-            Settings
-          </NavItem>
+          <GettingStarted collapsed={collapsed} />
+          <div className={styles.icons}>
+            <NavIcon to="/characters" icon="users" label="Characters" />
+            <NavIcon to="/settings" icon="settings" label="Settings" />
+          </div>
         </div>
+        <div className={styles.handle} {...handleProps} />
       </aside>
       <main className={styles.content}>
         <Outlet />

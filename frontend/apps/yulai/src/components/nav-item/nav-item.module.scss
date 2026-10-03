@@ -3,6 +3,7 @@
   display: flex;
   align-items: center;
   gap: var(--x-space-3);
+  min-width: 0;
   min-height: var(--x-control-md);
   padding-inline: var(--x-space-3);
   font-family: var(--x-font-ui);
@@ -21,6 +22,44 @@
     outline: var(--x-focus-width) solid var(--x-color-focus);
     outline-offset: calc(var(--x-focus-width) * -1);
   }
+
+  > svg {
+    flex: none;
+  }
+}
+
+.label {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.collapsed {
+  justify-content: center;
+  padding-inline: 0;
+}
+
+.tip {
+  display: block;
+}
+
+.icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  color: var(--x-color-text-muted);
+
+  &:hover {
+    color: var(--x-color-text);
+    background: var(--x-color-surface-2);
+  }
+
+  &:focus-visible {
+    outline: var(--x-focus-width) solid var(--x-color-focus);
+    outline-offset: calc(var(--x-focus-width) * -1);
+  }
 }
 
 .active,
@@ -29,7 +68,7 @@
   background: var(--x-color-accent-wash);
 }
 
-.active::before {
+.item.active::before {
   content: '';
   position: absolute;
   inset-block: 6px;
