@@ -6,6 +6,7 @@ import (
 	"errors"
 	"io/fs"
 	"log/slog"
+	"net/http"
 
 	"github.com/wailsapp/wails/v3/pkg/application"
 
@@ -13,11 +14,12 @@ import (
 	"github.com/eve-online-tools/yulai/core/db"
 	"github.com/eve-online-tools/yulai/core/esi"
 	"github.com/eve-online-tools/yulai/core/keyring"
+	"github.com/eve-online-tools/yulai/core/sde"
 	"github.com/eve-online-tools/yulai/core/task"
 	"github.com/eve-online-tools/yulai/feature"
 	"github.com/eve-online-tools/yulai/feature/character"
-	"github.com/eve-online-tools/yulai/feature/presence"
 	"github.com/eve-online-tools/yulai/feature/charactersheet"
+	"github.com/eve-online-tools/yulai/feature/presence"
 	"github.com/eve-online-tools/yulai/feature/sync"
 	"github.com/eve-online-tools/yulai/identity/login"
 	"github.com/eve-online-tools/yulai/identity/sso"
@@ -29,11 +31,16 @@ const (
 	taskWorkers = 8
 )
 
+// EventTasksChanged fires, debounced, when task run status or progress changes.
+const EventTasksChanged = "task:changed"
+
 func init() {
 	application.RegisterEvent[struct{}](character.EventChanged)
 	application.RegisterEvent[struct{}](sync.EventJobsChanged)
 	application.RegisterEvent[struct{}](presence.EventChanged)
 	application.RegisterEvent[struct{}](charactersheet.EventChanged)
+	application.RegisterEvent[struct{}](sde.EventChanged)
+	application.RegisterEvent[struct{}](EventTasksChanged)
 }
 
 // App wires the packages together.
@@ -42,8 +49,10 @@ type App struct {
 	Characters *character.Service
 	Scheduler  *sync.Scheduler
 	Login      *login.Server
+	SDE        *sde.Updater
 
 	conn   *sql.DB
+	sde    *sde.Store
 	cancel context.CancelFunc
 	// done closes when the task scheduler has drained its in-flight runs.
 	done chan struct{}
@@ -64,7 +73,13 @@ func New(ctx context.Context, cfg *Config, web fs.FS) (*App, error) {
 
 	ssoClient := sso.NewClient(cfg.SSO)
 	verifier := sso.NewVerifier(ssoClient)
-	app := &App{Config: cfg, conn: conn}
+	store, err := sde.Open(ctx, cfg.DataDir, slog.Default())
+	if err != nil {
+		conn.Close()
+		return nil, err
+	}
+	app := &App{Config: cfg, conn: conn, sde: store}
+	app.SDE = sde.NewUpdater(store, &http.Client{}, emitter{})
 	tokens := token.NewStore(conn, ssoClient, verifier, sealer, func(ctx context.Context, id int64, reason string) {
 		if err := app.Characters.MarkNeedsLogin(ctx, id, reason); err != nil {
 			slog.Warn("mark needs login", "character", id, "err", err)
@@ -87,11 +102,16 @@ func New(ctx context.Context, cfg *Config, web fs.FS) (*App, error) {
 	})
 	if err != nil {
 		conn.Close()
+		store.Close()
 		return nil, err
 	}
 	app.Characters = character.NewService(conn, app.Login.URL(), browser{}, emitter{}, tokens, esiClient, features, app.Scheduler)
 
-	task.Default = task.NewScheduler(task.Options{Workers: taskWorkers})
+	task.Default = task.NewScheduler(task.Options{
+		Workers:  taskWorkers,
+		OnChange: func() { emitter{}.Emit(EventTasksChanged) },
+	})
+	task.Default.Register(app.SDE.Tasks()...)
 	task.Default.Register(app.Characters.Tasks()...)
 	// Always on, so not in features: it needs no scopes and has nothing to opt into.
 	task.Default.Register(charactersheet.NewSheet(conn, esiClient, app.Characters, emitter{}).Tasks()...)
@@ -134,6 +154,7 @@ func (a *App) Services() []application.Service {
 		application.NewService(a.Characters),
 		application.NewService(sync.NewService(a.Scheduler)),
 		application.NewService(newSetupService(a.Config, a.Login.URL())),
+		application.NewService(sde.NewService(a.SDE, task.Default.List)),
 	}
 }
 
@@ -148,7 +169,7 @@ func (a *App) Close() error {
 	if a.conn != nil {
 		err = errors.Join(err, a.conn.Close())
 	}
-	return err
+	return errors.Join(err, a.sde.Close())
 }
 
 // browser implements character.Browser.
