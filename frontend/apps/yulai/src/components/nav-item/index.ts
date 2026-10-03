@@ -1,1 +1,1 @@
-export { NavItem, navItemClass } from "./nav-item";
+export { NavIcon, NavItem, navItemClass, navItemCollapsedClass, navItemLabelClass } from "./nav-item";

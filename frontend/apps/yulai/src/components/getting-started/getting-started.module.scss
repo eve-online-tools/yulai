@@ -17,6 +17,14 @@
   font-size: var(--x-fs-small);
 }
 
+// Icons only: the count shrinks to a corner badge.
+.collapsed .count {
+  position: absolute;
+  top: 2px;
+  right: 2px;
+  font-size: 10px;
+}
+
 // Opens to the right of the sidebar, bottom-aligned with its trigger.
 .popover {
   position: absolute;

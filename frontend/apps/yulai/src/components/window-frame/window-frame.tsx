@@ -1,4 +1,6 @@
+import type { MouseEvent } from "react";
 import { Outlet } from "@tanstack/react-router";
+import { Window } from "@wailsio/runtime";
 import { Frame } from "@yulai/ui";
 import { WindowControls } from "../window-controls";
 import { useWindowState } from "./use-window-state";
@@ -16,9 +18,16 @@ export function WindowFrame() {
       data-platform={mac ? "mac" : undefined}
       data-maximised={maximised || undefined}
       data-fullscreen={fullscreen || undefined}
+      onDoubleClick={mac ? undefined : toggleMaximise}
       end={!mac && <WindowControls maximised={maximised} />}
     >
       <Outlet />
     </Frame>
   );
+}
+
+// Frameless windows get no native caption double-click. The macOS runtime handles it itself.
+function toggleMaximise(e: MouseEvent) {
+  if (getComputedStyle(e.target as Element).getPropertyValue("--wails-draggable").trim() !== "drag") return;
+  Window.ToggleMaximise().catch(() => {});
 }

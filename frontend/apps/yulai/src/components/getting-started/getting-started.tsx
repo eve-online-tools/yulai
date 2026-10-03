@@ -3,7 +3,7 @@ import { useMutation, useQuery } from "@tanstack/react-query";
 import { Service as Characters } from "@bindings/github.com/eve-online-tools/yulai/feature/character";
 import { Alert, Button } from "@xaroth.nl/design/react";
 import { AppIcon } from "@yulai/ui";
-import { navItemClass } from "../nav-item";
+import { navItemClass, navItemCollapsedClass, navItemLabelClass } from "../nav-item";
 import { charactersQuery, setupQuery } from "../../queries";
 import styles from "./getting-started.module.scss";
 
@@ -23,7 +23,7 @@ function load(): Stored {
 type Item = { id: string; title: string; done: boolean; body: ReactNode; skippable?: boolean };
 
 // Completion is derived from backend state. Only skips and dismissal are stored.
-export function GettingStarted() {
+export function GettingStarted({ collapsed }: { collapsed?: boolean }) {
   const [stored, setStored] = useState(load);
   const { data: characters = [] } = useQuery(charactersQuery);
   const { data: setup } = useQuery(setupQuery);
@@ -62,9 +62,12 @@ export function GettingStarted() {
 
   return (
     <details className={styles.root}>
-      <summary className={`${navItemClass} ${styles.summary}`}>
+      <summary
+        className={`${navItemClass} ${styles.summary} ${collapsed ? `${navItemCollapsedClass} ${styles.collapsed}` : ""}`}
+        aria-label={collapsed ? "Getting started" : undefined}
+      >
         <AppIcon name="checklist" size={18} />
-        <span>Getting started</span>
+        {!collapsed && <span className={navItemLabelClass}>Getting started</span>}
         <span className={styles.count}>
           {doneCount}/{items.length}
         </span>
