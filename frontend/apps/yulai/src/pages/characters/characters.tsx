@@ -18,6 +18,7 @@ export function CharactersPage() {
   const { data: features } = useSuspenseQuery(featuresQuery);
   const add = useMutation({ mutationFn: () => Characters.AddCharacter() });
   const now = useNow();
+  const [removing, setRemoving] = useState<Character | null>(null);
 
   return (
     <>
@@ -36,13 +37,14 @@ export function CharactersPage() {
       {characters.length === 0 ? (
         <EmptyState title="No characters yet" />
       ) : (
-        <Table label="Characters" hover columns={columns} rows={characters.map((c) => characterRow(c, features, now))} />
+        <Table label="Characters" hover columns={columns} rows={characters.map((c) => characterRow(c, features, now, setRemoving))} />
       )}
+      <RemoveDialog character={removing} onClose={() => setRemoving(null)} />
     </>
   );
 }
 
-function characterRow(c: Character, features: FeatureInfo[], nowSec: number) {
+function characterRow(c: Character, features: FeatureInfo[], nowSec: number, onRemove: (c: Character) => void) {
   const enabled = enabledFeatures(features, c.scopes);
   const active = c.status === "ok" && c.tokenExpiresAt != null && c.tokenExpiresAt > nowSec;
   const tokenLabel = c.status !== "ok" ? "needs login" : active ? "active" : "expired, refreshes on use";
@@ -72,37 +74,41 @@ function characterRow(c: Character, features: FeatureInfo[], nowSec: number) {
         ))}
       </div>
     ),
-    remove: <RemoveButton id={c.id} name={c.name} />,
-  };
-}
-
-function RemoveButton({ id, name }: { id: number; name: string }) {
-  const [confirming, setConfirming] = useState(false);
-  const remove = useMutation({
-    mutationFn: () => Characters.Remove(id),
-    onSuccess: () => setConfirming(false),
-  });
-
-  return (
-    <>
-      <Tooltip id={`remove-${id}`} text={`Remove ${name}`}>
-        <Button variant="tertiary" tone="danger" size="sm" aria-label={`Remove ${name}`} onClick={() => setConfirming(true)}>
+    remove: (
+      <Tooltip id={`remove-${c.id}`} text={`Remove ${c.name}`}>
+        <Button variant="tertiary" tone="danger" size="sm" aria-label={`Remove ${c.name}`} onClick={() => onRemove(c)}>
           <Icon name="close" />
         </Button>
       </Tooltip>
-      <ConfirmDialog
-        open={confirming}
-        onClose={() => setConfirming(false)}
-        onConfirm={() => remove.mutate()}
-        title="Remove character"
-        tone="danger"
-        confirmLabel="Remove"
-        pending={remove.isPending}
-      >
-        <p>Remove {name} and its stored token? Log in again to add it back.</p>
-        {remove.isError && <Alert tone="danger">{String(remove.error)}</Alert>}
-      </ConfirmDialog>
-    </>
+    ),
+  };
+}
+
+// One dialog for the page, outside the table: a dialog inherits text alignment from its DOM parent, and the
+// remove column is end-aligned.
+function RemoveDialog({ character, onClose }: { character: Character | null; onClose: () => void }) {
+  // Keeps the name on screen while the dialog animates closed.
+  const [shown, setShown] = useState(character);
+  if (character && character !== shown) setShown(character);
+  const remove = useMutation({ mutationFn: (id: number) => Characters.Remove(id), onSuccess: onClose });
+  const close = () => {
+    remove.reset();
+    onClose();
+  };
+
+  return (
+    <ConfirmDialog
+      open={character != null}
+      onClose={close}
+      onConfirm={() => shown && remove.mutate(shown.id)}
+      title="Remove character"
+      tone="danger"
+      confirmLabel="Remove"
+      pending={remove.isPending}
+    >
+      <p>Remove {shown?.name} and its stored token? Log in again to add it back.</p>
+      {remove.isError && <Alert tone="danger">{String(remove.error)}</Alert>}
+    </ConfirmDialog>
   );
 }
 
