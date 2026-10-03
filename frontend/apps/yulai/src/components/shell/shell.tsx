@@ -17,8 +17,8 @@ export function Shell() {
         <div className={styles.foot}>
           <GettingStarted collapsed={collapsed} />
           <div className={styles.icons}>
-            <NavIcon to="/characters" icon="users" label="Characters" />
-            <NavIcon to="/settings" icon="settings" label="Settings" />
+            <NavIcon to="/characters" icon="users" label="Characters" collapsed={collapsed} />
+            <NavIcon to="/settings" icon="settings" label="Settings" collapsed={collapsed} />
           </div>
         </div>
         <div className={styles.handle} {...handleProps} />

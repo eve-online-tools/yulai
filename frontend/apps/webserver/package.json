@@ -10,7 +10,7 @@
     "typecheck": "tsc"
   },
   "dependencies": {
-    "@xaroth.nl/design": "^0.3.1",
+    "@xaroth.nl/design": "^0.4.0",
     "@yulai/ui": "workspace:*",
     "react": "^19.3.0",
     "react-dom": "^19.3.0"
