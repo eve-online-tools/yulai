@@ -22,3 +22,10 @@ sql:
         <<: *go
         package: "character"
         out: "feature/character"
+  - <<: *pkg
+    queries: "feature/presence/queries.sql"
+    gen:
+      go:
+        <<: *go
+        package: "presence"
+        out: "feature/presence"

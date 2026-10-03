@@ -34,6 +34,7 @@ Real features are out of scope for now. This plan describes where they plug in.
 | `identity/token`   | `tokens` table, sealed refresh tokens, `For()` → `RefreshableToken`| ported         |
 | `feature`          | `Feature` contract (`Tasks() []task.Binding`), `Enabled()`, `Covers()` | done (tested) |
 | `feature/character`| `characters` table, add-character flow, list, remove, needs-login  | done (tested), `Enroll` is a no-op until the scheduler is wired |
+| `feature/presence` | `presence` table: online, location, ship. Paced by online state     | sync done (tested), no UI yet |
 | `core/task`        | Generic in-memory scheduler, `task_pauses` table (see SCHEDULER.md) | engine done (tested), not wired |
 | `feature/sync`     | Wails `SyncService` over the scheduler: list, pause, resume, trigger | old job registry, to be replaced |
 | `frontend`         | pnpm workspaces: `apps/yulai` (router, query layer, events, pages), `packages/ui` | done, renders stub data |
@@ -105,7 +106,7 @@ Ported from asset-manager, minus `presence`:
   scopes (space separated `scp`), issued_at (`iat`)
 - `task_pauses`: (kind, value) PK. kind is `task` or `subject`. Scheduling itself is not persisted, see `docs/SCHEDULER.md`.
 
-Each feature then adds its own tables in a new migration. Once a table exists, the hand-written
+Each feature then adds its own tables in a new migration (`00002_presence.sql`: `presence`). Once a table exists, the hand-written
 `ListRow` / `SyncJob` structs are replaced by sqlc-generated ones (`sqlc_*.go`, `*_sqlc.go`). Keep the
 field names and JSON tags so the bindings don't change. `sqlc.yaml` is added together with the first
 `queries.sql` (copy asset-manager's anchor-based layout).
