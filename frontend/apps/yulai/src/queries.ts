@@ -2,6 +2,7 @@ import { QueryClient, queryOptions } from "@tanstack/react-query";
 import { Events } from "@wailsio/runtime";
 import { Service as Characters } from "@bindings/github.com/eve-online-tools/yulai/feature/character";
 import { Service as Sync } from "@bindings/github.com/eve-online-tools/yulai/feature/sync";
+import { Service as SDE } from "@bindings/github.com/eve-online-tools/yulai/core/sde";
 import { ProgressService, SetupService as Setup } from "@bindings/github.com/eve-online-tools/yulai/app";
 import type { ProgressEvent } from "@bindings/github.com/eve-online-tools/yulai/core/task";
 
@@ -17,6 +18,7 @@ export const keys = {
   features: ["features"] as const,
   syncJobs: ["syncJobs"] as const,
   setup: ["setup"] as const,
+  sde: ["sde"] as const,
   progress: (key: string) => ["progress", key] as const,
 };
 
@@ -43,6 +45,11 @@ export const syncJobsQuery = queryOptions({
   queryFn: () => Sync.List(),
 });
 
+export const sdeQuery = queryOptions({
+  queryKey: keys.sde,
+  queryFn: () => SDE.Status(),
+});
+
 // Progress of the running task with that task.WithProgress key, null when it is not running.
 // Fetched once, then kept current by the progress events.
 export const progressQuery = (key: string) =>
@@ -60,6 +67,9 @@ export function listenForBackendEvents() {
   });
   Events.On("sync:jobs:changed", () => {
     queryClient.invalidateQueries({ queryKey: keys.syncJobs });
+  });
+  Events.On("sde:changed", () => {
+    queryClient.invalidateQueries({ queryKey: keys.sde });
   });
   const setProgress = (ev: ProgressEvent, running: boolean) =>
     queryClient.setQueryData(keys.progress(ev.key), running ? ev.progress : null);
