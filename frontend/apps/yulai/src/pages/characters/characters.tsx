@@ -1,79 +1,105 @@
-import { useQuery, useSuspenseQuery, useMutation } from "@tanstack/react-query";
+import { useState } from "react";
+import { useMutation, useSuspenseQuery } from "@tanstack/react-query";
+import { Service as Characters } from "@bindings/github.com/eve-online-tools/yulai/feature/character";
 import type { FeatureInfo, ListRow as Character } from "@bindings/github.com/eve-online-tools/yulai/feature/character";
-import { Service as Sync } from "@bindings/github.com/eve-online-tools/yulai/feature/sync";
-import { Button, EmptyState, PageHead, Panel, Tag } from "@xaroth.nl/design/react";
+import { Alert, Button, ConfirmDialog, EmptyState, Icon, PageHead, Table, Tag, Tooltip } from "@xaroth.nl/design/react";
 import { Portrait, enabledFeatures } from "@yulai/ui";
-import { charactersQuery, featuresQuery, syncJobsQuery } from "../../queries";
-import styles from "./characters.module.scss";
+import { charactersQuery, featuresQuery } from "../../queries";
+
+const columns = [
+  { key: "character", label: "Character" },
+  { key: "token", label: "Token" },
+  { key: "refreshed", label: "Last refreshed" },
+  { key: "features", label: "Features" },
+  { key: "remove", label: "", align: "end" as const },
+];
 
 export function CharactersPage() {
   const { data: characters } = useSuspenseQuery(charactersQuery);
-  const { data: features = [] } = useQuery(featuresQuery);
+  const { data: features } = useSuspenseQuery(featuresQuery);
+  const add = useMutation({ mutationFn: () => Characters.AddCharacter() });
 
   return (
     <>
-      <PageHead title="Characters" />
-      {characters.length === 0 && <EmptyState title="No characters yet">Add one from the accounts page.</EmptyState>}
-      <div className={styles.cards}>
-        {characters.map((c) => (
-          <CharacterCard key={c.id} character={c} features={features} />
-        ))}
-      </div>
+      <PageHead
+        title="Characters"
+        lead="Login continues in your browser."
+        actions={
+          <Button onClick={() => add.mutate()} start={<Icon name="plus" />}>
+            Add character
+          </Button>
+        }
+      />
+      {add.isError && <Alert tone="danger">{String(add.error)}</Alert>}
+
+      {characters.length === 0 ? (
+        <EmptyState title="No characters yet" />
+      ) : (
+        <Table label="Characters" hover columns={columns} rows={characters.map((c) => characterRow(c, features))} />
+      )}
     </>
   );
 }
 
-// Feature panels (one per feature that has something to show) go between the tags and the jobs.
-function CharacterCard({ character: c, features }: { character: Character; features: FeatureInfo[] }) {
-  const { data: jobs = [] } = useQuery(syncJobsQuery);
-  const runNow = useMutation({ mutationFn: (job: string) => Sync.RunNow(c.id, job) });
+function characterRow(c: Character, features: FeatureInfo[]) {
+  const enabled = enabledFeatures(features, c.scopes);
+  const nowSec = Date.now() / 1000;
+  const active = c.status === "ok" && c.tokenExpiresAt != null && c.tokenExpiresAt > nowSec;
+  const tokenLabel = c.status !== "ok" ? "needs login" : active ? "active" : "expired, refreshes on use";
 
-  const enabled = enabledFeatures(features, c.scopes).map((f) => f.name);
-  const disabled = features.filter((f) => !enabled.includes(f.name)).map((f) => f.name);
-  const myJobs = jobs.filter((j) => j.characterId === c.id);
-
-  return (
-    <Panel className={styles.card}>
-      <div className={styles.head}>
-        <Portrait id={c.id} size={48} />
-        <div>
-          <div className={styles.name}>{c.name}</div>
-          <div className="muted small">{c.id}</div>
-        </div>
-      </div>
-
-      {c.status !== "ok" && <p className="warn">Needs login again. {c.statusError}</p>}
-
+  return {
+    character: (
       <div className="row">
-        {enabled.map((n) => (
-          <Tag key={n} active>{n}</Tag>
-        ))}
-        {disabled.map((n) => (
-          <Tag key={n} title="Log in again with this feature checked to enable it">{n}</Tag>
+        <Portrait id={c.id} size={24} />
+        <span>{c.name}</span>
+      </div>
+    ),
+    token: (
+      <span className={c.status !== "ok" ? "warn" : active ? "ok" : "muted"} title={c.statusError ?? ""}>
+        {tokenLabel}
+      </span>
+    ),
+    refreshed: <span className="muted">{c.tokenIssuedAt ? new Date(c.tokenIssuedAt * 1000).toLocaleString() : "?"}</span>,
+    features: (
+      <div className="row">
+        {enabled.length === 0 && <span className="muted">none</span>}
+        {enabled.map((f) => (
+          <Tag key={f.name} active>
+            {f.name}
+          </Tag>
         ))}
       </div>
-
-      <details className={`small ${styles.jobs}`}>
-        <summary className="muted">Sync jobs ({myJobs.length})</summary>
-        <dl>
-          {myJobs.map((j) => (
-            <JobRow key={j.job} job={j.job} nextRun={j.nextRun} lastError={j.lastError} onRun={() => runNow.mutate(j.job)} />
-          ))}
-        </dl>
-      </details>
-    </Panel>
-  );
+    ),
+    remove: <RemoveButton id={c.id} name={c.name} />,
+  };
 }
 
-function JobRow({ job, nextRun, lastError, onRun }: { job: string; nextRun: number | null; lastError: string | null; onRun: () => void }) {
-  const label = lastError ? "error" : nextRun ? `next ${new Date(nextRun * 1000).toLocaleTimeString()}` : "paused";
+function RemoveButton({ id, name }: { id: number; name: string }) {
+  const [confirming, setConfirming] = useState(false);
+  const remove = useMutation({
+    mutationFn: () => Characters.Remove(id),
+    onSuccess: () => setConfirming(false),
+  });
+
   return (
     <>
-      <dt>{job}</dt>
-      <dd>
-        <span className={lastError ? "error" : "muted"} title={lastError ?? ""}>{label}</span>{" "}
-        <Button variant="tertiary" size="sm" onClick={onRun}>sync now</Button>
-      </dd>
+      <Tooltip id={`remove-${id}`} text={`Remove ${name}`}>
+        <Button variant="tertiary" tone="danger" size="sm" aria-label={`Remove ${name}`} onClick={() => setConfirming(true)}>
+          <Icon name="close" />
+        </Button>
+      </Tooltip>
+      <ConfirmDialog
+        open={confirming}
+        onClose={() => setConfirming(false)}
+        onConfirm={() => remove.mutate()}
+        title="Remove character"
+        tone="danger"
+        confirmLabel="Remove"
+        pending={remove.isPending}
+      >
+        <p>Remove {name} and its stored token? Log in again to add it back.</p>
+        {remove.isError && <Alert tone="danger">{String(remove.error)}</Alert>}
+      </ConfirmDialog>
     </>
   );
 }

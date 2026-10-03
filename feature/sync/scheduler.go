@@ -74,8 +74,9 @@ func NewScheduler(conn *sql.DB, features []feature.Feature, tokens Tokens, worke
 // Enroll reconciles a character's job rows with the features its token unlocks.
 // Jobs of disabled features are removed, new ones start now, and RunAtStartup jobs
 // are made due so stored data gets verified. Call at boot and after every login.
+// Succeeds as a no-op until the scheduler is wired, so logins can complete.
 func (s *Scheduler) Enroll(ctx context.Context, characterID int64) error {
-	return todo.ErrNotImplemented
+	return nil
 }
 
 // Start will run the scheduling loop until ctx is cancelled: tick, list due jobs,

@@ -23,7 +23,7 @@ export function WelcomePage() {
   const current = !first ? 0 : synced < myJobs.length ? 1 : 2;
 
   useEffect(() => {
-    if (current === 2) navigate({ to: "/characters", replace: true });
+    if (current === 2) navigate({ to: "/overview", replace: true });
   }, [current, navigate]);
 
   return (
