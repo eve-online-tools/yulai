@@ -91,3 +91,11 @@ sql:
         <<: *go
         package: "charactersheet"
         out: "feature/charactersheet"
+  - <<: *pkg
+    schema: "core/sde/schema.sql"
+    queries: "core/sde/queries.sql"
+    gen:
+      go:
+        <<: *go
+        package: "sde"
+        out: "core/sde"
