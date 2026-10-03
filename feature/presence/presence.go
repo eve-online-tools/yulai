@@ -79,9 +79,29 @@ const (
 
 // Every task ticks at the same rate; the seeds decide who is due.
 var (
-	Online   = task.New((*Feature).online, task.WithStartup(), task.WithInterval(tick), task.WithTimeout(timeout), task.Pausable("presence.online"))
-	Location = task.New((*Feature).location, task.WithStartup(), task.WithInterval(tick), task.WithTimeout(timeout), task.Pausable("presence.location"))
-	Ship     = task.New((*Feature).ship, task.WithStartup(), task.WithInterval(tick), task.WithTimeout(timeout), task.Pausable("presence.ship"))
+	Online = task.New(
+		(*Feature).online,
+		task.WithStartup(),
+		task.WithInterval(tick),
+		task.WithTimeout(timeout),
+		task.Pausable("presence.online"),
+	)
+
+	Location = task.New(
+		(*Feature).location,
+		task.WithStartup(),
+		task.WithInterval(tick),
+		task.WithTimeout(timeout),
+		task.Pausable("presence.location"),
+	)
+
+	Ship = task.New(
+		(*Feature).ship,
+		task.WithStartup(),
+		task.WithInterval(tick),
+		task.WithTimeout(timeout),
+		task.Pausable("presence.ship"),
+	)
 )
 
 type Feature struct {
@@ -103,7 +123,14 @@ type fetchKey struct {
 }
 
 func NewFeature(conn *sql.DB, esiClient *http.Client, tokens Tokens, chars Characters, events Emitter) *Feature {
-	return &Feature{q: New(conn), esi: esiClient, tokens: tokens, chars: chars, events: events, fetched: map[fetchKey]time.Time{}}
+	return &Feature{
+		q:       New(conn),
+		esi:     esiClient,
+		tokens:  tokens,
+		chars:   chars,
+		events:  events,
+		fetched: map[fetchKey]time.Time{},
+	}
 }
 
 func (f *Feature) Name() string     { return Name }
@@ -214,7 +241,12 @@ func (f *Feature) online(ctx context.Context, in Input) (bool, error) {
 	if err != nil {
 		return false, err
 	}
-	next := Presence{Online: b2i(data.Online), LastLogin: unixPtr(data.LastLogin), LastLogout: unixPtr(data.LastLogout), Logins: data.Logins}
+	next := Presence{
+		Online:     b2i(data.Online),
+		LastLogin:  unixPtr(data.LastLogin),
+		LastLogout: unixPtr(data.LastLogout),
+		Logins:     data.Logins,
+	}
 	if err := f.q.UpsertOnline(ctx, UpsertOnlineParams{
 		CharacterID: in.CharacterID,
 		Online:      next.Online,
@@ -251,7 +283,11 @@ func (f *Feature) location(ctx context.Context, in Input) (struct{}, error) {
 	if err != nil {
 		return struct{}{}, err
 	}
-	next := Presence{SolarSystemID: ptr(int64(data.SolarSystem)), StationID: idPtr(data.Station), StructureID: idPtr(data.Structure)}
+	next := Presence{
+		SolarSystemID: ptr(int64(data.SolarSystem)),
+		StationID:     idPtr(data.Station),
+		StructureID:   idPtr(data.Structure),
+	}
 	if err := f.q.UpsertLocation(ctx, UpsertLocationParams{
 		CharacterID:   in.CharacterID,
 		SolarSystemID: next.SolarSystemID,
@@ -283,7 +319,11 @@ func (f *Feature) ship(ctx context.Context, in Input) (struct{}, error) {
 	if err != nil {
 		return struct{}{}, err
 	}
-	next := Presence{ShipTypeID: ptr(int64(data.ShipType)), ShipItemID: ptr(int64(data.ShipItem)), ShipName: ptr(data.ShipName)}
+	next := Presence{
+		ShipTypeID: ptr(int64(data.ShipType)),
+		ShipItemID: ptr(int64(data.ShipItem)),
+		ShipName:   ptr(data.ShipName),
+	}
 	if err := f.q.UpsertShip(ctx, UpsertShipParams{
 		CharacterID: in.CharacterID,
 		ShipTypeID:  next.ShipTypeID,
