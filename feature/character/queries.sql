@@ -22,3 +22,7 @@ UPDATE characters SET status = ?, status_error = ?, updated_at = ? WHERE id = ?;
 
 -- name: Delete :exec
 DELETE FROM characters WHERE id = ?;
+
+-- name: SetAffiliation :execrows
+UPDATE characters SET corporation_id = @corporation_id, alliance_id = @alliance_id, updated_at = @updated_at
+WHERE id = @id AND (corporation_id IS NOT @corporation_id OR alliance_id IS NOT @alliance_id);

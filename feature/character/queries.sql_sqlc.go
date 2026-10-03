@@ -71,6 +71,31 @@ func (q *Queries) List(ctx context.Context) ([]ListRow, error) {
 	return items, nil
 }
 
+const setAffiliation = `-- name: SetAffiliation :execrows
+UPDATE characters SET corporation_id = ?1, alliance_id = ?2, updated_at = ?3
+WHERE id = ?4 AND (corporation_id IS NOT ?1 OR alliance_id IS NOT ?2)
+`
+
+type SetAffiliationParams struct {
+	CorporationID int64  `json:"corporationId"`
+	AllianceID    *int64 `json:"allianceId"`
+	UpdatedAt     int64  `json:"updatedAt"`
+	ID            int64  `json:"id"`
+}
+
+func (q *Queries) SetAffiliation(ctx context.Context, arg SetAffiliationParams) (int64, error) {
+	result, err := q.db.ExecContext(ctx, setAffiliation,
+		arg.CorporationID,
+		arg.AllianceID,
+		arg.UpdatedAt,
+		arg.ID,
+	)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected()
+}
+
 const setStatus = `-- name: SetStatus :exec
 UPDATE characters SET status = ?, status_error = ?, updated_at = ? WHERE id = ?
 `
