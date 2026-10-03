@@ -5,10 +5,6 @@
 // @ts-ignore: Unused imports
 import { Create as $Create } from "@wailsio/runtime";
 
-// eslint-disable-next-line @typescript-eslint/ban-ts-comment
-// @ts-ignore: Unused imports
-import * as task$0 from "../task/models.js";
-
 /**
  * Status is what the UI shows about static data.
  */
@@ -24,8 +20,6 @@ export class Status {
      */
     "latest": number;
     "lastCheck": string;
-    "updating": boolean;
-    "progress": task$0.Progress | null;
 
     /**
      * LastError is the error of the last failed check or update.
@@ -46,12 +40,6 @@ export class Status {
         if (!("lastCheck" in $$source)) {
             this["lastCheck"] = "0001-01-01T00:00:00.000Z";
         }
-        if (!("updating" in $$source)) {
-            this["updating"] = false;
-        }
-        if (!("progress" in $$source)) {
-            this["progress"] = null;
-        }
         if (!("lastError" in $$source)) {
             this["lastError"] = "";
         }
@@ -63,15 +51,7 @@ export class Status {
      * Creates a new Status instance from a string or object.
      */
     static createFrom($$source: any = {}): Status {
-        const $$createField5_0 = $$createType1;
         let $$parsedSource = typeof $$source === 'string' ? JSON.parse($$source) : $$source;
-        if ("progress" in $$parsedSource) {
-            $$parsedSource["progress"] = $$createField5_0($$parsedSource["progress"]);
-        }
         return new Status($$parsedSource as Partial<Status>);
     }
 }
-
-// Private type creation functions
-const $$createType0 = task$0.Progress.createFrom;
-const $$createType1 = $Create.Nullable($$createType0);

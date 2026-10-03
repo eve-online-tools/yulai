@@ -2,8 +2,8 @@ import { QueryClient, queryOptions } from "@tanstack/react-query";
 import { Events } from "@wailsio/runtime";
 import { Service as Characters } from "@bindings/github.com/eve-online-tools/yulai/feature/character";
 import { Service as Sync } from "@bindings/github.com/eve-online-tools/yulai/feature/sync";
-import { SetupService as Setup } from "@bindings/github.com/eve-online-tools/yulai/app";
-import { Service as SDE } from "@bindings/github.com/eve-online-tools/yulai/core/sde";
+import { ProgressService, SetupService as Setup } from "@bindings/github.com/eve-online-tools/yulai/app";
+import type { ProgressEvent } from "@bindings/github.com/eve-online-tools/yulai/core/task";
 
 export const queryClient = new QueryClient({
   defaultOptions: {
@@ -17,7 +17,7 @@ export const keys = {
   features: ["features"] as const,
   syncJobs: ["syncJobs"] as const,
   setup: ["setup"] as const,
-  sde: ["sde"] as const,
+  progress: (key: string) => ["progress", key] as const,
 };
 
 export const charactersQuery = queryOptions({
@@ -43,10 +43,14 @@ export const syncJobsQuery = queryOptions({
   queryFn: () => Sync.List(),
 });
 
-export const sdeQuery = queryOptions({
-  queryKey: keys.sde,
-  queryFn: () => SDE.Status(),
-});
+// Progress of the running task with that task.WithProgress key, null when it is not running.
+// Fetched once, then kept current by the progress events.
+export const progressQuery = (key: string) =>
+  queryOptions({
+    queryKey: keys.progress(key),
+    queryFn: () => ProgressService.Get(key),
+    staleTime: Infinity,
+  });
 
 // Backend emits events when data changes; we invalidate the matching queries.
 export function listenForBackendEvents() {
@@ -57,11 +61,9 @@ export function listenForBackendEvents() {
   Events.On("sync:jobs:changed", () => {
     queryClient.invalidateQueries({ queryKey: keys.syncJobs });
   });
-  // task:changed also carries progress, at most every 250ms.
-  Events.On("sde:changed", () => {
-    queryClient.invalidateQueries({ queryKey: keys.sde });
-  });
-  Events.On("task:changed", () => {
-    queryClient.invalidateQueries({ queryKey: keys.sde });
-  });
+  const setProgress = (ev: ProgressEvent, running: boolean) =>
+    queryClient.setQueryData(keys.progress(ev.key), running ? ev.progress : null);
+  Events.On("progress:start", (e) => setProgress(e.data, true));
+  Events.On("progress:update", (e) => setProgress(e.data, true));
+  Events.On("progress:done", (e) => setProgress(e.data, false));
 }

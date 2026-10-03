@@ -44,3 +44,58 @@ export class Progress {
         return new Progress($$parsedSource as Partial<Progress>);
     }
 }
+
+/**
+ * ProgressEvent is what Options.OnProgress receives for tasks with WithProgress.
+ */
+export class ProgressEvent {
+    "key": string;
+    "subject": string;
+
+    /**
+     * State is ProgressStart, ProgressUpdate or ProgressDone.
+     */
+    "state": string;
+    "progress": Progress;
+
+    /**
+     * Error is the run's error, on done only.
+     */
+    "error": string;
+
+    /** Creates a new ProgressEvent instance. */
+    constructor($$source: Partial<ProgressEvent> = {}) {
+        if (!("key" in $$source)) {
+            this["key"] = "";
+        }
+        if (!("subject" in $$source)) {
+            this["subject"] = "";
+        }
+        if (!("state" in $$source)) {
+            this["state"] = "";
+        }
+        if (!("progress" in $$source)) {
+            this["progress"] = (new Progress());
+        }
+        if (!("error" in $$source)) {
+            this["error"] = "";
+        }
+
+        Object.assign(this, $$source);
+    }
+
+    /**
+     * Creates a new ProgressEvent instance from a string or object.
+     */
+    static createFrom($$source: any = {}): ProgressEvent {
+        const $$createField3_0 = $$createType0;
+        let $$parsedSource = typeof $$source === 'string' ? JSON.parse($$source) : $$source;
+        if ("progress" in $$parsedSource) {
+            $$parsedSource["progress"] = $$createField3_0($$parsedSource["progress"]);
+        }
+        return new ProgressEvent($$parsedSource as Partial<ProgressEvent>);
+    }
+}
+
+// Private type creation functions
+const $$createType0 = Progress.createFrom;

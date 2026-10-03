@@ -135,8 +135,8 @@ A zip already on disk skips to 50%. The bar never goes back or becomes indetermi
 `sde.Service` (`SDEService`) has `Status()`: installed build and release date, latest build seen, last check and
 the last error. `CheckNow()` queues `Check`.
 
-While `Update` runs, the shell and the welcome screen show a bar pinned below the scrolling content:
-"Updating data", the phase and item, and the update bar with its percentage.
+From the `sde.update` start event to its done event, the shell and the welcome screen show a bar pinned below
+the scrolling content: "Updating data", the phase and item, and the update bar with its percentage.
 
 ## Steps
 
