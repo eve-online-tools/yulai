@@ -14,6 +14,7 @@ import (
 
 	"github.com/eve-online-tools/yulai/core/db"
 	"github.com/eve-online-tools/yulai/core/task"
+	"github.com/eve-online-tools/yulai/feature"
 )
 
 const pilot = 90000001
@@ -47,7 +48,7 @@ func (fakeTokens) For(int64) authentication.RefreshableToken { return fakeToken{
 
 type fakeChars []int64
 
-func (c fakeChars) WithScopes(context.Context, ...string) ([]int64, error) { return c, nil }
+func (c fakeChars) WithFeature(context.Context, feature.Feature) ([]int64, error) { return c, nil }
 
 type countEmitter struct{ n int }
 

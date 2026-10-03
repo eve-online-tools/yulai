@@ -19,6 +19,7 @@ import (
 
 	"github.com/eve-online-tools/yulai/core/esi"
 	"github.com/eve-online-tools/yulai/core/task"
+	"github.com/eve-online-tools/yulai/feature"
 )
 
 const (
@@ -49,10 +50,10 @@ var scopes = []string{
 	"esi-location.read_ship_type.v1",
 }
 
-// Characters lists characters whose token covers the scopes. Implemented by
+// Characters lists characters whose token unlocks a feature. Implemented by
 // feature/character.
 type Characters interface {
-	WithScopes(ctx context.Context, scopes ...string) ([]int64, error)
+	WithFeature(ctx context.Context, f feature.Feature) ([]int64, error)
 }
 
 type Tokens interface {
@@ -147,7 +148,7 @@ func (f *Feature) Tasks() []task.Binding {
 // due seeds a task with the characters whose part is older than its interval.
 func (f *Feature) due(p part) task.Seed[Input] {
 	return func(ctx context.Context) ([]Input, error) {
-		ids, err := f.chars.WithScopes(ctx, scopes...)
+		ids, err := f.chars.WithFeature(ctx, f)
 		if err != nil || len(ids) == 0 {
 			return nil, err
 		}

@@ -141,8 +141,8 @@ func (browser) OpenURL(url string) error { return application.Get().Browser.Open
 // characters implements presence.Characters once app.Characters is set.
 type characters struct{ app *App }
 
-func (c characters) WithScopes(ctx context.Context, scopes ...string) ([]int64, error) {
-	return c.app.Characters.WithScopes(ctx, scopes...)
+func (c characters) WithFeature(ctx context.Context, f feature.Feature) ([]int64, error) {
+	return c.app.Characters.WithFeature(ctx, f)
 }
 
 // emitter implements character.Emitter.
