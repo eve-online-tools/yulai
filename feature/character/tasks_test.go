@@ -56,3 +56,21 @@ type scoped []string
 func (scoped) Name() string          { return "scoped" }
 func (f scoped) Scopes() []string    { return f }
 func (scoped) Tasks() []task.Binding { return nil }
+
+func TestSetAffiliation(t *testing.T) {
+	ctx := context.Background()
+	s, _, _ := newTestService(t, pilot)
+	if err := s.Store(ctx, result()); err != nil {
+		t.Fatal(err)
+	}
+	if err := s.SetAffiliation(ctx, 90000001, 98000002, nil); err != nil {
+		t.Fatal(err)
+	}
+	rows, _ := s.List(ctx)
+	if rows[0].CorporationID != 98000002 || rows[0].AllianceID != nil {
+		t.Fatalf("row = %+v", rows[0])
+	}
+	if ids, err := s.IDs(ctx); err != nil || len(ids) != 1 {
+		t.Fatalf("IDs = %v, %v", ids, err)
+	}
+}
