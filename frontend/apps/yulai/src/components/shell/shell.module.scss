@@ -2,19 +2,25 @@
   flex: 1;
   min-height: 0;
   display: grid;
-  grid-template-columns: 232px minmax(0, 1fr);
+  grid-template-columns: var(--sidebar-w) minmax(0, 1fr);
 }
 
 .sidebar {
+  position: relative;
   display: flex;
   flex-direction: column;
   justify-content: space-between;
   gap: var(--x-space-4);
+  min-width: 0;
   min-height: 0;
   padding: var(--x-space-4) var(--x-space-3);
   background: var(--x-color-glass);
   border-right: 1px solid var(--x-color-line);
   backdrop-filter: var(--x-blur);
+
+  &[data-collapsed] {
+    padding-inline: var(--x-space-2);
+  }
 }
 
 .nav,
@@ -35,24 +41,48 @@
   border-top: 1px solid var(--x-color-line);
 }
 
-.label {
-  margin: 0 0 var(--x-space-2);
-  padding-inline: var(--x-space-3);
-  font-family: var(--x-font-ui);
-  font-size: var(--x-fs-label);
-  font-weight: 600;
-  letter-spacing: var(--x-track-label);
-  text-transform: uppercase;
-  color: var(--x-color-text-faint);
+// Inset lines the small icons up with the nav item icons above.
+.icons {
+  display: flex;
+  gap: var(--x-space-1);
+  padding-inline: var(--x-space-1);
+
+  .sidebar[data-collapsed] & {
+    flex-direction: column;
+    align-items: center;
+  }
+}
+
+// Straddles the sidebar border; above the content column so it stays grabbable.
+.handle {
+  position: absolute;
+  inset-block: 0;
+  right: -3px;
+  z-index: 1;
+  width: 6px;
+  cursor: col-resize;
+  touch-action: none;
+
+  &:hover,
+  &:active,
+  &:focus-visible {
+    outline: none;
+    background: linear-gradient(90deg, transparent 2px, var(--x-color-accent) 2px, var(--x-color-accent) 4px, transparent 4px);
+  }
 }
 
 .content {
   min-height: 0;
   overflow: auto;
-  padding: var(--x-space-6) var(--x-space-7);
+  padding: var(--x-space-4) var(--x-space-5);
   display: flex;
   flex-direction: column;
   gap: var(--x-space-5);
+
+  // The content gap already spaces the head from the page.
+  :global(.x-page-head) {
+    margin-bottom: 0;
+  }
 
   // Site-scale page titles are too loud for a tool window.
   :global(.x-page-head__title) {
