@@ -43,7 +43,10 @@ type App struct {
 	Scheduler  *sync.Scheduler
 	Login      *login.Server
 
-	conn *sql.DB
+	conn   *sql.DB
+	cancel context.CancelFunc
+	// done closes when the task scheduler has drained its in-flight runs.
+	done chan struct{}
 }
 
 // web is the apps/webserver build the login server serves.
@@ -82,6 +85,7 @@ func New(ctx context.Context, cfg *Config, web fs.FS) (*App, error) {
 		return app.Characters.Store(ctx, r)
 	})
 	if err != nil {
+		conn.Close()
 		return nil, err
 	}
 	app.Characters = character.NewService(conn, app.Login.URL(), browser{}, emitter{}, tokens, esiClient, features, app.Scheduler)
@@ -98,7 +102,7 @@ func New(ctx context.Context, cfg *Config, web fs.FS) (*App, error) {
 }
 
 // Start binds the login server, enrolls existing characters and runs the schedulers
-// until ctx ends. A busy login port is fatal.
+// until ctx ends or Close. A busy login port is fatal.
 func (a *App) Start(ctx context.Context) error {
 	if err := a.Login.Listen(); err != nil {
 		return err
@@ -112,8 +116,11 @@ func (a *App) Start(ctx context.Context) error {
 			slog.Warn("enroll", "character", c.ID, "err", err)
 		}
 	}
+	ctx, a.cancel = context.WithCancel(ctx)
+	a.done = make(chan struct{})
 	go a.Scheduler.Start(ctx)
 	go func() {
+		defer close(a.done)
 		if err := task.Default.Start(ctx); err != nil {
 			slog.Error("task scheduler", "err", err)
 		}
@@ -129,7 +136,13 @@ func (a *App) Services() []application.Service {
 	}
 }
 
+// Close stops the schedulers and waits for in-flight runs before closing the
+// login server and the database they write to.
 func (a *App) Close() error {
+	if a.cancel != nil {
+		a.cancel()
+		<-a.done
+	}
 	err := a.Login.Close()
 	if a.conn != nil {
 		err = errors.Join(err, a.conn.Close())

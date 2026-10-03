@@ -5,6 +5,7 @@ import (
 	"embed"
 	"io/fs"
 	"log"
+	"log/slog"
 	"runtime"
 
 	"github.com/wailsapp/wails/v3/pkg/application"
@@ -18,9 +19,16 @@ import (
 var dist embed.FS
 
 func main() {
+	if err := run(); err != nil {
+		log.Fatal(err)
+	}
+}
+
+// run holds main's body so its defers run before the process exits.
+func run() error {
 	cfg, err := app.LoadConfig()
 	if err != nil {
-		log.Fatal(err)
+		return err
 	}
 
 	ctx, cancel := context.WithCancel(context.Background())
@@ -28,18 +36,22 @@ func main() {
 
 	assets, err := fs.Sub(dist, "frontend/dist/yulai")
 	if err != nil {
-		log.Fatal(err)
+		return err
 	}
 	web, err := fs.Sub(dist, "frontend/dist/webserver")
 	if err != nil {
-		log.Fatal(err)
+		return err
 	}
 
 	a, err := app.New(ctx, cfg, web)
 	if err != nil {
-		log.Fatal(err)
+		return err
 	}
-	defer a.Close()
+	defer func() {
+		if err := a.Close(); err != nil {
+			slog.Error("close", "err", err)
+		}
+	}()
 
 	var mainWindow *application.WebviewWindow
 	wails := application.New(application.Options{
@@ -87,10 +99,7 @@ func main() {
 	})
 
 	if err := a.Start(ctx); err != nil {
-		log.Fatal(err)
+		return err
 	}
-
-	if err := wails.Run(); err != nil {
-		log.Fatal(err)
-	}
+	return wails.Run()
 }
