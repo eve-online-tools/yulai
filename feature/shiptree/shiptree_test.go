@@ -31,6 +31,9 @@ var fixture = map[string]string{
 	"cloneGrades.jsonl":  `{"_key": 1, "name": "Alpha Caldari", "skills": [{"level": 5, "typeID": 3300}, {"level": 4, "typeID": 3330}]}`,
 	"shipTreeGroups.jsonl": `{"_key": 8, "name": {"en": "Frigate"}, "elements": [{"_key": 1, "_value": 30}, {"_key": 2, "_value": 22}], "preReqSkills": [{"_key": 500001, "skills": [{"_key": 3330, "display": true, "level": 1}, {"_key": 3327, "display": false, "level": 1}]}, {"_key": 500004, "skills": [{"_key": 3328, "display": true, "level": 1}]}]}
 {"_key": 37, "name": {"en": "Freighter"}}`,
+	"shipTreeFactions.jsonl": `{"_key": 500002, "description": {"en": "Prefer Projectile Turrets."}, "icon": "res:/x.png", "elements": [{"_key": 2, "_value": 7}, {"_key": 1, "_value": 10}]}`,
+	"shipTreeElements.jsonl": `{"_key": 7, "name": {"en": "Armor"}, "icon": "armor"}
+{"_key": 10, "name": {"en": "Projectile Turrets"}, "icon": "gunnery"}`,
 }
 
 const want = `{
@@ -64,6 +67,13 @@ const want = `{
   "shipSizes": {
     "1": {"typeIDs": [582]},
     "4": {"typeIDs": [20185]}
+  },
+  "shipTreeFactions": {
+    "500002": {"description": {"en": "Prefer Projectile Turrets."}, "elements": [{"_key": 1, "_value": 10}, {"_key": 2, "_value": 7}]}
+  },
+  "shipTreeElements": {
+    "7": {"name": {"en": "Armor"}},
+    "10": {"name": {"en": "Projectile Turrets"}}
   }
 }`
 

@@ -44,3 +44,12 @@ SELECT p.parent AS group_id, p.key AS faction_id, s.key AS skill_id, s.display, 
 FROM ship_tree_groups_pre_req_skills p
 JOIN ship_tree_groups_pre_req_skills_skills s ON s.parent = p.id
 ORDER BY p.parent, p.rowid, s.rowid;
+
+-- name: ShipTreeFactions :many
+SELECT key, description_en FROM ship_tree_factions ORDER BY key;
+
+-- name: ShipTreeFactionElements :many
+SELECT parent, key, value FROM ship_tree_factions_elements ORDER BY parent, key;
+
+-- name: ShipTreeElements :many
+SELECT key, name_en FROM ship_tree_elements ORDER BY key;

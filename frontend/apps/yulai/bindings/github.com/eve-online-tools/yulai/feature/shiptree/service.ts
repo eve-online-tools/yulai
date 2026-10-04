@@ -15,8 +15,8 @@ import { Call as $Call, CancellablePromise as $CancellablePromise, Create as $Cr
 import * as $models from "./models.js";
 
 /**
- * Data returns the tree's static data from the installed SDE. It fails before
- * the first install; the frontend refetches on sde:changed.
+ * Data returns the tree's static data, built once per installed SDE. It fails
+ * before the first install; the frontend refetches on sde:changed.
  */
 export function Data(): $CancellablePromise<$models.Data | null> {
     return $Call.ByID(1257128812).then(($result: any) => {

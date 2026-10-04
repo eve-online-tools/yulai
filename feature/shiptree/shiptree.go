@@ -41,6 +41,9 @@ type Data struct {
 	CloneGrades    map[int64]CloneGrade     `json:"cloneGrades"`
 	ShipTreeGroups map[int64]ShipTreeGroup  `json:"shipTreeGroups"`
 	ShipSizes      map[int64]ShipSize       `json:"shipSizes"`
+	// For the faction summary; the tree itself does not read these.
+	ShipTreeFactions map[int64]ShipTreeFaction `json:"shipTreeFactions"`
+	ShipTreeElements map[int64]ShipTreeElement `json:"shipTreeElements"`
 }
 
 type Type struct {
@@ -104,6 +107,22 @@ type GroupSkill struct {
 	Level   int64 `json:"level"`
 }
 
+// ShipTreeFaction is a faction's summary: what it excels at and how it fights.
+type ShipTreeFaction struct {
+	Description Text      `json:"description"`
+	Elements    []Element `json:"elements"`
+}
+
+// ShipTreeElement is a trait a faction or group excels at, like Armor or Drones.
+type ShipTreeElement struct {
+	Name Text `json:"name"`
+}
+
+// Text is a localized SDE string. Only English is built.
+type Text struct {
+	En string `json:"en"`
+}
+
 type ShipSize struct {
 	TypeIDs []int64 `json:"typeIDs"`
 }
@@ -119,6 +138,9 @@ func build(ctx context.Context, q *sde.Queries) (*Data, error) {
 		CloneGrades:    map[int64]CloneGrade{},
 		ShipTreeGroups: map[int64]ShipTreeGroup{},
 		ShipSizes:      map[int64]ShipSize{},
+
+		ShipTreeFactions: map[int64]ShipTreeFaction{},
+		ShipTreeElements: map[int64]ShipTreeElement{},
 	}
 
 	types, err := q.ShipTreeTypes(ctx)
@@ -244,6 +266,34 @@ func build(ctx context.Context, q *sde.Queries) (*Data, error) {
 		d.ShipTreeGroups[s.GroupID] = group
 	}
 
+	factions, err := q.ShipTreeFactions(ctx)
+	if err != nil {
+		return nil, err
+	}
+	for _, f := range factions {
+		d.ShipTreeFactions[f.Key] = ShipTreeFaction{Description: Text{En: derefString(f.DescriptionEn)}, Elements: []Element{}}
+	}
+	factionElements, err := q.ShipTreeFactionElements(ctx)
+	if err != nil {
+		return nil, err
+	}
+	for _, e := range factionElements {
+		f, ok := d.ShipTreeFactions[e.Parent]
+		if !ok || e.Value == nil {
+			continue
+		}
+		f.Elements = append(f.Elements, Element{Key: e.Key, Value: *e.Value})
+		d.ShipTreeFactions[e.Parent] = f
+	}
+
+	shipTreeElements, err := q.ShipTreeElements(ctx)
+	if err != nil {
+		return nil, err
+	}
+	for _, e := range shipTreeElements {
+		d.ShipTreeElements[e.Key] = ShipTreeElement{Name: Text{En: derefString(e.NameEn)}}
+	}
+
 	return d, nil
 }
 
@@ -275,6 +325,13 @@ func rigSize(group int64, attrs map[int64]float64) int64 {
 		return freighterSize
 	}
 	return int64(attrs[attrRigSize])
+}
+
+func derefString(v *string) string {
+	if v == nil {
+		return ""
+	}
+	return *v
 }
 
 func deref(v *int64) int64 {

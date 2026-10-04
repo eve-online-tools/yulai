@@ -18,6 +18,9 @@ export {
     Keyed,
     RequiredSkills,
     ShipSize,
+    ShipTreeElement,
+    ShipTreeFaction,
     ShipTreeGroup,
+    Text,
     Type
 } from "./models.js";

@@ -24,6 +24,12 @@ type Meta struct {
 	Schema      string    `json:"schema"`
 }
 
+type ShipTreeFactionsElement struct {
+	Parent int64  `json:"parent"`
+	Key    int64  `json:"key"`
+	Value  *int64 `json:"value"`
+}
+
 type ShipTreeGroupsElement struct {
 	Parent int64  `json:"parent"`
 	Key    int64  `json:"key"`

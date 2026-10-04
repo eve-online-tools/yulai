@@ -35,35 +35,34 @@
   width: auto;
 }
 
-// Square box, six logos to a row.
+// Like the client's faction box: logos five to a row over a summary of the selected faction.
+.box {
+  width: 204px;
+}
+
 .logos {
   display: grid;
-  grid-template-columns: repeat(6, 30px);
-  gap: var(--x-space-1);
-  padding: var(--x-space-2);
-  background: var(--x-color-glass);
-  border: 1px solid var(--x-color-line);
-  backdrop-filter: var(--x-blur);
+  grid-template-columns: repeat(5, 36px);
+  justify-content: space-between;
+  row-gap: var(--x-space-1);
 }
 
 .logo {
-  width: 30px;
-  height: 30px;
+  width: 36px;
+  height: 36px;
   padding: 0;
   border: 1px solid transparent;
   // The package's flat logos are placeholders for CONCORD, EDENCOM and the Triglavians.
-  background: var(--factionslogo-logo) center / 24px no-repeat;
-  opacity: 0.45;
+  background: var(--factionslogo-logo) center / 28px no-repeat;
   cursor: pointer;
 
   &:hover {
-    opacity: 0.8;
+    border-color: var(--x-color-line);
   }
 
   &[aria-checked="true"] {
-    opacity: 1;
-    border-color: var(--x-color-accent);
-    background-color: var(--x-color-accent-wash);
+    border-color: var(--x-color-line-strong);
+    background-color: rgb(0 0 0 / 0.45);
   }
 
   &:focus-visible {
@@ -71,12 +70,58 @@
   }
 }
 
+.summary {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: var(--x-space-2) var(--x-space-3);
+  margin-top: var(--x-space-3);
+  padding: var(--x-space-2);
+  background: rgb(0 0 0 / 0.55);
+  border: 1px solid var(--x-color-line);
+}
+
+.summaryLogo {
+  width: 30px;
+  height: 30px;
+  background: var(--factionslogo-logo) center / contain no-repeat;
+}
+
+.summaryName {
+  font-family: var(--x-font-heading);
+  font-size: var(--x-fs-small);
+  color: var(--x-color-text);
+}
+
+.elements {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--x-space-1);
+  margin-top: var(--x-space-1);
+}
+
+.element {
+  width: 18px;
+  height: 18px;
+  background: var(--ship-tree-elements-icons) center / contain no-repeat;
+
+  &[data-missing] {
+    border: 1px solid var(--x-color-line);
+  }
+}
+
+.description {
+  grid-column: 1 / -1;
+  margin: 0;
+  font-size: var(--x-fs-small);
+  color: var(--x-color-text-muted);
+}
+
 .dropdown {
   display: none;
 }
 
 @container (width < 640px) {
-  .logos {
+  .box {
     display: none;
   }
 

@@ -134,6 +134,12 @@ export class Data {
     "shipTreeGroups": { [_ in `${number}`]?: ShipTreeGroup };
     "shipSizes": { [_ in `${number}`]?: ShipSize };
 
+    /**
+     * For the faction summary; the tree itself does not read these.
+     */
+    "shipTreeFactions": { [_ in `${number}`]?: ShipTreeFaction };
+    "shipTreeElements": { [_ in `${number}`]?: ShipTreeElement };
+
     /** Creates a new Data instance. */
     constructor($$source: Partial<Data> = {}) {
         if (!("types" in $$source)) {
@@ -157,6 +163,12 @@ export class Data {
         if (!("shipSizes" in $$source)) {
             this["shipSizes"] = {};
         }
+        if (!("shipTreeFactions" in $$source)) {
+            this["shipTreeFactions"] = {};
+        }
+        if (!("shipTreeElements" in $$source)) {
+            this["shipTreeElements"] = {};
+        }
 
         Object.assign(this, $$source);
     }
@@ -172,6 +184,8 @@ export class Data {
         const $$createField4_0 = $$createType14;
         const $$createField5_0 = $$createType16;
         const $$createField6_0 = $$createType18;
+        const $$createField7_0 = $$createType20;
+        const $$createField8_0 = $$createType22;
         let $$parsedSource = typeof $$source === 'string' ? JSON.parse($$source) : $$source;
         if ("types" in $$parsedSource) {
             $$parsedSource["types"] = $$createField0_0($$parsedSource["types"]);
@@ -193,6 +207,12 @@ export class Data {
         }
         if ("shipSizes" in $$parsedSource) {
             $$parsedSource["shipSizes"] = $$createField6_0($$parsedSource["shipSizes"]);
+        }
+        if ("shipTreeFactions" in $$parsedSource) {
+            $$parsedSource["shipTreeFactions"] = $$createField7_0($$parsedSource["shipTreeFactions"]);
+        }
+        if ("shipTreeElements" in $$parsedSource) {
+            $$parsedSource["shipTreeElements"] = $$createField8_0($$parsedSource["shipTreeElements"]);
         }
         return new Data($$parsedSource as Partial<Data>);
     }
@@ -275,7 +295,7 @@ export class GroupSkills {
      * Creates a new GroupSkills instance from a string or object.
      */
     static createFrom($$source: any = {}): GroupSkills {
-        const $$createField1_0 = $$createType20;
+        const $$createField1_0 = $$createType24;
         let $$parsedSource = typeof $$source === 'string' ? JSON.parse($$source) : $$source;
         if ("skills" in $$parsedSource) {
             $$parsedSource["skills"] = $$createField1_0($$parsedSource["skills"]);
@@ -307,7 +327,7 @@ export class Keyed {
      * Creates a new Keyed instance from a string or object.
      */
     static createFrom($$source: any = {}): Keyed {
-        const $$createField1_0 = $$createType21;
+        const $$createField1_0 = $$createType25;
         let $$parsedSource = typeof $$source === 'string' ? JSON.parse($$source) : $$source;
         if ("_value" in $$parsedSource) {
             $$parsedSource["_value"] = $$createField1_0($$parsedSource["_value"]);
@@ -332,7 +352,7 @@ export class RequiredSkills {
      * Creates a new RequiredSkills instance from a string or object.
      */
     static createFrom($$source: any = {}): RequiredSkills {
-        const $$createField0_0 = $$createType22;
+        const $$createField0_0 = $$createType26;
         let $$parsedSource = typeof $$source === 'string' ? JSON.parse($$source) : $$source;
         if ("requiredSkills" in $$parsedSource) {
             $$parsedSource["requiredSkills"] = $$createField0_0($$parsedSource["requiredSkills"]);
@@ -357,12 +377,76 @@ export class ShipSize {
      * Creates a new ShipSize instance from a string or object.
      */
     static createFrom($$source: any = {}): ShipSize {
-        const $$createField0_0 = $$createType21;
+        const $$createField0_0 = $$createType25;
         let $$parsedSource = typeof $$source === 'string' ? JSON.parse($$source) : $$source;
         if ("typeIDs" in $$parsedSource) {
             $$parsedSource["typeIDs"] = $$createField0_0($$parsedSource["typeIDs"]);
         }
         return new ShipSize($$parsedSource as Partial<ShipSize>);
+    }
+}
+
+/**
+ * ShipTreeElement is a trait a faction or group excels at, like Armor or Drones.
+ */
+export class ShipTreeElement {
+    "name": Text;
+
+    /** Creates a new ShipTreeElement instance. */
+    constructor($$source: Partial<ShipTreeElement> = {}) {
+        if (!("name" in $$source)) {
+            this["name"] = (new Text());
+        }
+
+        Object.assign(this, $$source);
+    }
+
+    /**
+     * Creates a new ShipTreeElement instance from a string or object.
+     */
+    static createFrom($$source: any = {}): ShipTreeElement {
+        const $$createField0_0 = $$createType27;
+        let $$parsedSource = typeof $$source === 'string' ? JSON.parse($$source) : $$source;
+        if ("name" in $$parsedSource) {
+            $$parsedSource["name"] = $$createField0_0($$parsedSource["name"]);
+        }
+        return new ShipTreeElement($$parsedSource as Partial<ShipTreeElement>);
+    }
+}
+
+/**
+ * ShipTreeFaction is a faction's summary: what it excels at and how it fights.
+ */
+export class ShipTreeFaction {
+    "description": Text;
+    "elements": Element[];
+
+    /** Creates a new ShipTreeFaction instance. */
+    constructor($$source: Partial<ShipTreeFaction> = {}) {
+        if (!("description" in $$source)) {
+            this["description"] = (new Text());
+        }
+        if (!("elements" in $$source)) {
+            this["elements"] = [];
+        }
+
+        Object.assign(this, $$source);
+    }
+
+    /**
+     * Creates a new ShipTreeFaction instance from a string or object.
+     */
+    static createFrom($$source: any = {}): ShipTreeFaction {
+        const $$createField0_0 = $$createType27;
+        const $$createField1_0 = $$createType29;
+        let $$parsedSource = typeof $$source === 'string' ? JSON.parse($$source) : $$source;
+        if ("description" in $$parsedSource) {
+            $$parsedSource["description"] = $$createField0_0($$parsedSource["description"]);
+        }
+        if ("elements" in $$parsedSource) {
+            $$parsedSource["elements"] = $$createField1_0($$parsedSource["elements"]);
+        }
+        return new ShipTreeFaction($$parsedSource as Partial<ShipTreeFaction>);
     }
 }
 
@@ -386,8 +470,8 @@ export class ShipTreeGroup {
      * Creates a new ShipTreeGroup instance from a string or object.
      */
     static createFrom($$source: any = {}): ShipTreeGroup {
-        const $$createField0_0 = $$createType24;
-        const $$createField1_0 = $$createType26;
+        const $$createField0_0 = $$createType29;
+        const $$createField1_0 = $$createType31;
         let $$parsedSource = typeof $$source === 'string' ? JSON.parse($$source) : $$source;
         if ("elements" in $$parsedSource) {
             $$parsedSource["elements"] = $$createField0_0($$parsedSource["elements"]);
@@ -396,6 +480,30 @@ export class ShipTreeGroup {
             $$parsedSource["preReqSkills"] = $$createField1_0($$parsedSource["preReqSkills"]);
         }
         return new ShipTreeGroup($$parsedSource as Partial<ShipTreeGroup>);
+    }
+}
+
+/**
+ * Text is a localized SDE string. Only English is built.
+ */
+export class Text {
+    "en": string;
+
+    /** Creates a new Text instance. */
+    constructor($$source: Partial<Text> = {}) {
+        if (!("en" in $$source)) {
+            this["en"] = "";
+        }
+
+        Object.assign(this, $$source);
+    }
+
+    /**
+     * Creates a new Text instance from a string or object.
+     */
+    static createFrom($$source: any = {}): Text {
+        let $$parsedSource = typeof $$source === 'string' ? JSON.parse($$source) : $$source;
+        return new Text($$parsedSource as Partial<Text>);
     }
 }
 
@@ -443,11 +551,16 @@ const $$createType15 = ShipTreeGroup.createFrom;
 const $$createType16 = $Create.Map($Create.Any, $$createType15);
 const $$createType17 = ShipSize.createFrom;
 const $$createType18 = $Create.Map($Create.Any, $$createType17);
-const $$createType19 = GroupSkill.createFrom;
-const $$createType20 = $Create.Array($$createType19);
-const $$createType21 = $Create.Array($Create.Any);
-const $$createType22 = $Create.Map($Create.Any, $Create.Any);
-const $$createType23 = Element.createFrom;
+const $$createType19 = ShipTreeFaction.createFrom;
+const $$createType20 = $Create.Map($Create.Any, $$createType19);
+const $$createType21 = ShipTreeElement.createFrom;
+const $$createType22 = $Create.Map($Create.Any, $$createType21);
+const $$createType23 = GroupSkill.createFrom;
 const $$createType24 = $Create.Array($$createType23);
-const $$createType25 = GroupSkills.createFrom;
-const $$createType26 = $Create.Array($$createType25);
+const $$createType25 = $Create.Array($Create.Any);
+const $$createType26 = $Create.Map($Create.Any, $Create.Any);
+const $$createType27 = Text.createFrom;
+const $$createType28 = Element.createFrom;
+const $$createType29 = $Create.Array($$createType28);
+const $$createType30 = GroupSkills.createFrom;
+const $$createType31 = $Create.Array($$createType30);

@@ -91,6 +91,97 @@ func (q *Queries) GetMeta(ctx context.Context) (Meta, error) {
 	return i, err
 }
 
+const shipTreeElements = `-- name: ShipTreeElements :many
+SELECT key, name_en FROM ship_tree_elements ORDER BY key
+`
+
+type ShipTreeElementsRow struct {
+	Key    int64   `json:"key"`
+	NameEn *string `json:"nameEn"`
+}
+
+func (q *Queries) ShipTreeElements(ctx context.Context) ([]ShipTreeElementsRow, error) {
+	rows, err := q.db.QueryContext(ctx, shipTreeElements)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []ShipTreeElementsRow
+	for rows.Next() {
+		var i ShipTreeElementsRow
+		if err := rows.Scan(&i.Key, &i.NameEn); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const shipTreeFactionElements = `-- name: ShipTreeFactionElements :many
+SELECT parent, key, value FROM ship_tree_factions_elements ORDER BY parent, key
+`
+
+func (q *Queries) ShipTreeFactionElements(ctx context.Context) ([]ShipTreeFactionsElement, error) {
+	rows, err := q.db.QueryContext(ctx, shipTreeFactionElements)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []ShipTreeFactionsElement
+	for rows.Next() {
+		var i ShipTreeFactionsElement
+		if err := rows.Scan(&i.Parent, &i.Key, &i.Value); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const shipTreeFactions = `-- name: ShipTreeFactions :many
+SELECT key, description_en FROM ship_tree_factions ORDER BY key
+`
+
+type ShipTreeFactionsRow struct {
+	Key           int64   `json:"key"`
+	DescriptionEn *string `json:"descriptionEn"`
+}
+
+func (q *Queries) ShipTreeFactions(ctx context.Context) ([]ShipTreeFactionsRow, error) {
+	rows, err := q.db.QueryContext(ctx, shipTreeFactions)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []ShipTreeFactionsRow
+	for rows.Next() {
+		var i ShipTreeFactionsRow
+		if err := rows.Scan(&i.Key, &i.DescriptionEn); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const shipTreeGroupElements = `-- name: ShipTreeGroupElements :many
 SELECT parent, key, value FROM ship_tree_groups_elements ORDER BY parent, key
 `
