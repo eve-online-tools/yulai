@@ -1,4 +1,4 @@
-import { useEffect, useLayoutEffect, useMemo, useRef, useState, type CSSProperties } from "react";
+import { useLayoutEffect, useMemo, useRef, useState, type CSSProperties } from "react";
 import { useQuery } from "@tanstack/react-query";
 import type { MapData, Marker } from "@eve-online-tools/eve-map";
 import { EveMap, type EveMapApi } from "@eve-online-tools/eve-map/react";
@@ -22,7 +22,6 @@ export function MapPage() {
   const tracked = useCharactersWithFeature(presenceFeature);
   const [selected, setSelected] = useState(all);
   const [frame, setFrame] = useState<HTMLDivElement | null>(null);
-  useRenderOnResize(frame);
 
   const bySystem = useMemo(() => groupBySystem(presence, tracked), [presence, tracked]);
   const onlineSystems = useMemo(
@@ -100,26 +99,6 @@ export function MapPage() {
       </header>
     </div>
   );
-}
-
-// eve-map re-projects on resize without a camera event, so the overlay would
-// keep stale positions. Re-render once per frame while el changes size.
-// Drop once eve-online-tools/node-packages#59 is fixed.
-function useRenderOnResize(el: HTMLElement | null) {
-  const [, setCount] = useState(0);
-  useEffect(() => {
-    if (!el) return;
-    let raf = 0;
-    const observer = new ResizeObserver(() => {
-      cancelAnimationFrame(raf);
-      raf = requestAnimationFrame(() => setCount((n) => n + 1));
-    });
-    observer.observe(el);
-    return () => {
-      cancelAnimationFrame(raf);
-      observer.disconnect();
-    };
-  }, [el]);
 }
 
 function groupBySystem(presence: ListPresenceRow[], tracked: Character[]) {
