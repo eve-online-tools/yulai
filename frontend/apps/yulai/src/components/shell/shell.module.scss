@@ -93,6 +93,11 @@
     margin-bottom: 0;
   }
 
+  &[data-full-bleed] {
+    padding: 0;
+    gap: 0;
+  }
+
   // Site-scale page titles are too loud for a tool window.
   :global(.x-page-head__title) {
     font-size: var(--x-fs-h2);

@@ -1,5 +1,5 @@
 import type { CSSProperties } from "react";
-import { Outlet } from "@tanstack/react-router";
+import { Outlet, useMatches } from "@tanstack/react-router";
 import { presenceFeature, skillsFeature, useCharactersWithFeature } from "../../features";
 import { DataUpdate } from "../data-update";
 import { GettingStarted } from "../getting-started";
@@ -12,6 +12,7 @@ export function Shell() {
   const { width, collapsed, handleProps } = useSidebarWidth();
   const skillCharacters = useCharactersWithFeature(skillsFeature);
   const presenceCharacters = useCharactersWithFeature(presenceFeature);
+  const fullBleed = useMatches({ select: (matches) => matches.some((m) => m.staticData.fullBleed) });
   return (
     <div className={styles.shell} style={{ "--sidebar-w": `${width}px` } as CSSProperties}>
       <aside className={styles.sidebar} data-collapsed={collapsed || undefined}>
@@ -42,7 +43,7 @@ export function Shell() {
         <div className={styles.handle} {...handleProps} />
       </aside>
       <div className={styles.main}>
-        <main className={styles.content}>
+        <main className={styles.content} data-full-bleed={fullBleed || undefined}>
           <Outlet />
         </main>
         <DataUpdate />

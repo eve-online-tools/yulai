@@ -60,6 +60,7 @@ const overviewRoute = createRoute({
 const mapRoute = createRoute({
   getParentRoute: () => layoutRoute,
   path: "/map",
+  staticData: { fullBleed: true },
   loader: () =>
     Promise.all([
       queryClient.ensureQueryData(charactersQuery),
@@ -102,5 +103,9 @@ export const router = createRouter({
 declare module "@tanstack/react-router" {
   interface Register {
     router: typeof router;
+  }
+  interface StaticDataRouteOption {
+    // The page fills the content area edge to edge and handles its own spacing.
+    fullBleed?: boolean;
   }
 }

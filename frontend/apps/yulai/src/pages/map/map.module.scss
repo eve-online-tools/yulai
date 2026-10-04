@@ -1,9 +1,55 @@
-// Border here, not on the map, so the frame's client size is the overlay's bounds.
+// Fills the shell's content area; the route opts out of its padding.
+.page {
+  position: relative;
+  flex: 1;
+  min-height: 0;
+  display: flex;
+}
+
+// Title and focus select float over the top of the map.
+.bar {
+  position: absolute;
+  inset: 0 0 auto;
+  z-index: 1;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--x-space-4);
+  padding: var(--x-space-4) var(--x-space-5) var(--x-space-6);
+  // Fades into the map's #06080c background.
+  background: linear-gradient(to bottom, rgb(6 8 12 / 85%), rgb(6 8 12 / 0%));
+  pointer-events: none;
+
+  > * {
+    pointer-events: auto;
+  }
+
+  // x-select is full width by default.
+  select {
+    width: auto;
+    max-width: 50%;
+  }
+}
+
+.title {
+  margin: 0;
+  white-space: nowrap;
+  font-family: var(--x-font-display);
+  font-size: var(--x-fs-h2);
+  line-height: 1.15;
+  text-shadow: 0 1px 6px rgb(0 0 0 / 80%);
+}
+
+// Non-map states, below the bar with the shell's usual spacing.
+.state {
+  flex: 1;
+  padding: calc(var(--x-space-4) * 2 + var(--x-fs-h2) * 1.15) var(--x-space-5) var(--x-space-4);
+}
+
 .frame {
   flex: 1;
-  min-height: 320px;
+  min-width: 0;
   display: flex;
-  border: 1px solid var(--x-color-line);
 }
 
 .map {
@@ -14,6 +60,7 @@
 .pilots {
   --tag-edge: var(--x-color-accent);
   position: absolute;
+  z-index: 2;
   margin: 0;
   padding: 0;
   list-style: none;

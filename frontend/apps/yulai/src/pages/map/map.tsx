@@ -4,7 +4,7 @@ import type { MapData, Marker } from "@eve-online-tools/eve-map";
 import { EveMap, type EveMapApi } from "@eve-online-tools/eve-map/react";
 import type { ListPresenceRow } from "@bindings/github.com/eve-online-tools/yulai/feature/presence";
 import type { ListRow as Character } from "@bindings/github.com/eve-online-tools/yulai/feature/character";
-import { Alert, EmptyState, PageHead, Select } from "@xaroth.nl/design/react";
+import { Alert, EmptyState, Select } from "@xaroth.nl/design/react";
 import { Portrait } from "@yulai/ui";
 import { mapQuery, presenceQuery } from "../../queries";
 import { presenceFeature, useCharactersWithFeature } from "../../features";
@@ -49,28 +49,19 @@ export function MapPage() {
   }, [selected, presence, onlineSystems, bySystem]);
 
   return (
-    <>
-      <PageHead
-        title="New Eden"
-        actions={
-          tracked.length > 0 && (
-            <Select aria-label="Focus on" value={selected} onChange={(e) => setSelected(e.target.value)}>
-              <option value={all}>All characters</option>
-              {tracked.map((c) => (
-                <option key={c.id} value={String(c.id)} disabled={!presence.some((p) => p.characterId === c.id)}>
-                  {c.name}
-                </option>
-              ))}
-            </Select>
-          )
-        }
-      />
+    <div className={styles.page}>
       {tracked.length === 0 ? (
-        <EmptyState title="No characters with Presence">Log in again with Presence checked to see characters on the map.</EmptyState>
+        <div className={styles.state}>
+          <EmptyState title="No characters with Presence">Log in again with Presence checked to see characters on the map.</EmptyState>
+        </div>
       ) : map.isError ? (
-        <Alert tone="danger">{String(map.error)}</Alert>
+        <div className={styles.state}>
+          <Alert tone="danger">{String(map.error)}</Alert>
+        </div>
       ) : !map.data ? (
-        <p className="muted">Loading map</p>
+        <div className={styles.state}>
+          <p className="muted">Loading map</p>
+        </div>
       ) : (
         <div ref={setFrame} className={styles.frame}>
           <EveMap
@@ -84,13 +75,30 @@ export function MapPage() {
             showRegionLabels={2.5}
             showConstellationLabels={[2, 8]}
             showSystemLabels={6}
-            fallback={<Alert tone="danger">The map needs WebGL 2, which is not available.</Alert>}
+            fallback={
+              <div className={styles.state}>
+                <Alert tone="danger">The map needs WebGL 2, which is not available.</Alert>
+              </div>
+            }
           >
             {(api) => <Pilots api={api} bySystem={bySystem} bounds={frame} />}
           </EveMap>
         </div>
       )}
-    </>
+      <header className={styles.bar}>
+        <h1 className={styles.title}>New Eden</h1>
+        {tracked.length > 0 && (
+          <Select aria-label="Focus on" value={selected} onChange={(e) => setSelected(e.target.value)}>
+            <option value={all}>All characters</option>
+            {tracked.map((c) => (
+              <option key={c.id} value={String(c.id)} disabled={!presence.some((p) => p.characterId === c.id)}>
+                {c.name}
+              </option>
+            ))}
+          </Select>
+        )}
+      </header>
+    </div>
   );
 }
 
