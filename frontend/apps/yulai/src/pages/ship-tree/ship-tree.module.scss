@@ -1,0 +1,18 @@
+.pickers {
+  display: flex;
+  gap: var(--x-space-2);
+
+  select {
+    width: auto;
+  }
+}
+
+// Fills the rest of the page; the tree pans and zooms inside.
+.tree {
+  flex: 1;
+  min-height: 360px;
+}
+
+.grid {
+  height: 100%;
+}

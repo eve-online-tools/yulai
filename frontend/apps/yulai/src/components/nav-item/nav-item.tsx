@@ -11,9 +11,25 @@ export const navItemClass = styles.item;
 export const navItemCollapsedClass = styles.collapsed;
 export const navItemLabelClass = styles.label;
 
-// Collapsed, only the icon shows and the label moves into a tooltip.
-export function NavItem({ to, icon, label, collapsed }: Props & { collapsed?: boolean }) {
+// Collapsed, only the icon shows and the label moves into a tooltip. Disabled, it is greyed out and the
+// tooltip gives the reason.
+export function NavItem({ to, icon, label, collapsed, disabled }: Props & { collapsed?: boolean; disabled?: string }) {
   const id = useId();
+  if (disabled) {
+    return (
+      <Tooltip id={id} text={collapsed ? `${label}: ${disabled}` : disabled} placement="right" className={styles.tip}>
+        <span
+          className={`${styles.item} ${styles.disabled}${collapsed ? ` ${styles.collapsed}` : ""}`}
+          aria-disabled="true"
+          aria-label={collapsed ? label : undefined}
+          tabIndex={0}
+        >
+          <AppIcon name={icon} size={18} />
+          {!collapsed && <span className={styles.label}>{label}</span>}
+        </span>
+      </Tooltip>
+    );
+  }
   const link = (
     <Link
       to={to}

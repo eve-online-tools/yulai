@@ -3,8 +3,10 @@ import {
   createRootRoute,
   createRoute,
   createRouter,
+  lazyRouteComponent,
   redirect,
 } from "@tanstack/react-router";
+import type { FactionIdentifier } from "@eve-online-tools/eve-ship-tree";
 import { WindowFrame } from "./components/window-frame";
 import { Shell } from "./components/shell";
 import { OverviewPage } from "./pages/overview";
@@ -59,6 +61,18 @@ const charactersRoute = createRoute({
   component: CharactersPage,
 });
 
+const shipTreeRoute = createRoute({
+  getParentRoute: () => layoutRoute,
+  path: "/ship-tree",
+  validateSearch: (search: Record<string, unknown>): { character?: number; faction?: FactionIdentifier } => ({
+    character: typeof search.character === "number" ? search.character : undefined,
+    faction: typeof search.faction === "number" ? (search.faction as FactionIdentifier) : undefined,
+  }),
+  loader: () => Promise.all([queryClient.ensureQueryData(charactersQuery), queryClient.ensureQueryData(featuresQuery)]),
+  // Split out: the ship tree's art is most of the bundle.
+  component: lazyRouteComponent(() => import("./pages/ship-tree"), "ShipTreePage"),
+});
+
 const settingsRoute = createRoute({
   getParentRoute: () => layoutRoute,
   path: "/settings",
@@ -66,7 +80,7 @@ const settingsRoute = createRoute({
 });
 
 export const router = createRouter({
-  routeTree: rootRoute.addChildren([welcomeRoute, layoutRoute.addChildren([indexRoute, overviewRoute, charactersRoute, settingsRoute])]),
+  routeTree: rootRoute.addChildren([welcomeRoute, layoutRoute.addChildren([indexRoute, overviewRoute, charactersRoute, shipTreeRoute, settingsRoute])]),
   history: createHashHistory(),
   defaultPreload: "intent",
 });

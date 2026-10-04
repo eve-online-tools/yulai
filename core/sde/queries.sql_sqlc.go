@@ -7,7 +7,78 @@ package sde
 
 import (
 	"context"
+
+	"github.com/eve-online-tools/lib-esi-go/common/faction"
+	"github.com/eve-online-tools/lib-esi-go/common/typeid"
 )
+
+const certificateSkills = `-- name: CertificateSkills :many
+SELECT parent, "key", advanced, basic, elite, improved, standard FROM certificates_skill_types ORDER BY parent, key
+`
+
+func (q *Queries) CertificateSkills(ctx context.Context) ([]CertificatesSkillType, error) {
+	rows, err := q.db.QueryContext(ctx, certificateSkills)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []CertificatesSkillType
+	for rows.Next() {
+		var i CertificatesSkillType
+		if err := rows.Scan(
+			&i.Parent,
+			&i.Key,
+			&i.Advanced,
+			&i.Basic,
+			&i.Elite,
+			&i.Improved,
+			&i.Standard,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const cloneGradeSkills = `-- name: CloneGradeSkills :many
+SELECT parent, level, type_id FROM clone_grades_skills ORDER BY parent, idx
+`
+
+type CloneGradeSkillsRow struct {
+	Parent int64              `json:"parent"`
+	Level  *int64             `json:"level"`
+	TypeID *typeid.Identifier `json:"typeId"`
+}
+
+func (q *Queries) CloneGradeSkills(ctx context.Context) ([]CloneGradeSkillsRow, error) {
+	rows, err := q.db.QueryContext(ctx, cloneGradeSkills)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []CloneGradeSkillsRow
+	for rows.Next() {
+		var i CloneGradeSkillsRow
+		if err := rows.Scan(&i.Parent, &i.Level, &i.TypeID); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
 
 const getMeta = `-- name: GetMeta :one
 SELECT build, release_date, schema FROM meta
@@ -18,4 +89,226 @@ func (q *Queries) GetMeta(ctx context.Context) (Meta, error) {
 	var i Meta
 	err := row.Scan(&i.Build, &i.ReleaseDate, &i.Schema)
 	return i, err
+}
+
+const shipTreeGroupElements = `-- name: ShipTreeGroupElements :many
+SELECT parent, key, value FROM ship_tree_groups_elements ORDER BY parent, key
+`
+
+func (q *Queries) ShipTreeGroupElements(ctx context.Context) ([]ShipTreeGroupsElement, error) {
+	rows, err := q.db.QueryContext(ctx, shipTreeGroupElements)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []ShipTreeGroupsElement
+	for rows.Next() {
+		var i ShipTreeGroupsElement
+		if err := rows.Scan(&i.Parent, &i.Key, &i.Value); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const shipTreeGroupKeys = `-- name: ShipTreeGroupKeys :many
+SELECT key FROM ship_tree_groups ORDER BY key
+`
+
+func (q *Queries) ShipTreeGroupKeys(ctx context.Context) ([]int64, error) {
+	rows, err := q.db.QueryContext(ctx, shipTreeGroupKeys)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []int64
+	for rows.Next() {
+		var key int64
+		if err := rows.Scan(&key); err != nil {
+			return nil, err
+		}
+		items = append(items, key)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const shipTreeGroupSkills = `-- name: ShipTreeGroupSkills :many
+SELECT p.parent AS group_id, p.key AS faction_id, s.key AS skill_id, s.display, s.level
+FROM ship_tree_groups_pre_req_skills p
+JOIN ship_tree_groups_pre_req_skills_skills s ON s.parent = p.id
+ORDER BY p.parent, p.rowid, s.rowid
+`
+
+type ShipTreeGroupSkillsRow struct {
+	GroupID   int64  `json:"groupId"`
+	FactionID int64  `json:"factionId"`
+	SkillID   int64  `json:"skillId"`
+	Display   *bool  `json:"display"`
+	Level     *int64 `json:"level"`
+}
+
+func (q *Queries) ShipTreeGroupSkills(ctx context.Context) ([]ShipTreeGroupSkillsRow, error) {
+	rows, err := q.db.QueryContext(ctx, shipTreeGroupSkills)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []ShipTreeGroupSkillsRow
+	for rows.Next() {
+		var i ShipTreeGroupSkillsRow
+		if err := rows.Scan(
+			&i.GroupID,
+			&i.FactionID,
+			&i.SkillID,
+			&i.Display,
+			&i.Level,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const shipTreeMasteries = `-- name: ShipTreeMasteries :many
+SELECT m.parent AS type_id, m.key AS level, v.value AS certificate_id
+FROM masteries_value m
+JOIN masteries_value_value v ON v.parent = m.id
+JOIN types t ON t.key = m.parent
+WHERE t.ship_tree_group_id IS NOT NULL AND t.group_id IN (SELECT key FROM groups WHERE category_id = 6)
+ORDER BY m.parent, m.key, v.idx
+`
+
+type ShipTreeMasteriesRow struct {
+	TypeID        int64  `json:"typeId"`
+	Level         int64  `json:"level"`
+	CertificateID *int64 `json:"certificateId"`
+}
+
+func (q *Queries) ShipTreeMasteries(ctx context.Context) ([]ShipTreeMasteriesRow, error) {
+	rows, err := q.db.QueryContext(ctx, shipTreeMasteries)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []ShipTreeMasteriesRow
+	for rows.Next() {
+		var i ShipTreeMasteriesRow
+		if err := rows.Scan(&i.TypeID, &i.Level, &i.CertificateID); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const shipTreeTypeAttributes = `-- name: ShipTreeTypeAttributes :many
+SELECT a.parent, a.attribute_id, a.value
+FROM type_dogma_dogma_attributes a
+JOIN types t ON t.key = a.parent
+WHERE t.ship_tree_group_id IS NOT NULL AND t.group_id IN (SELECT key FROM groups WHERE category_id = 6)
+  AND a.attribute_id IN (182, 183, 184, 277, 278, 279, 1285, 1286, 1287, 1289, 422, 1547)
+ORDER BY a.parent, a.idx
+`
+
+type ShipTreeTypeAttributesRow struct {
+	Parent      typeid.Identifier `json:"parent"`
+	AttributeID *int64            `json:"attributeId"`
+	Value       *float64          `json:"value"`
+}
+
+// Required skills 1-5 and their levels (182-184, 277-279, 1285-1289), tech level (422), rig size (1547).
+func (q *Queries) ShipTreeTypeAttributes(ctx context.Context) ([]ShipTreeTypeAttributesRow, error) {
+	rows, err := q.db.QueryContext(ctx, shipTreeTypeAttributes)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []ShipTreeTypeAttributesRow
+	for rows.Next() {
+		var i ShipTreeTypeAttributesRow
+		if err := rows.Scan(&i.Parent, &i.AttributeID, &i.Value); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const shipTreeTypes = `-- name: ShipTreeTypes :many
+
+SELECT key, ship_tree_group_id, faction_id, meta_group_id, tech_level
+FROM types
+WHERE ship_tree_group_id IS NOT NULL AND group_id IN (SELECT key FROM groups WHERE category_id = 6)
+ORDER BY key
+`
+
+type ShipTreeTypesRow struct {
+	Key             typeid.Identifier   `json:"key"`
+	ShipTreeGroupID *int64              `json:"shipTreeGroupId"`
+	FactionID       *faction.Identifier `json:"factionId"`
+	MetaGroupID     *int64              `json:"metaGroupId"`
+	TechLevel       *int64              `json:"techLevel"`
+}
+
+// Ship tree: the ship types in it and the static data the tree derives from them. Some modules also carry a
+// ship_tree_group_id, so types are limited to the ship category (6).
+func (q *Queries) ShipTreeTypes(ctx context.Context) ([]ShipTreeTypesRow, error) {
+	rows, err := q.db.QueryContext(ctx, shipTreeTypes)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []ShipTreeTypesRow
+	for rows.Next() {
+		var i ShipTreeTypesRow
+		if err := rows.Scan(
+			&i.Key,
+			&i.ShipTreeGroupID,
+			&i.FactionID,
+			&i.MetaGroupID,
+			&i.TechLevel,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
 }

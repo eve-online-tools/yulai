@@ -28,6 +28,13 @@
   }
 }
 
+.disabled,
+.disabled:hover {
+  color: var(--x-color-text-faint);
+  background: none;
+  cursor: default;
+}
+
 .label {
   min-width: 0;
   overflow: hidden;

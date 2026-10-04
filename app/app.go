@@ -20,6 +20,7 @@ import (
 	"github.com/eve-online-tools/yulai/feature/character"
 	"github.com/eve-online-tools/yulai/feature/charactersheet"
 	"github.com/eve-online-tools/yulai/feature/presence"
+	"github.com/eve-online-tools/yulai/feature/shiptree"
 	"github.com/eve-online-tools/yulai/feature/skills"
 	"github.com/eve-online-tools/yulai/feature/sync"
 	"github.com/eve-online-tools/yulai/identity/login"
@@ -165,6 +166,8 @@ func (a *App) Services() []application.Service {
 		application.NewService(newSetupService(a.Config, a.Login.URL())),
 		application.NewService(sde.NewService(a.SDE, task.Default.List)),
 		application.NewService(&ProgressService{s: task.Default}),
+		application.NewService(skills.NewService(a.conn)),
+		application.NewService(shiptree.NewService(a.sde)),
 	}
 }
 

@@ -1,5 +1,6 @@
 import type { CSSProperties } from "react";
 import { Outlet } from "@tanstack/react-router";
+import { skillsFeature, useCharactersWithFeature } from "../../features";
 import { DataUpdate } from "../data-update";
 import { GettingStarted } from "../getting-started";
 import { NavIcon, NavItem } from "../nav-item";
@@ -9,11 +10,19 @@ import styles from "./shell.module.scss";
 // App shell inside the frame: tool navigation on the left, the page on the right.
 export function Shell() {
   const { width, collapsed, handleProps } = useSidebarWidth();
+  const skillCharacters = useCharactersWithFeature(skillsFeature);
   return (
     <div className={styles.shell} style={{ "--sidebar-w": `${width}px` } as CSSProperties}>
       <aside className={styles.sidebar} data-collapsed={collapsed || undefined}>
         <nav className={styles.nav} aria-label="Tools">
           <NavItem to="/overview" icon="user" label="Overview" collapsed={collapsed} />
+          <NavItem
+            to="/ship-tree"
+            icon="ship"
+            label="Ship Tree"
+            collapsed={collapsed}
+            disabled={skillCharacters.length === 0 ? `Needs a character with ${skillsFeature}` : undefined}
+          />
         </nav>
         <div className={styles.foot}>
           <GettingStarted collapsed={collapsed} />
