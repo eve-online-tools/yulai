@@ -1,4 +1,4 @@
-import { useMemo } from "react";
+import { useMemo, useRef, type CSSProperties } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { getRouteApi } from "@tanstack/react-router";
 import { Grid, ShipTree, TreeDisplay, type Data, type FactionIdentifier, type Skills } from "@eve-online-tools/eve-ship-tree";
@@ -10,6 +10,7 @@ import { AppIcon } from "@yulai/ui";
 import { skillsFeature, useCharactersWithFeature } from "../../features";
 import { shipTreeQuery, skillsQuery } from "../../queries";
 import { preloadSprites } from "./preload-sprites";
+import { useFrameAnchor } from "./use-frame-anchor";
 import styles from "./ship-tree.module.scss";
 
 const factions: { id: FactionIdentifier; name: string }[] = [
@@ -34,6 +35,9 @@ const factions: { id: FactionIdentifier; name: string }[] = [
 
 preloadSprites();
 
+// Unstyled marker useFrameAnchor finds the grid's header by.
+const gridHeaderClass = "ship-tree-grid-header";
+
 const route = getRouteApi("/layout/ship-tree");
 
 export function ShipTreePage() {
@@ -42,6 +46,8 @@ export function ShipTreePage() {
   const navigate = route.useNavigate();
   const character = characters.find((c) => c.id === search.character) ?? characters[0];
   const faction = search.faction ?? factions[0].id;
+  const pageRef = useRef<HTMLDivElement>(null);
+  const anchor = useFrameAnchor(pageRef, gridHeaderClass);
 
   if (!character) {
     return (
@@ -54,36 +60,45 @@ export function ShipTreePage() {
     );
   }
 
+  // The tree's own frame carries the "Ship Tree" title, so the page has no head and fills the content pane.
   return (
-    <>
-      <PageHead
-        title="Ship Tree"
-        actions={
-          <Select
-            aria-label="Character"
-            value={character.id}
-            onChange={(e) => navigate({ search: (s) => ({ ...s, character: Number(e.target.value) }) })}
-          >
-            {characters.map((c) => (
-              <option key={c.id} value={c.id}>
-                {c.name}
-              </option>
-            ))}
-          </Select>
-        }
+    <div className={styles.page} ref={pageRef}>
+      <Tree characterID={character.id} faction={faction} />
+      <FactionPicker
+        value={faction}
+        onChange={(f) => navigate({ search: (s) => ({ ...s, faction: f }) })}
+        style={anchor ? { top: anchor.top, left: anchor.left } : undefined}
       />
-      <div className={styles.frame}>
-        <FactionPicker value={faction} onChange={(f) => navigate({ search: (s) => ({ ...s, faction: f }) })} />
-        <Tree characterID={character.id} faction={faction} />
-      </div>
-    </>
+      <Select
+        className={styles.character}
+        style={anchor ? { top: anchor.top, right: anchor.right } : undefined}
+        aria-label="Character"
+        value={character.id}
+        onChange={(e) => navigate({ search: (s) => ({ ...s, character: Number(e.target.value) }) })}
+      >
+        {characters.map((c) => (
+          <option key={c.id} value={c.id}>
+            {c.name}
+          </option>
+        ))}
+      </Select>
+    </div>
   );
 }
 
-// Sits in the tree's top-left corner: a row of faction logos, or a dropdown when the window is too narrow for it.
-function FactionPicker({ value, onChange }: { value: FactionIdentifier; onChange: (f: FactionIdentifier) => void }) {
+// Sits in the tree's top-left corner, like the client's faction box: a grid of logos, or a dropdown when the window is
+// too narrow for it.
+function FactionPicker({
+  value,
+  onChange,
+  style,
+}: {
+  value: FactionIdentifier;
+  onChange: (f: FactionIdentifier) => void;
+  style?: CSSProperties;
+}) {
   return (
-    <div className={styles.factions}>
+    <div className={styles.factions} style={style}>
       <div className={styles.logos} role="radiogroup" aria-label="Faction">
         {factions.map((f) => (
           <Tooltip key={f.id} id={`faction-${f.id}`} text={f.name} placement="bottom">
@@ -124,7 +139,7 @@ function Tree({ characterID, faction }: { characterID: number; faction: FactionI
   if (!data) return null;
   return (
     <ShipTree.Root skills={skills} faction={faction} data={data} className={styles.tree}>
-      <Grid className={styles.grid} disclaimer={null}>
+      <Grid className={styles.grid} classNames={{ header: gridHeaderClass }} disclaimer={null}>
         <TreeDisplay />
       </Grid>
     </ShipTree.Root>
