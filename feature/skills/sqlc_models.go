@@ -10,15 +10,7 @@ import (
 	"github.com/eve-online-tools/lib-esi-go/common/typeid"
 )
 
-type Skill struct {
-	CharacterID        int64 `json:"characterId"`
-	SkillID            int64 `json:"skillId"`
-	ActiveSkillLevel   int64 `json:"activeSkillLevel"`
-	TrainedSkillLevel  int64 `json:"trainedSkillLevel"`
-	SkillpointsInSkill int64 `json:"skillpointsInSkill"`
-}
-
-type SkillAttribute struct {
+type CharacterAttribute struct {
 	CharacterID              int64      `json:"characterId"`
 	Charisma                 int64      `json:"charisma"`
 	Intelligence             int64      `json:"intelligence"`
@@ -29,6 +21,14 @@ type SkillAttribute struct {
 	LastRemapDate            *time.Time `json:"lastRemapDate"`
 	AccruedRemapCooldownDate *time.Time `json:"accruedRemapCooldownDate"`
 	FetchedAt                time.Time  `json:"fetchedAt"`
+}
+
+type Skill struct {
+	CharacterID        int64 `json:"characterId"`
+	SkillID            int64 `json:"skillId"`
+	ActiveSkillLevel   int64 `json:"activeSkillLevel"`
+	TrainedSkillLevel  int64 `json:"trainedSkillLevel"`
+	SkillpointsInSkill int64 `json:"skillpointsInSkill"`
 }
 
 type SkillQueue struct {

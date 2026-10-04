@@ -1,8 +1,8 @@
 -- name: GetAttributes :one
-SELECT * FROM skill_attributes WHERE character_id = ?;
+SELECT * FROM character_attributes WHERE character_id = ?;
 
 -- name: UpsertAttributes :one
-INSERT INTO skill_attributes (
+INSERT INTO character_attributes (
     character_id, charisma, intelligence, memory, perception, willpower,
     bonus_remaps, last_remap_date, accrued_remap_cooldown_date, fetched_at
 )

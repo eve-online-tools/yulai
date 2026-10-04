@@ -31,12 +31,12 @@ func (q *Queries) DeleteSkills(ctx context.Context, characterID int64) error {
 }
 
 const getAttributes = `-- name: GetAttributes :one
-SELECT character_id, charisma, intelligence, memory, perception, willpower, bonus_remaps, last_remap_date, accrued_remap_cooldown_date, fetched_at FROM skill_attributes WHERE character_id = ?
+SELECT character_id, charisma, intelligence, memory, perception, willpower, bonus_remaps, last_remap_date, accrued_remap_cooldown_date, fetched_at FROM character_attributes WHERE character_id = ?
 `
 
-func (q *Queries) GetAttributes(ctx context.Context, characterID int64) (SkillAttribute, error) {
+func (q *Queries) GetAttributes(ctx context.Context, characterID int64) (CharacterAttribute, error) {
 	row := q.db.QueryRowContext(ctx, getAttributes, characterID)
-	var i SkillAttribute
+	var i CharacterAttribute
 	err := row.Scan(
 		&i.CharacterID,
 		&i.Charisma,
@@ -224,7 +224,7 @@ func (q *Queries) ListSkills(ctx context.Context, characterID int64) ([]Skill, e
 }
 
 const upsertAttributes = `-- name: UpsertAttributes :one
-INSERT INTO skill_attributes (
+INSERT INTO character_attributes (
     character_id, charisma, intelligence, memory, perception, willpower,
     bonus_remaps, last_remap_date, accrued_remap_cooldown_date, fetched_at
 )
@@ -255,7 +255,7 @@ type UpsertAttributesParams struct {
 	FetchedAt                time.Time  `json:"fetchedAt"`
 }
 
-func (q *Queries) UpsertAttributes(ctx context.Context, arg UpsertAttributesParams) (SkillAttribute, error) {
+func (q *Queries) UpsertAttributes(ctx context.Context, arg UpsertAttributesParams) (CharacterAttribute, error) {
 	row := q.db.QueryRowContext(ctx, upsertAttributes,
 		arg.CharacterID,
 		arg.Charisma,
@@ -268,7 +268,7 @@ func (q *Queries) UpsertAttributes(ctx context.Context, arg UpsertAttributesPara
 		arg.AccruedRemapCooldownDate,
 		arg.FetchedAt,
 	)
-	var i SkillAttribute
+	var i CharacterAttribute
 	err := row.Scan(
 		&i.CharacterID,
 		&i.Charisma,

@@ -19,7 +19,7 @@ var FetchAttributes = task.New(
 	task.WithTimeout(timeout),
 )
 
-func (f *Feature) attributes(ctx context.Context, in Input) (*SkillAttribute, error) {
+func (f *Feature) attributes(ctx context.Context, in Input) (*CharacterAttribute, error) {
 	resp, err := getattributes.Request(
 		ctx, f.esi,
 		&getattributes.Input{

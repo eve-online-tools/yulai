@@ -1,6 +1,6 @@
 -- +goose Up
 -- Owned by feature/skills. One table per ESI endpoint, typed like its response.
-CREATE TABLE skill_attributes (
+CREATE TABLE character_attributes (
     character_id                INTEGER   PRIMARY KEY REFERENCES characters(id) ON DELETE CASCADE,
     charisma                    INTEGER   NOT NULL,
     intelligence                INTEGER   NOT NULL,
@@ -49,4 +49,4 @@ CREATE TABLE skill_queue (
 DROP TABLE skill_queue;
 DROP TABLE skills;
 DROP TABLE skill_totals;
-DROP TABLE skill_attributes;
+DROP TABLE character_attributes;
