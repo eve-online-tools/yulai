@@ -19,6 +19,7 @@ declare module "@wailsio/runtime" {
             "progress:start": task$0.ProgressEvent;
             "progress:update": task$0.ProgressEvent;
             "sde:changed": {};
+            "skills:changed": {};
             "sync:jobs:changed": {};
             "task:changed": {};
         }

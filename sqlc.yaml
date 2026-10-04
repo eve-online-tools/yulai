@@ -92,6 +92,13 @@ sql:
         package: "charactersheet"
         out: "feature/charactersheet"
   - <<: *pkg
+    queries: "feature/skills/queries.sql"
+    gen:
+      go:
+        <<: *go
+        package: "skills"
+        out: "feature/skills"
+  - <<: *pkg
     schema: "core/sde/schema.sql"
     queries: "core/sde/queries.sql"
     gen:

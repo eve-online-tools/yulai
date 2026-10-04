@@ -36,6 +36,7 @@ Real features are out of scope for now. This plan describes where they plug in.
 | `feature/character`| `characters` table, add-character flow, list, remove, needs-login  | done (tested), `Enroll` is a no-op until the scheduler is wired |
 | `feature/presence` | `presence_online`, `presence_locations`, `presence_ships`. Paced by online state | sync done (tested), no UI yet |
 | `feature/charactersheet`| Always on, no scopes. `character_sheets`, `corporations`, `alliances` | sync done (tested), no UI yet |
+| `feature/skills`   | `skill_attributes`, `skill_totals`, `skills`, `skill_queue`. Every 5 minutes | sync done (tested), no UI yet |
 | `core/task`        | Generic in-memory scheduler, `task_pauses` table (see SCHEDULER.md) | engine done (tested), not wired |
 | `core/sde`         | Static Data Export in its own `sde.sqlite`, checked hourly (see SDE.md) | planned |
 | `feature/sync`     | Wails `SyncService` over the scheduler: list, pause, resume, trigger | old job registry, to be replaced |
