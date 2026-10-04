@@ -1,7 +1,15 @@
 import { useMemo, useRef, type CSSProperties } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { getRouteApi } from "@tanstack/react-router";
-import { Grid, ShipTree, TreeDisplay, type Data, type FactionIdentifier, type Skills } from "@eve-online-tools/eve-ship-tree";
+import {
+  Grid,
+  ShipTree,
+  TreeDisplay,
+  preloadShipTreeSprites,
+  type FactionIdentifier,
+  type PreloadedData,
+  type Skills,
+} from "@eve-online-tools/eve-ship-tree";
 import "@eve-online-tools/eve-ship-tree/styles.css";
 import type { Data as ShipTreeData } from "@bindings/github.com/eve-online-tools/yulai/feature/shiptree";
 import type { Skill } from "@bindings/github.com/eve-online-tools/yulai/feature/skills";
@@ -9,7 +17,6 @@ import { Alert, EmptyState, PageHead, Select } from "@xaroth.nl/design/react";
 import { AppIcon } from "@yulai/ui";
 import { skillsFeature, useCharactersWithFeature } from "../../features";
 import { shipTreeQuery, skillsQuery } from "../../queries";
-import { preloadSprites } from "./preload-sprites";
 import { useFrameAnchor } from "./use-frame-anchor";
 import styles from "./ship-tree.module.scss";
 
@@ -34,7 +41,8 @@ const factions: { id: FactionIdentifier; name: string }[] = [
   { id: 500029, name: "Deathless Circle" },
 ];
 
-preloadSprites();
+// ShipTree also does this on mount; starting with the page chunk gets the status sprites ready sooner.
+void preloadShipTreeSprites();
 
 // Unstyled marker useFrameAnchor finds the grid's header by.
 const gridHeaderClass = "ship-tree-grid-header";
@@ -196,16 +204,9 @@ function Tree({ characterID, faction }: { characterID: number; faction: FactionI
   );
 }
 
-// The backend builds the tables the tree and the faction summary read from our SDE; the others stay empty.
-function toData(d: ShipTreeData): Data {
-  return {
-    ...d,
-    factions: {},
-    groups: {},
-    staticDataFiles: {},
-    typeBonus: {},
-    typeElements: {},
-  } as unknown as Data;
+// Wails types integer-keyed maps as string-keyed with optional values; the records match the package's tables.
+function toData(d: ShipTreeData): PreloadedData {
+  return d as unknown as PreloadedData;
 }
 
 function toLevels(skills: Skill[]): Skills {

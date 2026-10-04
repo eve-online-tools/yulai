@@ -10,7 +10,7 @@
     "typecheck": "tsc"
   },
   "dependencies": {
-    "@eve-online-tools/eve-ship-tree": "^0.1.0",
+    "@eve-online-tools/eve-ship-tree": "^0.2.0",
     "@tanstack/react-query": "^5.103.2",
     "@tanstack/react-router": "^1.170.39",
     "@use-gesture/react": "^10.3.1",
