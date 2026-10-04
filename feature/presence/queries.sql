@@ -40,3 +40,9 @@ ON CONFLICT(character_id) DO UPDATE SET
     ship_name = excluded.ship_name,
     fetched_at = excluded.fetched_at
 RETURNING *;
+
+-- name: ListPresence :many
+SELECT l.character_id, l.solar_system_id, o.online, s.ship_type_id, s.ship_name
+FROM presence_locations l
+LEFT JOIN presence_online o ON o.character_id = l.character_id
+LEFT JOIN presence_ships s ON s.character_id = l.character_id;

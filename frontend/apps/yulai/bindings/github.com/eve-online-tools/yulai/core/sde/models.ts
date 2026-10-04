@@ -5,6 +5,145 @@
 // @ts-ignore: Unused imports
 import { Create as $Create } from "@wailsio/runtime";
 
+export class MapConstellation {
+    "name": string;
+    "regionId": number;
+
+    /** Creates a new MapConstellation instance. */
+    constructor($$source: Partial<MapConstellation> = {}) {
+        if (!("name" in $$source)) {
+            this["name"] = "";
+        }
+        if (!("regionId" in $$source)) {
+            this["regionId"] = 0;
+        }
+
+        Object.assign(this, $$source);
+    }
+
+    /**
+     * Creates a new MapConstellation instance from a string or object.
+     */
+    static createFrom($$source: any = {}): MapConstellation {
+        let $$parsedSource = typeof $$source === 'string' ? JSON.parse($$source) : $$source;
+        return new MapConstellation($$parsedSource as Partial<MapConstellation>);
+    }
+}
+
+/**
+ * MapData is the input of @eve-online-tools/eve-map.
+ */
+export class MapData {
+    "systems": MapSystem[];
+
+    /**
+     * Keyed by constellation ID.
+     */
+    "constellations": { [_ in `${number}`]?: MapConstellation };
+
+    /**
+     * Region ID to name.
+     */
+    "regions": { [_ in `${number}`]?: string };
+
+    /** Creates a new MapData instance. */
+    constructor($$source: Partial<MapData> = {}) {
+        if (!("systems" in $$source)) {
+            this["systems"] = [];
+        }
+        if (!("constellations" in $$source)) {
+            this["constellations"] = {};
+        }
+        if (!("regions" in $$source)) {
+            this["regions"] = {};
+        }
+
+        Object.assign(this, $$source);
+    }
+
+    /**
+     * Creates a new MapData instance from a string or object.
+     */
+    static createFrom($$source: any = {}): MapData {
+        const $$createField0_0 = $$createType1;
+        const $$createField1_0 = $$createType3;
+        const $$createField2_0 = $$createType4;
+        let $$parsedSource = typeof $$source === 'string' ? JSON.parse($$source) : $$source;
+        if ("systems" in $$parsedSource) {
+            $$parsedSource["systems"] = $$createField0_0($$parsedSource["systems"]);
+        }
+        if ("constellations" in $$parsedSource) {
+            $$parsedSource["constellations"] = $$createField1_0($$parsedSource["constellations"]);
+        }
+        if ("regions" in $$parsedSource) {
+            $$parsedSource["regions"] = $$createField2_0($$parsedSource["regions"]);
+        }
+        return new MapData($$parsedSource as Partial<MapData>);
+    }
+}
+
+export class MapSystem {
+    "id": number;
+    "name": string;
+    "constellationId": number;
+    "security": number;
+
+    /**
+     * SDE universe coordinates, meters.
+     */
+    "position": Vec3;
+    "position2d"?: Vec2 | null;
+
+    /**
+     * IDs of systems connected by a stargate.
+     */
+    "gates": number[];
+
+    /** Creates a new MapSystem instance. */
+    constructor($$source: Partial<MapSystem> = {}) {
+        if (!("id" in $$source)) {
+            this["id"] = 0;
+        }
+        if (!("name" in $$source)) {
+            this["name"] = "";
+        }
+        if (!("constellationId" in $$source)) {
+            this["constellationId"] = 0;
+        }
+        if (!("security" in $$source)) {
+            this["security"] = 0;
+        }
+        if (!("position" in $$source)) {
+            this["position"] = (new Vec3());
+        }
+        if (!("gates" in $$source)) {
+            this["gates"] = [];
+        }
+
+        Object.assign(this, $$source);
+    }
+
+    /**
+     * Creates a new MapSystem instance from a string or object.
+     */
+    static createFrom($$source: any = {}): MapSystem {
+        const $$createField4_0 = $$createType5;
+        const $$createField5_0 = $$createType7;
+        const $$createField6_0 = $$createType8;
+        let $$parsedSource = typeof $$source === 'string' ? JSON.parse($$source) : $$source;
+        if ("position" in $$parsedSource) {
+            $$parsedSource["position"] = $$createField4_0($$parsedSource["position"]);
+        }
+        if ("position2d" in $$parsedSource) {
+            $$parsedSource["position2d"] = $$createField5_0($$parsedSource["position2d"]);
+        }
+        if ("gates" in $$parsedSource) {
+            $$parsedSource["gates"] = $$createField6_0($$parsedSource["gates"]);
+        }
+        return new MapSystem($$parsedSource as Partial<MapSystem>);
+    }
+}
+
 /**
  * Status is what the UI shows about static data.
  */
@@ -55,3 +194,68 @@ export class Status {
         return new Status($$parsedSource as Partial<Status>);
     }
 }
+
+export class Vec2 {
+    "x": number;
+    "y": number;
+
+    /** Creates a new Vec2 instance. */
+    constructor($$source: Partial<Vec2> = {}) {
+        if (!("x" in $$source)) {
+            this["x"] = 0;
+        }
+        if (!("y" in $$source)) {
+            this["y"] = 0;
+        }
+
+        Object.assign(this, $$source);
+    }
+
+    /**
+     * Creates a new Vec2 instance from a string or object.
+     */
+    static createFrom($$source: any = {}): Vec2 {
+        let $$parsedSource = typeof $$source === 'string' ? JSON.parse($$source) : $$source;
+        return new Vec2($$parsedSource as Partial<Vec2>);
+    }
+}
+
+export class Vec3 {
+    "x": number;
+    "y": number;
+    "z": number;
+
+    /** Creates a new Vec3 instance. */
+    constructor($$source: Partial<Vec3> = {}) {
+        if (!("x" in $$source)) {
+            this["x"] = 0;
+        }
+        if (!("y" in $$source)) {
+            this["y"] = 0;
+        }
+        if (!("z" in $$source)) {
+            this["z"] = 0;
+        }
+
+        Object.assign(this, $$source);
+    }
+
+    /**
+     * Creates a new Vec3 instance from a string or object.
+     */
+    static createFrom($$source: any = {}): Vec3 {
+        let $$parsedSource = typeof $$source === 'string' ? JSON.parse($$source) : $$source;
+        return new Vec3($$parsedSource as Partial<Vec3>);
+    }
+}
+
+// Private type creation functions
+const $$createType0 = MapSystem.createFrom;
+const $$createType1 = $Create.Array($$createType0);
+const $$createType2 = MapConstellation.createFrom;
+const $$createType3 = $Create.Map($Create.Any, $$createType2);
+const $$createType4 = $Create.Map($Create.Any, $Create.Any);
+const $$createType5 = Vec3.createFrom;
+const $$createType6 = Vec2.createFrom;
+const $$createType7 = $Create.Nullable($$createType6);
+const $$createType8 = $Create.Array($Create.Any);

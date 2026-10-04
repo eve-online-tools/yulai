@@ -1,0 +1,34 @@
+.map {
+  flex: 1;
+  min-height: 320px;
+  border: 1px solid var(--x-color-line);
+}
+
+// Centred above the system, clear of its marker and the label to its right.
+.pilots {
+  position: absolute;
+  transform: translate(-50%, calc(-100% - 10px));
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  pointer-events: none;
+
+  li {
+    display: flex;
+    align-items: center;
+    gap: var(--x-space-1);
+    padding: 2px var(--x-space-2) 2px 2px;
+    font-size: var(--x-fs-small);
+    color: var(--x-color-text);
+    white-space: nowrap;
+    background: var(--x-color-glass);
+    border: 1px solid var(--x-color-line);
+  }
+}
+
+.offline {
+  opacity: 0.6;
+}

@@ -21,11 +21,22 @@ export function CheckNow(): $CancellablePromise<void> {
     return $Call.ByID(3941278385);
 }
 
+/**
+ * Map returns known space for the map. ErrNotInstalled before the first install.
+ */
+export function Map(): $CancellablePromise<$models.MapData | null> {
+    return $Call.ByID(3246957985).then(($result: any) => {
+        return $$createType1($result);
+    });
+}
+
 export function Status(): $CancellablePromise<$models.Status> {
     return $Call.ByID(1044965119).then(($result: any) => {
-        return $$createType0($result);
+        return $$createType2($result);
     });
 }
 
 // Private type creation functions
-const $$createType0 = $models.Status.createFrom;
+const $$createType0 = $models.MapData.createFrom;
+const $$createType1 = $Create.Nullable($$createType0);
+const $$createType2 = $models.Status.createFrom;

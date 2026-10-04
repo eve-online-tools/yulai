@@ -13,7 +13,7 @@ import { OverviewPage } from "./pages/overview";
 import { CharactersPage } from "./pages/characters";
 import { WelcomePage } from "./pages/welcome";
 import { SettingsPage } from "./pages/settings";
-import { charactersQuery, featuresQuery, queryClient, setupQuery, syncJobsQuery } from "./queries";
+import { charactersQuery, featuresQuery, presenceQuery, queryClient, setupQuery, syncJobsQuery } from "./queries";
 
 // Hash history: Wails serves one index.html. Every page sits in the frame (title bar, window controls).
 const rootRoute = createRootRoute({ component: WindowFrame });
@@ -56,6 +56,19 @@ const overviewRoute = createRoute({
   component: OverviewPage,
 });
 
+// Lazy, so three.js stays out of the main bundle. The map data loads in the page, so the route opens before it arrives.
+const mapRoute = createRoute({
+  getParentRoute: () => layoutRoute,
+  path: "/map",
+  loader: () =>
+    Promise.all([
+      queryClient.ensureQueryData(charactersQuery),
+      queryClient.ensureQueryData(featuresQuery),
+      queryClient.ensureQueryData(presenceQuery),
+    ]),
+  component: lazyRouteComponent(() => import("./pages/map"), "MapPage"),
+});
+
 const charactersRoute = createRoute({
   getParentRoute: () => layoutRoute,
   path: "/characters",
@@ -81,7 +94,7 @@ const settingsRoute = createRoute({
 });
 
 export const router = createRouter({
-  routeTree: rootRoute.addChildren([welcomeRoute, layoutRoute.addChildren([indexRoute, overviewRoute, charactersRoute, shipTreeRoute, settingsRoute])]),
+  routeTree: rootRoute.addChildren([welcomeRoute, layoutRoute.addChildren([indexRoute, overviewRoute, mapRoute, charactersRoute, shipTreeRoute, settingsRoute])]),
   history: createHashHistory(),
   defaultPreload: "intent",
 });

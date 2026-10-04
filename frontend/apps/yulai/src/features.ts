@@ -4,6 +4,7 @@ import { charactersQuery, featuresQuery } from "./queries";
 
 // Feature names as the backend registers them (Name in feature/*).
 export const skillsFeature = "Skill Management";
+export const presenceFeature = "Presence";
 
 // Characters whose token covers the feature, empty while loading.
 export function useCharactersWithFeature(name: string) {

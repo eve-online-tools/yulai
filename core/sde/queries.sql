@@ -88,3 +88,20 @@ FROM type_bonus_misc_bonuses m
 JOIN types t ON t.key = m.parent
 WHERE t.ship_tree_group_id IS NOT NULL AND t.group_id IN (SELECT key FROM groups WHERE category_id = 6)
 ORDER BY m.parent, m.idx;
+
+-- Known space: Jove and Pochven included, wormholes and Abyssal space not.
+-- name: ListMapSystems :many
+SELECT key, name_en, constellation_id, security_status,
+       position_x, position_y, position_z, position2d_x, position2d_y
+FROM map_solar_systems
+WHERE key BETWEEN 30000000 AND 30999999
+ORDER BY key;
+
+-- name: ListMapGates :many
+SELECT solar_system_id, destination_solar_system_id FROM map_stargates;
+
+-- name: ListMapConstellations :many
+SELECT key, name_en, region_id FROM map_constellations;
+
+-- name: ListMapRegions :many
+SELECT key, name_en FROM map_regions;

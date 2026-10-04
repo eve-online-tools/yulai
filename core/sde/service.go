@@ -21,13 +21,14 @@ type Status struct {
 
 // Service is the Wails-facing side of the updater.
 type Service struct {
-	u    *Updater
-	list func() []task.Status
+	u       *Updater
+	list    func() []task.Status
+	mapData *Derived[*MapData]
 }
 
 // list returns the scheduler's task statuses, e.g. task.Default.List.
 func NewService(u *Updater, list func() []task.Status) *Service {
-	return &Service{u: u, list: list}
+	return &Service{u: u, list: list, mapData: NewDerived(u.store, mapData)}
 }
 
 func (s *Service) ServiceName() string { return "SDEService" }
@@ -59,4 +60,9 @@ func (s *Service) Status() Status {
 // CheckNow runs a check, which queues an update when one is due.
 func (s *Service) CheckNow(ctx context.Context) error {
 	return Check.Queue(ctx, struct{}{})
+}
+
+// Map returns known space for the map. ErrNotInstalled before the first install.
+func (s *Service) Map(ctx context.Context) (*MapData, error) {
+	return s.mapData.Get(ctx)
 }
