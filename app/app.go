@@ -20,6 +20,7 @@ import (
 	"github.com/eve-online-tools/yulai/feature/character"
 	"github.com/eve-online-tools/yulai/feature/charactersheet"
 	"github.com/eve-online-tools/yulai/feature/presence"
+	"github.com/eve-online-tools/yulai/feature/skills"
 	"github.com/eve-online-tools/yulai/feature/sync"
 	"github.com/eve-online-tools/yulai/identity/login"
 	"github.com/eve-online-tools/yulai/identity/sso"
@@ -39,6 +40,7 @@ func init() {
 	application.RegisterEvent[struct{}](sync.EventJobsChanged)
 	application.RegisterEvent[struct{}](presence.EventChanged)
 	application.RegisterEvent[struct{}](charactersheet.EventChanged)
+	application.RegisterEvent[struct{}](skills.EventChanged)
 	application.RegisterEvent[struct{}](sde.EventChanged)
 	application.RegisterEvent[struct{}](EventTasksChanged)
 	application.RegisterEvent[task.ProgressEvent](EventProgressStart)
@@ -93,6 +95,7 @@ func New(ctx context.Context, cfg *Config, web fs.FS) (*App, error) {
 	// Every opt-in feature is registered here. Order is what the UI shows.
 	features := []feature.Feature{
 		presence.NewFeature(conn, esiClient, tokens, characters{app}, emitter{}),
+		skills.NewFeature(conn, esiClient, tokens, characters{app}, emitter{}),
 	}
 
 	app.Scheduler = sync.NewScheduler(conn, features, tokens, syncWorkers)
@@ -184,7 +187,7 @@ type browser struct{}
 
 func (browser) OpenURL(url string) error { return application.Get().Browser.OpenURL(url) }
 
-// characters implements presence.Characters once app.Characters is set.
+// characters implements presence.Characters and skills.Characters once app.Characters is set.
 type characters struct{ app *App }
 
 func (c characters) WithFeature(ctx context.Context, f feature.Feature) ([]int64, error) {
