@@ -29,6 +29,10 @@ type Store struct {
 	conn *sql.DB
 	q    *Queries
 	meta *Meta
+	// gen counts opens, so Derived values know when the database changed.
+	gen uint64
+	// derived builds the registered Derived values for a new install.
+	derived []func()
 }
 
 // Open opens the SDE in dir, if one is installed, and removes leftovers of
@@ -72,6 +76,7 @@ func (s *Store) open(ctx context.Context) error {
 		return fmt.Errorf("sde: read meta: %w", err)
 	}
 	s.conn, s.q, s.meta = conn, q, &meta
+	s.gen++
 	return nil
 }
 
@@ -121,7 +126,14 @@ func (s *Store) Install(ctx context.Context, src string) error {
 	if err := os.Rename(tmp, s.path()); err != nil {
 		return errors.Join(err, s.open(ctx))
 	}
-	return s.open(ctx)
+	if err := s.open(ctx); err != nil {
+		return err
+	}
+	// They wait for the read lock, so they start once this returns.
+	for _, warm := range s.derived {
+		go warm()
+	}
+	return nil
 }
 
 // Close closes the database.

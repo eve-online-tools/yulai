@@ -70,6 +70,10 @@ mid-query. Before the first install it returns `sde.ErrNotInstalled`; `sde.Insta
 tasks that need static data. Queries go in `core/sde/queries.sql`, with an `sqlc.yaml` entry over
 `core/sde/schema.sql`.
 
+Data derived from several queries, like a tool's lookup tables, is an `sde.Derived[T]`: built once per install
+and returned from memory after that. It builds when created on an installed store and again after every
+install, so the first `Get` normally finds it ready.
+
 ## Tasks
 
 | Task | Schedule | Does |
