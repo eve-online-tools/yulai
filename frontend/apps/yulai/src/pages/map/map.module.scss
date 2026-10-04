@@ -1,34 +1,65 @@
-.map {
+.frame {
   flex: 1;
   min-height: 320px;
+  display: flex;
+}
+
+.map {
+  flex: 1;
   border: 1px solid var(--x-color-line);
 }
 
-// Centred above the system, clear of its marker and the label to its right.
+// Centred above the system, with a pointer down to its marker.
 .pilots {
+  --tag-edge: var(--x-color-accent);
   position: absolute;
-  transform: translate(-50%, calc(-100% - 10px));
+  transform: translate(-50%, calc(-100% - 16px));
   margin: 0;
   padding: 0;
   list-style: none;
   display: flex;
   flex-direction: column;
-  gap: 2px;
+  gap: 3px;
   pointer-events: none;
+
+  &::after {
+    content: '';
+    position: absolute;
+    left: 50%;
+    bottom: -9px;
+    width: 0;
+    height: 0;
+    border: 5px solid transparent;
+    border-top-color: var(--tag-edge);
+    transform: translateX(-50%);
+  }
 
   li {
     display: flex;
     align-items: center;
-    gap: var(--x-space-1);
-    padding: 2px var(--x-space-2) 2px 2px;
-    font-size: var(--x-fs-small);
+    gap: var(--x-space-2);
+    padding: 3px var(--x-space-3) 3px 3px;
+    font-family: var(--x-font-ui);
+    font-size: var(--x-fs-ui);
+    font-weight: 600;
     color: var(--x-color-text);
     white-space: nowrap;
-    background: var(--x-color-glass);
-    border: 1px solid var(--x-color-line);
+    background: var(--x-color-surface-2);
+    border: 1px solid var(--tag-edge);
+    box-shadow: 0 0 12px var(--x-color-glow), 0 2px 8px rgb(0 0 0 / 60%);
   }
 }
 
+// System without online characters.
 .offline {
-  opacity: 0.6;
+  --tag-edge: var(--x-color-line);
+
+  li {
+    box-shadow: 0 2px 8px rgb(0 0 0 / 60%);
+  }
+}
+
+// Offline character sharing a system with an online one.
+.away {
+  color: var(--x-color-text-muted);
 }
