@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useLayoutEffect, useMemo, useRef, useState, type CSSProperties } from "react";
 import { useQuery } from "@tanstack/react-query";
 import type { MapData, Marker } from "@eve-online-tools/eve-map";
 import { EveMap, type EveMapApi } from "@eve-online-tools/eve-map/react";
@@ -86,7 +86,7 @@ export function MapPage() {
             showSystemLabels={6}
             fallback={<Alert tone="danger">The map needs WebGL 2, which is not available.</Alert>}
           >
-            {(api) => <Pilots api={api} bySystem={bySystem} />}
+            {(api) => <Pilots api={api} bySystem={bySystem} bounds={frame} />}
           </EveMap>
         </div>
       )}
@@ -127,29 +127,51 @@ function groupBySystem(presence: ListPresenceRow[], tracked: Character[]) {
   return out;
 }
 
-// Tags above each occupied system. Re-rendered on every camera change and resize.
-function Pilots({ api, bySystem }: { api: EveMapApi; bySystem: Map<number, Pilot[]> }) {
+// Tags at each occupied system. Re-rendered on every camera change and resize.
+function Pilots({ api, bySystem, bounds }: { api: EveMapApi; bySystem: Map<number, Pilot[]>; bounds: HTMLElement | null }) {
   return (
     <>
       {[...bySystem].map(([systemId, pilots]) => {
         const pos = api.project(systemId);
         if (!pos?.visible) return null;
-        const online = pilots.some((p) => p.online);
-        return (
-          <ul
-            key={systemId}
-            className={online ? styles.pilots : `${styles.pilots} ${styles.offline}`}
-            style={{ left: pos.x, top: pos.y }}
-          >
-            {pilots.map(({ character, online }) => (
-              <li key={character.id} className={online ? undefined : styles.away}>
-                <Portrait id={character.id} size={28} />
-                <span>{character.name}</span>
-              </li>
-            ))}
-          </ul>
-        );
+        return <Tag key={systemId} x={pos.x} y={pos.y} pilots={pilots} bounds={bounds} />;
       })}
     </>
+  );
+}
+
+// Space between the system and the tag, room for the pointer.
+const gap = 16;
+
+// Above the system when it fits, otherwise below, and shifted sideways to stay
+// inside bounds. Measured before paint, so a flipped tag never flashes.
+function Tag({ x, y, pilots, bounds }: { x: number; y: number; pilots: Pilot[]; bounds: HTMLElement | null }) {
+  const ref = useRef<HTMLUListElement>(null);
+  const [size, setSize] = useState({ w: 0, h: 0 });
+  useLayoutEffect(() => {
+    const el = ref.current;
+    if (el && (el.offsetWidth !== size.w || el.offsetHeight !== size.h)) {
+      setSize({ w: el.offsetWidth, h: el.offsetHeight });
+    }
+  });
+
+  const width = bounds?.clientWidth ?? Infinity;
+  const below = y - gap - size.h < 0;
+  const left = Math.max(0, Math.min(x - size.w / 2, width - size.w));
+  const online = pilots.some((p) => p.online);
+  const className = [styles.pilots, online ? "" : styles.offline, below ? styles.below : ""].filter(Boolean).join(" ");
+  return (
+    <ul
+      ref={ref}
+      className={className}
+      style={{ left, top: below ? y + gap : y - gap - size.h, "--pointer-x": `${x - left}px` } as CSSProperties}
+    >
+      {pilots.map(({ character, online }) => (
+        <li key={character.id} className={online ? undefined : styles.away}>
+          <Portrait id={character.id} size={28} />
+          <span>{character.name}</span>
+        </li>
+      ))}
+    </ul>
   );
 }

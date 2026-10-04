@@ -1,19 +1,19 @@
+// Border here, not on the map, so the frame's client size is the overlay's bounds.
 .frame {
   flex: 1;
   min-height: 320px;
   display: flex;
+  border: 1px solid var(--x-color-line);
 }
 
 .map {
   flex: 1;
-  border: 1px solid var(--x-color-line);
 }
 
-// Centred above the system, with a pointer down to its marker.
+// Placed by Tag in px; --pointer-x is the system's offset from the tag's left edge.
 .pilots {
   --tag-edge: var(--x-color-accent);
   position: absolute;
-  transform: translate(-50%, calc(-100% - 16px));
   margin: 0;
   padding: 0;
   list-style: none;
@@ -25,10 +25,8 @@
   &::after {
     content: '';
     position: absolute;
-    left: 50%;
-    bottom: -9px;
-    width: 0;
-    height: 0;
+    left: var(--pointer-x, 50%);
+    bottom: -11px;
     border: 5px solid transparent;
     border-top-color: var(--tag-edge);
     transform: translateX(-50%);
@@ -48,6 +46,14 @@
     border: 1px solid var(--tag-edge);
     box-shadow: 0 0 12px var(--x-color-glow), 0 2px 8px rgb(0 0 0 / 60%);
   }
+}
+
+// Below the system when there is no room above; the pointer moves to the top.
+.below::after {
+  top: -11px;
+  bottom: auto;
+  border-top-color: transparent;
+  border-bottom-color: var(--tag-edge);
 }
 
 // System without online characters.
