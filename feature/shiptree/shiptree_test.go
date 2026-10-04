@@ -77,7 +77,7 @@ func TestBuild(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	d, err := Build(t.Context(), s)
+	d, err := NewService(s).Data(t.Context())
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -96,7 +96,7 @@ func TestBuildNotInstalled(t *testing.T) {
 		t.Fatal(err)
 	}
 	t.Cleanup(func() { s.Close() })
-	if _, err := Build(t.Context(), s); err != sde.ErrNotInstalled {
+	if _, err := NewService(s).Data(t.Context()); err != sde.ErrNotInstalled {
 		t.Fatalf("err = %v", err)
 	}
 }

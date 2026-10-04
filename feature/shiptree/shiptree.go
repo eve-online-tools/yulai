@@ -108,21 +108,8 @@ type ShipSize struct {
 	TypeIDs []int64 `json:"typeIDs"`
 }
 
-// Build reads the tables from the installed SDE. It returns sde.ErrNotInstalled
-// before the first install.
-func Build(ctx context.Context, store *sde.Store) (*Data, error) {
-	var out *Data
-	err := store.Read(ctx, func(q *sde.Queries) error {
-		var err error
-		out, err = build(ctx, q)
-		return err
-	})
-	if err != nil {
-		return nil, err
-	}
-	return out, nil
-}
-
+// build reads the tables from the installed SDE. The result is shared between
+// callers, so it is not modified after.
 func build(ctx context.Context, q *sde.Queries) (*Data, error) {
 	d := &Data{
 		Types:          map[int64]Type{},

@@ -1,18 +1,72 @@
-.pickers {
-  display: flex;
-  gap: var(--x-space-2);
-
-  select {
-    width: auto;
-  }
-}
-
 // Fills the rest of the page; the tree pans and zooms inside.
-.tree {
+.frame {
+  position: relative;
   flex: 1;
   min-height: 360px;
+  display: flex;
+  flex-direction: column;
+  container-type: inline-size;
+}
+
+.tree {
+  flex: 1;
+  min-height: 0;
 }
 
 .grid {
   height: 100%;
+}
+
+// Below the grid's top frame, over the empty corner of the tree.
+.factions {
+  position: absolute;
+  top: 60px;
+  left: var(--x-space-5);
+  z-index: 3;
+}
+
+.logos {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--x-space-1);
+}
+
+.logo {
+  width: 32px;
+  height: 32px;
+  padding: 0;
+  border: 1px solid transparent;
+  // The package's flat logos are placeholders for CONCORD, EDENCOM and the Triglavians.
+  background: var(--factionslogo-logo) center / 26px no-repeat;
+  opacity: 0.45;
+  cursor: pointer;
+
+  &:hover {
+    opacity: 0.8;
+  }
+
+  &[aria-checked="true"] {
+    opacity: 1;
+    border-color: var(--x-color-accent);
+    box-shadow: 0 0 8px var(--x-color-glow);
+  }
+
+  &:focus-visible {
+    outline: var(--x-focus-width) solid var(--x-color-focus);
+  }
+}
+
+.dropdown {
+  display: none;
+}
+
+@container (width < 760px) {
+  .logos {
+    display: none;
+  }
+
+  .dropdown {
+    display: block;
+    width: 220px;
+  }
 }
