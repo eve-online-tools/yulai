@@ -18,20 +18,20 @@
   height: 100%;
 }
 
-// Placed by useFrameAnchor; these are the fallbacks until it measures.
+// Pinned to the pane's corners, with its padding; the tree pans and zooms underneath.
 .factions,
 .character {
   position: absolute;
-  top: 12px;
+  top: var(--x-space-4);
   z-index: 3;
 }
 
 .factions {
-  left: 12px;
+  left: var(--x-space-5);
 }
 
 .character {
-  right: 12px;
+  right: var(--x-space-5);
   width: auto;
 }
 

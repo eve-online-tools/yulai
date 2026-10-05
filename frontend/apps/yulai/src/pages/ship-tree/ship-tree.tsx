@@ -1,4 +1,4 @@
-import { useMemo, useRef, type CSSProperties } from "react";
+import { useMemo } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { getRouteApi } from "@tanstack/react-router";
 import {
@@ -17,7 +17,6 @@ import { Alert, EmptyState, PageHead, Select } from "@xaroth.nl/design/react";
 import { AppIcon } from "@yulai/ui";
 import { skillsFeature, useCharactersWithFeature } from "../../features";
 import { shipTreeQuery, skillsQuery } from "../../queries";
-import { useFrameAnchor } from "./use-frame-anchor";
 import styles from "./ship-tree.module.scss";
 
 // In the client's order: empires and ORE, pirates, then the rest.
@@ -44,9 +43,6 @@ const factions: { id: FactionIdentifier; name: string }[] = [
 // ShipTree also does this on mount; starting with the page chunk gets the status sprites ready sooner.
 void preloadShipTreeSprites();
 
-// Unstyled marker useFrameAnchor finds the grid's header by.
-const gridHeaderClass = "ship-tree-grid-header";
-
 const route = getRouteApi("/layout/ship-tree");
 
 export function ShipTreePage() {
@@ -55,8 +51,6 @@ export function ShipTreePage() {
   const navigate = route.useNavigate();
   const character = characters.find((c) => c.id === search.character) ?? characters[0];
   const faction = search.faction ?? factions[0].id;
-  const pageRef = useRef<HTMLDivElement>(null);
-  const anchor = useFrameAnchor(pageRef, gridHeaderClass);
 
   if (!character) {
     return (
@@ -71,16 +65,11 @@ export function ShipTreePage() {
 
   // The tree's own frame carries the "Ship Tree" title, so the page has no head and fills the content pane.
   return (
-    <div className={styles.page} ref={pageRef}>
+    <div className={styles.page}>
       <Tree characterID={character.id} faction={faction} />
-      <FactionPicker
-        value={faction}
-        onChange={(f) => navigate({ search: (s) => ({ ...s, faction: f }) })}
-        style={anchor ? { top: anchor.top, left: anchor.left } : undefined}
-      />
+      <FactionPicker value={faction} onChange={(f) => navigate({ search: (s) => ({ ...s, faction: f }) })} />
       <Select
         className={styles.character}
-        style={anchor ? { top: anchor.top, right: anchor.right } : undefined}
         aria-label="Character"
         value={character.id}
         onChange={(e) => navigate({ search: (s) => ({ ...s, character: Number(e.target.value) }) })}
@@ -95,19 +84,11 @@ export function ShipTreePage() {
   );
 }
 
-// Sits in the tree's top-left corner, like the client's faction box: a grid of logos, or a dropdown when the window is
+// Sits in the pane's top-left corner, like the client's faction box: a grid of logos, or a dropdown when the window is
 // too narrow for it.
-function FactionPicker({
-  value,
-  onChange,
-  style,
-}: {
-  value: FactionIdentifier;
-  onChange: (f: FactionIdentifier) => void;
-  style?: CSSProperties;
-}) {
+function FactionPicker({ value, onChange }: { value: FactionIdentifier; onChange: (f: FactionIdentifier) => void }) {
   return (
-    <div className={styles.factions} style={style}>
+    <div className={styles.factions}>
       <div className={styles.box}>
         <div className={styles.logos} role="radiogroup" aria-label="Faction">
           {factions.map((f) => (
@@ -197,7 +178,7 @@ function Tree({ characterID, faction }: { characterID: number; faction: FactionI
   if (!data) return null;
   return (
     <ShipTree.Root skills={skills} faction={faction} data={data} className={styles.tree}>
-      <Grid className={styles.grid} classNames={{ header: gridHeaderClass }} disclaimer={null}>
+      <Grid className={styles.grid} disclaimer={null}>
         <TreeDisplay />
       </Grid>
     </ShipTree.Root>
