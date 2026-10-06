@@ -11,6 +11,8 @@ minimumReleaseAgeExclude:
   - "@wailsio/runtime"
   # Own design system, released alongside this app.
   - "@xaroth.nl/design"
+  # Own EVE packages, same.
+  - "@eve-online-tools/*"
 
 # Optional native watcher pulled in by sass; Vite does its own watching.
 allowBuilds:

@@ -202,12 +202,18 @@ importers:
 
   apps/yulai:
     dependencies:
+      '@eve-online-tools/eve-ship-tree':
+        specifier: ^0.3.0
+        version: 0.3.0(@use-gesture/react@10.3.1(react@19.3.0))(motion@12.43.0(react-dom@19.3.0(react@19.3.0))(react@19.3.0))(react-dom@19.3.0(react@19.3.0))(react@19.3.0)(vite@8.3.1(sass@1.105.0))
       '@tanstack/react-query':
         specifier: ^5.103.2
         version: 5.103.2(react@19.3.0)
       '@tanstack/react-router':
         specifier: ^1.170.39
         version: 1.170.39(react-dom@19.3.0(react@19.3.0))(react@19.3.0)
+      '@use-gesture/react':
+        specifier: ^10.3.1
+        version: 10.3.1(react@19.3.0)
       '@wailsio/runtime':
         specifier: 3.0.0-beta.27
         version: 3.0.0-beta.27
@@ -217,6 +223,9 @@ importers:
       '@yulai/ui':
         specifier: workspace:*
         version: link:../../packages/ui
+      motion:
+        specifier: ^12.43.0
+        version: 12.43.0(react-dom@19.3.0(react@19.3.0))(react@19.3.0)
       react:
         specifier: ^19.3.0
         version: 19.3.0
@@ -261,6 +270,36 @@ importers:
 
 packages:
 
+  '@eve-online-tools/eve-resfile@0.3.0':
+    resolution: {integrity: sha512-lqMGKp9qRvyEcWX+yZGeoRqMGyk3IvEcLC/OGRFPCuWABCoENeGOKl0Vx2T1GBd16vhexPC7f5BYQ2y61rpysQ==}
+    peerDependencies:
+      rollup: ^4.0.0
+      vite: ^6.0.0 || ^7.0.0 || ^8.0.0
+    peerDependenciesMeta:
+      rollup:
+        optional: true
+      vite:
+        optional: true
+
+  '@eve-online-tools/eve-sde@0.1.0':
+    resolution: {integrity: sha512-ICXojMg2q48yai5icCHC5lxGXnDEzFxwuJroZGlbTuPaAUkNPLl4NuVrg5XJnZiWHwjhE7N3sTwRkKxdbG+bTQ==}
+    peerDependencies:
+      rollup: ^4.0.0
+      vite: ^6.0.0 || ^7.0.0 || ^8.0.0
+    peerDependenciesMeta:
+      rollup:
+        optional: true
+      vite:
+        optional: true
+
+  '@eve-online-tools/eve-ship-tree@0.3.0':
+    resolution: {integrity: sha512-RfD8y4VjAZRFuyB4CT2ezRlm4DtH0iS4FTwJF0sRw9tUKPcLYNKr82JbwvBEYs4OUZ6ETmU1qj+4+GV9gnw/9A==}
+    peerDependencies:
+      '@use-gesture/react': ^10.0.0
+      motion: ^12.0.0
+      react: ^18.x || ^19.x
+      react-dom: ^18.x || ^19.x
+
   '@fontsource-variable/alegreya@5.3.0':
     resolution: {integrity: sha512-K+DFrm7tnqsG6di2w3eW/o4Ic6XNFLtZCKcPldeHEnE9f8uWy4llIp1CqQAu+ByI9MFfs1C7eLv4Rv84yEIerw==}
 
@@ -281,6 +320,9 @@ packages:
 
   '@fontsource/alegreya-sc@5.3.0':
     resolution: {integrity: sha512-MksAO+rnvCMXBfrzcznuaoNtGgGwqORHhz5/UP0V4bHq0M9mL9EpOrW44ilAgI/yjzYtWoVlVjvvvEXPJI9PCw==}
+
+  '@fontsource/saira-semi-condensed@5.3.0':
+    resolution: {integrity: sha512-ODnnx0osErt7pRMY+MhxqwXOpPEKlRNW6Bb1Ci70Y37JMnISFAUZYo6ZGv/VOWc2x/IetzdmMaiiEVNPtWMi9Q==}
 
   '@oxc-project/types@0.151.0':
     resolution: {integrity: sha512-J1yXrIlNDZVzE3ada310xeAw7nH8yCAyLPuUIsjKatFPmfn5bS1oW+cM+QsGOtVWd5nhSpbwZWx/rue+r5Z+PA==}
@@ -506,6 +548,14 @@ packages:
   '@types/react@19.3.0':
     resolution: {integrity: sha512-N0rFCuH9YoxG9/m61l9MfpJKfmLOVU0em7ipIz6TRgSSkvReLB9vL85GB+yr8Bs5leqpvg96JSwF4ZS1s4viQg==}
 
+  '@use-gesture/core@10.3.1':
+    resolution: {integrity: sha512-WcINiDt8WjqBdUXye25anHiNxPc0VOrlT8F6LLkU6cycrOGUDyY/yyFmsg3k8i5OLvv25llc0QC45GhR/C8llw==}
+
+  '@use-gesture/react@10.3.1':
+    resolution: {integrity: sha512-Yy19y6O2GJq8f7CHf7L0nxL8bf4PZCPaVOCgJrusOeFHY1LvHgYXnmnXg6N5iwAnbgbZCDjo60SiM6IPJi9C5g==}
+    peerDependencies:
+      react: '>= 16.8.0'
+
   '@vitejs/plugin-react@6.1.1':
     resolution: {integrity: sha512-yxLaQV9gkhS8ezJqCM6+ndU7mDY6gqAg75NQ+0IjwEI8IYOmQCgkRwHKVSfWXW076DsqMo0Dk+0FK1U+M5RgFw==}
     engines: {node: ^20.19.0 || >=22.12.0}
@@ -561,6 +611,23 @@ packages:
       picomatch: ^3 || ^4
     peerDependenciesMeta:
       picomatch:
+        optional: true
+
+  fflate@0.8.3:
+    resolution: {integrity: sha512-tbZNuJrLwGUp3zshBtdy4W+ORxZuIh8a5ilyIEQDC5rY1f3U20JMry0Ll3WBzU58EZKsEuJFXhb5gwv8CsPvgA==}
+
+  framer-motion@12.43.0:
+    resolution: {integrity: sha512-1eaL3RvR/kAlbG7UYcpMptEyzPoENO0c6w7ZnB3/hh2vSAz/6uGAFn6fdoqTBguNstf3MsFhJHsD/0DHiclG+g==}
+    peerDependencies:
+      '@emotion/is-prop-valid': '*'
+      react: ^18.0.0 || ^19.0.0
+      react-dom: ^18.0.0 || ^19.0.0
+    peerDependenciesMeta:
+      '@emotion/is-prop-valid':
+        optional: true
+      react:
+        optional: true
+      react-dom:
         optional: true
 
   fsevents@2.3.3:
@@ -657,6 +724,26 @@ packages:
     resolution: {integrity: sha512-WkUDrojuJs0xkgGf2udWxa3yGBRxPtxUkB79i6aCZLRgc7PM8fZe9TosfPDcvEpQZbuFASnHYmRLBLUbmLOIIA==}
     engines: {node: '>= 12.0.0'}
 
+  motion-dom@12.43.0:
+    resolution: {integrity: sha512-azKON4d9S65PEoFUiQTMTgPheEmzf2QngdRc50AKfJp9Q9mmcBVw22c8eMq9k8kxOFHdL7+WZY7N/5F/lwiDag==}
+
+  motion-utils@12.39.0:
+    resolution: {integrity: sha512-8nadJAJjTtqRkmRF36FoJTrywK9nnFmnPwnSMyxaOCU7GDjN9RTMJIxx9De8ErM+vpPhMccr/6fo5WciyQLnMQ==}
+
+  motion@12.43.0:
+    resolution: {integrity: sha512-BQgQbSa9Hn3/mtbib0MK53y6JSANa+YKUKlaYnWzAVDH424RYQ5LVpV3pNiWH00BA2z4ojsSdMzqT7g2FQwjuQ==}
+    peerDependencies:
+      '@emotion/is-prop-valid': '*'
+      react: ^18.0.0 || ^19.0.0
+      react-dom: ^18.0.0 || ^19.0.0
+    peerDependenciesMeta:
+      '@emotion/is-prop-valid':
+        optional: true
+      react:
+        optional: true
+      react-dom:
+        optional: true
+
   nanoid@3.3.19:
     resolution: {integrity: sha512-Y2tUNy4ouw6tq5oDSKeQYGOyhkUBhNOcGV/02KC+6kd9eDGqdZd++mjMiIDilrBYvjEnCYvVtsuHCuP+okSfug==}
     engines: {node: ^10 || ^12 || ^13.7 || ^14 || >=15.0.1}
@@ -671,6 +758,9 @@ packages:
   picomatch@4.0.7:
     resolution: {integrity: sha512-qcJu88Q2IWqJsDD529JKMdwGm/dvInW4HvQnRwiH9JtihJvzGOscDtHE3x1pBKeUOTysQ8kVmLnJ2kJu7yhcGA==}
     engines: {node: '>=12'}
+
+  postcss-value-parser@4.2.0:
+    resolution: {integrity: sha512-1NNCs6uurfkVbeXG4S8JFT9t19m45ICnif8zWLd5oPSZ50QnwMfK+H3jv408d4jw/7Bttv5axS5IiHoLaVNHeQ==}
 
   postcss@8.5.28:
     resolution: {integrity: sha512-RRuzqDtt5Y9h3quz5hWhK+TPnsmVs6WwSU6LkJMeY4HstUEDuYTG8UJSdawMRzmzAtV+KEoG8N3Qg2qLy5vM/A==}
@@ -719,6 +809,9 @@ packages:
   tinyglobby@0.2.17:
     resolution: {integrity: sha512-wXR/dYpcqKmfWpEdZjiKJOwCNFndD0DMnrW/cYjVGttEkBfVgcLFHoNrlj47mjOVic9yyNu65alsgF4NQyTa2g==}
     engines: {node: '>=12.0.0'}
+
+  tslib@2.8.1:
+    resolution: {integrity: sha512-oJFu94HQb+KVduSUQL7wnpmqnfmLsOA/nAh6b6EH0wCEoK0/mPeXU6c3wKDV83MkOuHPRHtSXKKU99IBazS/2w==}
 
   typescript@5.9.3:
     resolution: {integrity: sha512-jl1vZzPDinLr9eUt3J/t7V6FgNEw9QjvBPdysz9KfQDD41fQrC2Y4vKQdiaUpFT4bXlb1RHhLpp8wtm6M5TgSw==}
@@ -775,6 +868,32 @@ packages:
 
 snapshots:
 
+  '@eve-online-tools/eve-resfile@0.3.0(vite@8.3.1(sass@1.105.0))':
+    dependencies:
+      postcss: 8.5.28
+      postcss-value-parser: 4.2.0
+    optionalDependencies:
+      vite: 8.3.1(sass@1.105.0)
+
+  '@eve-online-tools/eve-sde@0.1.0(vite@8.3.1(sass@1.105.0))':
+    dependencies:
+      fflate: 0.8.3
+    optionalDependencies:
+      vite: 8.3.1(sass@1.105.0)
+
+  '@eve-online-tools/eve-ship-tree@0.3.0(@use-gesture/react@10.3.1(react@19.3.0))(motion@12.43.0(react-dom@19.3.0(react@19.3.0))(react@19.3.0))(react-dom@19.3.0(react@19.3.0))(react@19.3.0)(vite@8.3.1(sass@1.105.0))':
+    dependencies:
+      '@eve-online-tools/eve-resfile': 0.3.0(vite@8.3.1(sass@1.105.0))
+      '@eve-online-tools/eve-sde': 0.1.0(vite@8.3.1(sass@1.105.0))
+      '@fontsource/saira-semi-condensed': 5.3.0
+      '@use-gesture/react': 10.3.1(react@19.3.0)
+      motion: 12.43.0(react-dom@19.3.0(react@19.3.0))(react@19.3.0)
+      react: 19.3.0
+      react-dom: 19.3.0(react@19.3.0)
+    transitivePeerDependencies:
+      - rollup
+      - vite
+
   '@fontsource-variable/alegreya@5.3.0': {}
 
   '@fontsource-variable/azeret-mono@5.3.0': {}
@@ -788,6 +907,8 @@ snapshots:
   '@fontsource/alegreya-sans@5.3.0': {}
 
   '@fontsource/alegreya-sc@5.3.0': {}
+
+  '@fontsource/saira-semi-condensed@5.3.0': {}
 
   '@oxc-project/types@0.151.0': {}
 
@@ -937,6 +1058,13 @@ snapshots:
     dependencies:
       csstype: 3.2.3
 
+  '@use-gesture/core@10.3.1': {}
+
+  '@use-gesture/react@10.3.1(react@19.3.0)':
+    dependencies:
+      '@use-gesture/core': 10.3.1
+      react: 19.3.0
+
   '@vitejs/plugin-react@6.1.1(vite@8.3.1(sass@1.105.0))':
     dependencies:
       '@rolldown/pluginutils': 1.0.1
@@ -972,6 +1100,17 @@ snapshots:
   fdir@6.5.0(picomatch@4.0.7):
     optionalDependencies:
       picomatch: 4.0.7
+
+  fflate@0.8.3: {}
+
+  framer-motion@12.43.0(react-dom@19.3.0(react@19.3.0))(react@19.3.0):
+    dependencies:
+      motion-dom: 12.43.0
+      motion-utils: 12.39.0
+      tslib: 2.8.1
+    optionalDependencies:
+      react: 19.3.0
+      react-dom: 19.3.0(react@19.3.0)
 
   fsevents@2.3.3:
     optional: true
@@ -1037,6 +1176,20 @@ snapshots:
       lightningcss-win32-arm64-msvc: 1.33.0
       lightningcss-win32-x64-msvc: 1.33.0
 
+  motion-dom@12.43.0:
+    dependencies:
+      motion-utils: 12.39.0
+
+  motion-utils@12.39.0: {}
+
+  motion@12.43.0(react-dom@19.3.0(react@19.3.0))(react@19.3.0):
+    dependencies:
+      framer-motion: 12.43.0(react-dom@19.3.0(react@19.3.0))(react@19.3.0)
+      tslib: 2.8.1
+    optionalDependencies:
+      react: 19.3.0
+      react-dom: 19.3.0(react@19.3.0)
+
   nanoid@3.3.19: {}
 
   node-addon-api@7.1.1:
@@ -1045,6 +1198,8 @@ snapshots:
   picocolors@1.1.1: {}
 
   picomatch@4.0.7: {}
+
+  postcss-value-parser@4.2.0: {}
 
   postcss@8.5.28:
     dependencies:
@@ -1104,6 +1259,8 @@ snapshots:
     dependencies:
       fdir: 6.5.0(picomatch@4.0.7)
       picomatch: 4.0.7
+
+  tslib@2.8.1: {}
 
   typescript@5.9.3: {}
 

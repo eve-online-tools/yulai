@@ -1,6 +1,8 @@
 import { QueryClient, queryOptions } from "@tanstack/react-query";
 import { Events } from "@wailsio/runtime";
 import { Service as Characters } from "@bindings/github.com/eve-online-tools/yulai/feature/character";
+import { Service as ShipTree } from "@bindings/github.com/eve-online-tools/yulai/feature/shiptree";
+import { Service as Skills } from "@bindings/github.com/eve-online-tools/yulai/feature/skills";
 import { Service as Sync } from "@bindings/github.com/eve-online-tools/yulai/feature/sync";
 import { Service as SDE } from "@bindings/github.com/eve-online-tools/yulai/core/sde";
 import { ProgressService, SetupService as Setup } from "@bindings/github.com/eve-online-tools/yulai/app";
@@ -20,6 +22,10 @@ export const keys = {
   setup: ["setup"] as const,
   sde: ["sde"] as const,
   progress: (key: string) => ["progress", key] as const,
+  allSkills: ["skills"] as const,
+  skills: (characterID: number) => ["skills", characterID] as const,
+  skillQueue: (characterID: number) => ["skills", characterID, "queue"] as const,
+  shipTree: ["shipTree"] as const,
 };
 
 export const charactersQuery = queryOptions({
@@ -50,6 +56,25 @@ export const sdeQuery = queryOptions({
   queryFn: () => SDE.Status(),
 });
 
+export const skillsQuery = (characterID: number) =>
+  queryOptions({
+    queryKey: keys.skills(characterID),
+    queryFn: () => Skills.List(characterID),
+  });
+
+export const skillQueueQuery = (characterID: number) =>
+  queryOptions({
+    queryKey: keys.skillQueue(characterID),
+    queryFn: () => Skills.Queue(characterID),
+  });
+
+// Built from the SDE, so it only changes with it.
+export const shipTreeQuery = queryOptions({
+  queryKey: keys.shipTree,
+  queryFn: () => ShipTree.Data(),
+  staleTime: Infinity,
+});
+
 // Progress of the running task with that task.WithProgress key, null when it is not running.
 // Fetched once, then kept current by the progress events.
 export const progressQuery = (key: string) =>
@@ -68,8 +93,12 @@ export function listenForBackendEvents() {
   Events.On("sync:jobs:changed", () => {
     queryClient.invalidateQueries({ queryKey: keys.syncJobs });
   });
+  Events.On("skills:changed", () => {
+    queryClient.invalidateQueries({ queryKey: keys.allSkills });
+  });
   Events.On("sde:changed", () => {
     queryClient.invalidateQueries({ queryKey: keys.sde });
+    queryClient.invalidateQueries({ queryKey: keys.shipTree });
   });
   const setProgress = (ev: ProgressEvent, running: boolean) =>
     queryClient.setQueryData(keys.progress(ev.key), running ? ev.progress : null);

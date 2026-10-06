@@ -1,0 +1,56 @@
+// Cancels the content pane's padding, so the tree fills it. The pickers float over the tree's empty corners.
+.page {
+  position: relative;
+  flex: 1;
+  min-height: 360px;
+  margin: calc(var(--x-space-4) * -1) calc(var(--x-space-5) * -1);
+  display: flex;
+  flex-direction: column;
+  container-type: inline-size;
+}
+
+.tree {
+  flex: 1;
+  min-height: 0;
+}
+
+.grid {
+  height: 100%;
+}
+
+// Pinned to the pane's corners, with its padding; the tree pans and zooms underneath.
+.factions,
+.character {
+  position: absolute;
+  top: var(--x-space-4);
+  z-index: 3;
+}
+
+.factions {
+  left: var(--x-space-5);
+}
+
+.character {
+  right: var(--x-space-5);
+  width: auto;
+}
+
+.box {
+  width: max-content;
+}
+
+// Doubled to beat the design system's select display.
+.dropdown.dropdown {
+  display: none;
+}
+
+@container (width < 640px) {
+  .box {
+    display: none;
+  }
+
+  .dropdown.dropdown {
+    display: block;
+    width: 200px;
+  }
+}

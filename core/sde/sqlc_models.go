@@ -8,8 +8,36 @@ import (
 	"time"
 )
 
+type CertificatesSkillType struct {
+	Parent   int64  `json:"parent"`
+	Key      int64  `json:"key"`
+	Advanced *int64 `json:"advanced"`
+	Basic    *int64 `json:"basic"`
+	Elite    *int64 `json:"elite"`
+	Improved *int64 `json:"improved"`
+	Standard *int64 `json:"standard"`
+}
+
 type Meta struct {
 	Build       int64     `json:"build"`
 	ReleaseDate time.Time `json:"releaseDate"`
 	Schema      string    `json:"schema"`
+}
+
+type ShipTreeFactionsElement struct {
+	Parent int64  `json:"parent"`
+	Key    int64  `json:"key"`
+	Value  *int64 `json:"value"`
+}
+
+type ShipTreeGroupsElement struct {
+	Parent int64  `json:"parent"`
+	Key    int64  `json:"key"`
+	Value  *int64 `json:"value"`
+}
+
+type TypeElementsElement struct {
+	Parent int64  `json:"parent"`
+	Key    int64  `json:"key"`
+	Value  *int64 `json:"value"`
 }
