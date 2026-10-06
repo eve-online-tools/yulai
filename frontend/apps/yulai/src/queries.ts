@@ -22,6 +22,7 @@ export const keys = {
   setup: ["setup"] as const,
   sde: ["sde"] as const,
   progress: (key: string) => ["progress", key] as const,
+  allSkills: ["skills"] as const,
   skills: (characterID: number) => ["skills", characterID] as const,
   skillQueue: (characterID: number) => ["skills", characterID, "queue"] as const,
   shipTree: ["shipTree"] as const,
@@ -93,7 +94,7 @@ export function listenForBackendEvents() {
     queryClient.invalidateQueries({ queryKey: keys.syncJobs });
   });
   Events.On("skills:changed", () => {
-    queryClient.invalidateQueries({ queryKey: ["skills"] });
+    queryClient.invalidateQueries({ queryKey: keys.allSkills });
   });
   Events.On("sde:changed", () => {
     queryClient.invalidateQueries({ queryKey: keys.sde });

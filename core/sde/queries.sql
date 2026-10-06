@@ -10,7 +10,8 @@ FROM types
 WHERE ship_tree_group_id IS NOT NULL AND group_id IN (SELECT key FROM groups WHERE category_id = 6)
 ORDER BY key;
 
--- Required skills 1-5 and their levels (182-184, 277-279, 1285-1289), tech level (422), rig size (1547).
+-- Required skills 1-5 (182, 183, 184, 1285, 1289) and their levels (277, 278, 279, 1286, 1287), tech level (422),
+-- rig size (1547).
 -- name: ShipTreeTypeAttributes :many
 SELECT a.parent, a.attribute_id, a.value
 FROM type_dogma_dogma_attributes a

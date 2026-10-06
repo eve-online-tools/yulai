@@ -20,6 +20,7 @@ export function NavItem({ to, icon, label, collapsed, disabled }: Props & { coll
       <Tooltip id={id} text={collapsed ? `${label}: ${disabled}` : disabled} placement="right" className={styles.tip}>
         <span
           className={`${styles.item} ${styles.disabled}${collapsed ? ` ${styles.collapsed}` : ""}`}
+          role="link"
           aria-disabled="true"
           aria-label={collapsed ? label : undefined}
           tabIndex={0}

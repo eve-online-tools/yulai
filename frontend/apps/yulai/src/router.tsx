@@ -22,6 +22,8 @@ const rootRoute = createRootRoute({ component: WindowFrame });
 const layoutRoute = createRoute({
   getParentRoute: () => rootRoute,
   id: "layout",
+  // The sidebar greys out entries by character features; loading them first avoids a flash of disabled entries.
+  loader: () => Promise.all([queryClient.ensureQueryData(charactersQuery), queryClient.ensureQueryData(featuresQuery)]),
   component: Shell,
 });
 
@@ -68,7 +70,6 @@ const shipTreeRoute = createRoute({
     character: typeof search.character === "number" ? search.character : undefined,
     faction: typeof search.faction === "number" ? (search.faction as FactionIdentifier) : undefined,
   }),
-  loader: () => Promise.all([queryClient.ensureQueryData(charactersQuery), queryClient.ensureQueryData(featuresQuery)]),
   // Split out: the ship tree's art is most of the bundle.
   component: lazyRouteComponent(() => import("./pages/ship-tree"), "ShipTreePage"),
 });

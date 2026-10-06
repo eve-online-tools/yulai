@@ -34,7 +34,10 @@ export function ShipTreePage() {
   const search = route.useSearch();
   const navigate = route.useNavigate();
   const character = characters.find((c) => c.id === search.character) ?? characters[0];
-  const faction = search.faction ?? shipTreeFactionOrder[0];
+  // The route only checks for a number; the faction list lives in the lazily loaded package.
+  const faction =
+    search.faction && shipTreeFactionOrder.includes(search.faction) ? search.faction : shipTreeFactionOrder[0];
+  const tables = useQuery({ ...shipTreeQuery, select: toData });
 
   if (!character) {
     return (
@@ -50,8 +53,16 @@ export function ShipTreePage() {
   // The tree's own frame carries the "Ship Tree" title, so the page has no head and fills the content pane.
   return (
     <div className={styles.page}>
-      <Tree characterID={character.id} faction={faction} />
-      <FactionPicker value={faction} onChange={(f) => navigate({ search: (s) => ({ ...s, faction: f }) })} />
+      {tables.isError ? (
+        <Alert tone="danger">{String(tables.error)}</Alert>
+      ) : (
+        tables.data && <Tree data={tables.data} characterID={character.id} faction={faction} />
+      )}
+      <FactionPicker
+        data={tables.data}
+        value={faction}
+        onChange={(f) => navigate({ search: (s) => ({ ...s, faction: f }) })}
+      />
       <Select
         className={styles.character}
         aria-label="Character"
@@ -70,15 +81,21 @@ export function ShipTreePage() {
 
 // Sits in the pane's top-left corner, like the client's faction box: a grid of logos over a summary of the selected or
 // hovered faction, or a dropdown when the window is too narrow for it.
-function FactionPicker({ value, onChange }: { value: FactionIdentifier; onChange: (f: FactionIdentifier) => void }) {
-  const { data } = useQuery(shipTreeQuery);
+function FactionPicker({
+  data,
+  value,
+  onChange,
+}: {
+  data?: PreloadedData;
+  value: FactionIdentifier;
+  onChange: (f: FactionIdentifier) => void;
+}) {
   const [hovered, setHovered] = useState<FactionIdentifier | null>(null);
-  const summary = useMemo(() => (data ? toData(data) : undefined), [data]);
   return (
     <div className={styles.factions}>
       <div className={styles.box}>
         <FactionSelector value={value} onChange={onChange} onHoverChange={setHovered} label="Faction" />
-        <FactionSummary faction={hovered ?? value} data={summary} />
+        <FactionSummary faction={hovered ?? value} data={data} />
       </div>
       <FactionSelector
         className={selectClass({ className: styles.dropdown })}
@@ -91,15 +108,11 @@ function FactionPicker({ value, onChange }: { value: FactionIdentifier; onChange
   );
 }
 
-function Tree({ characterID, faction }: { characterID: number; faction: FactionIdentifier }) {
-  const tables = useQuery(shipTreeQuery);
+function Tree({ data, characterID, faction }: { data: PreloadedData; characterID: number; faction: FactionIdentifier }) {
   const { data: trained } = useQuery(skillsQuery(characterID));
   const { data: queue } = useQuery(skillQueueQuery(characterID));
-  const data = useMemo(() => tables.data && toData(tables.data), [tables.data]);
   const skills = useMemo(() => toLevels(trained ?? []), [trained]);
   const training = useMemo(() => inTraining(queue ?? []), [queue]);
-  if (tables.isError) return <Alert tone="danger">{String(tables.error)}</Alert>;
-  if (!data) return null;
   return (
     <ShipTree.Root skills={skills} training={training} faction={faction} data={data} className={styles.tree}>
       <Grid className={styles.grid} disclaimer={null}>
@@ -110,8 +123,8 @@ function Tree({ characterID, faction }: { characterID: number; faction: FactionI
 }
 
 // Wails types integer-keyed maps as string-keyed with optional values; the records match the package's tables.
-function toData(d: ShipTreeData): PreloadedData {
-  return d as unknown as PreloadedData;
+function toData(d: ShipTreeData | null): PreloadedData | undefined {
+  return (d ?? undefined) as unknown as PreloadedData | undefined;
 }
 
 function toLevels(skills: Skill[]): Skills {
