@@ -1,0 +1,119 @@
+// Fills the shell's content area; the route opts out of its padding.
+.page {
+  position: relative;
+  flex: 1;
+  min-height: 0;
+  display: flex;
+}
+
+// Title and focus select float over the top of the map.
+.bar {
+  position: absolute;
+  inset: 0 0 auto;
+  z-index: 1;
+  display: flex;
+  // Top, not centre, so the title sits where PageHead puts it on other pages.
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: var(--x-space-4);
+  padding: var(--x-space-4) var(--x-space-5) var(--x-space-6);
+  // Fades into the map's #06080c background.
+  background: linear-gradient(to bottom, rgb(6 8 12 / 85%), rgb(6 8 12 / 0%));
+  pointer-events: none;
+
+  > * {
+    pointer-events: auto;
+  }
+
+  // x-select is full width by default.
+  select {
+    width: auto;
+    max-width: 50%;
+  }
+}
+
+.title {
+  margin: 0;
+  white-space: nowrap;
+  font-family: var(--x-font-display);
+  font-size: var(--x-fs-h2);
+  line-height: 1.15;
+  text-shadow: 0 1px 6px rgb(0 0 0 / 80%);
+}
+
+// Non-map states, below the bar with the shell's usual spacing.
+.state {
+  flex: 1;
+  padding: calc(var(--x-space-4) * 2 + var(--x-fs-h2) * 1.15) var(--x-space-5) var(--x-space-4);
+}
+
+.frame {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+}
+
+.map {
+  flex: 1;
+}
+
+// Placed by Tag in px; --pointer-x is the system's offset from the tag's left edge.
+.pilots {
+  --tag-edge: var(--x-color-accent);
+  position: absolute;
+  z-index: 2;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  pointer-events: none;
+
+  &::after {
+    content: '';
+    position: absolute;
+    left: var(--pointer-x, 50%);
+    bottom: -11px;
+    border: 5px solid transparent;
+    border-top-color: var(--tag-edge);
+    transform: translateX(-50%);
+  }
+
+  li {
+    display: flex;
+    align-items: center;
+    gap: var(--x-space-2);
+    padding: 3px var(--x-space-3) 3px 3px;
+    font-family: var(--x-font-ui);
+    font-size: var(--x-fs-ui);
+    font-weight: 600;
+    color: var(--x-color-text);
+    white-space: nowrap;
+    background: var(--x-color-surface-2);
+    border: 1px solid var(--tag-edge);
+    box-shadow: 0 0 12px var(--x-color-glow), 0 2px 8px rgb(0 0 0 / 60%);
+  }
+}
+
+// Below the system when there is no room above; the pointer moves to the top.
+.below::after {
+  top: -11px;
+  bottom: auto;
+  border-top-color: transparent;
+  border-bottom-color: var(--tag-edge);
+}
+
+// System without online characters.
+.offline {
+  --tag-edge: var(--x-color-line);
+
+  li {
+    box-shadow: 0 2px 8px rgb(0 0 0 / 60%);
+  }
+}
+
+// Offline character sharing a system with an online one.
+.away {
+  color: var(--x-color-text-muted);
+}

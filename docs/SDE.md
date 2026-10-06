@@ -74,6 +74,10 @@ Data derived from several queries, like a tool's lookup tables, is an `sde.Deriv
 and returned from memory after that. It builds when created on an installed store and again after every
 install, so the first `Get` normally finds it ready.
 
+`SDEService.Map()` returns known space (IDs 30,000,000 to 30,999,999) as the `MapData` of
+`@eve-online-tools/eve-map`, built from `map_solar_systems`, `map_stargates`, `map_constellations` and
+`map_regions`. It is a `Derived`, so it is ready before the map opens. The frontend refetches it on `sde:changed`.
+
 ## Tasks
 
 | Task | Schedule | Does |

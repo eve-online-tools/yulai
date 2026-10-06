@@ -56,6 +56,7 @@ type App struct {
 	Scheduler  *sync.Scheduler
 	Login      *login.Server
 	SDE        *sde.Updater
+	Presence   *presence.Feature
 
 	conn   *sql.DB
 	sde    *sde.Store
@@ -93,9 +94,10 @@ func New(ctx context.Context, cfg *Config, web fs.FS) (*App, error) {
 	})
 	esiClient := esi.NewClient(cfg.SSO.Name, cfg.SSO.Description, cfg.CachePath())
 
+	app.Presence = presence.NewFeature(conn, esiClient, tokens, characters{app}, emitter{})
 	// Every opt-in feature is registered here. Order is what the UI shows.
 	features := []feature.Feature{
-		presence.NewFeature(conn, esiClient, tokens, characters{app}, emitter{}),
+		app.Presence,
 		skills.NewFeature(conn, esiClient, tokens, characters{app}, emitter{}),
 	}
 
@@ -168,6 +170,7 @@ func (a *App) Services() []application.Service {
 		application.NewService(&ProgressService{s: task.Default}),
 		application.NewService(skills.NewService(a.conn)),
 		application.NewService(shiptree.NewService(a.sde)),
+		application.NewService(presence.NewService(a.Presence)),
 	}
 }
 

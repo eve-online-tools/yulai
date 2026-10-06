@@ -9,6 +9,7 @@ import (
 	"context"
 
 	"github.com/eve-online-tools/lib-esi-go/common/faction"
+	"github.com/eve-online-tools/lib-esi-go/common/solarsystem"
 	"github.com/eve-online-tools/lib-esi-go/common/typeid"
 )
 
@@ -89,6 +90,157 @@ func (q *Queries) GetMeta(ctx context.Context) (Meta, error) {
 	var i Meta
 	err := row.Scan(&i.Build, &i.ReleaseDate, &i.Schema)
 	return i, err
+}
+
+const listMapConstellations = `-- name: ListMapConstellations :many
+SELECT key, name_en, region_id FROM map_constellations
+`
+
+type ListMapConstellationsRow struct {
+	Key      int64   `json:"key"`
+	NameEn   *string `json:"nameEn"`
+	RegionID *int64  `json:"regionId"`
+}
+
+func (q *Queries) ListMapConstellations(ctx context.Context) ([]ListMapConstellationsRow, error) {
+	rows, err := q.db.QueryContext(ctx, listMapConstellations)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []ListMapConstellationsRow
+	for rows.Next() {
+		var i ListMapConstellationsRow
+		if err := rows.Scan(&i.Key, &i.NameEn, &i.RegionID); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const listMapGates = `-- name: ListMapGates :many
+SELECT solar_system_id, destination_solar_system_id FROM map_stargates
+`
+
+type ListMapGatesRow struct {
+	SolarSystemID            *solarsystem.Identifier `json:"solarSystemId"`
+	DestinationSolarSystemID *solarsystem.Identifier `json:"destinationSolarSystemId"`
+}
+
+func (q *Queries) ListMapGates(ctx context.Context) ([]ListMapGatesRow, error) {
+	rows, err := q.db.QueryContext(ctx, listMapGates)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []ListMapGatesRow
+	for rows.Next() {
+		var i ListMapGatesRow
+		if err := rows.Scan(&i.SolarSystemID, &i.DestinationSolarSystemID); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const listMapRegions = `-- name: ListMapRegions :many
+SELECT key, name_en FROM map_regions
+`
+
+type ListMapRegionsRow struct {
+	Key    int64   `json:"key"`
+	NameEn *string `json:"nameEn"`
+}
+
+func (q *Queries) ListMapRegions(ctx context.Context) ([]ListMapRegionsRow, error) {
+	rows, err := q.db.QueryContext(ctx, listMapRegions)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []ListMapRegionsRow
+	for rows.Next() {
+		var i ListMapRegionsRow
+		if err := rows.Scan(&i.Key, &i.NameEn); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const listMapSystems = `-- name: ListMapSystems :many
+SELECT key, name_en, constellation_id, security_status,
+       position_x, position_y, position_z, position2d_x, position2d_y
+FROM map_solar_systems
+WHERE key BETWEEN 30000000 AND 30999999
+ORDER BY key
+`
+
+type ListMapSystemsRow struct {
+	Key             solarsystem.Identifier `json:"key"`
+	NameEn          *string                `json:"nameEn"`
+	ConstellationID *int64                 `json:"constellationId"`
+	SecurityStatus  *float64               `json:"securityStatus"`
+	PositionX       *float64               `json:"positionX"`
+	PositionY       *float64               `json:"positionY"`
+	PositionZ       *float64               `json:"positionZ"`
+	Position2dX     *float64               `json:"position2dX"`
+	Position2dY     *float64               `json:"position2dY"`
+}
+
+// Known space: Jove and Pochven included, wormholes and Abyssal space not.
+func (q *Queries) ListMapSystems(ctx context.Context) ([]ListMapSystemsRow, error) {
+	rows, err := q.db.QueryContext(ctx, listMapSystems)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []ListMapSystemsRow
+	for rows.Next() {
+		var i ListMapSystemsRow
+		if err := rows.Scan(
+			&i.Key,
+			&i.NameEn,
+			&i.ConstellationID,
+			&i.SecurityStatus,
+			&i.PositionX,
+			&i.PositionY,
+			&i.PositionZ,
+			&i.Position2dX,
+			&i.Position2dY,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
 }
 
 const shipTreeElements = `-- name: ShipTreeElements :many
@@ -478,7 +630,8 @@ type ShipTreeTypeAttributesRow struct {
 	Value       *float64          `json:"value"`
 }
 
-// Required skills 1-5 and their levels (182-184, 277-279, 1285-1289), tech level (422), rig size (1547).
+// Required skills 1-5 (182, 183, 184, 1285, 1289) and their levels (277, 278, 279, 1286, 1287), tech level (422),
+// rig size (1547).
 func (q *Queries) ShipTreeTypeAttributes(ctx context.Context) ([]ShipTreeTypeAttributesRow, error) {
 	rows, err := q.db.QueryContext(ctx, shipTreeTypeAttributes)
 	if err != nil {

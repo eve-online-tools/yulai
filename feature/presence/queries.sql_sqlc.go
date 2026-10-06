@@ -101,6 +101,50 @@ func (q *Queries) ListOnline(ctx context.Context) ([]PresenceOnline, error) {
 	return items, nil
 }
 
+const listPresence = `-- name: ListPresence :many
+SELECT l.character_id, l.solar_system_id, o.online, s.ship_type_id, s.ship_name
+FROM presence_locations l
+LEFT JOIN presence_online o ON o.character_id = l.character_id
+LEFT JOIN presence_ships s ON s.character_id = l.character_id
+`
+
+type ListPresenceRow struct {
+	CharacterID   int64                  `json:"characterId"`
+	SolarSystemID solarsystem.Identifier `json:"solarSystemId"`
+	Online        *bool                  `json:"online"`
+	ShipTypeID    *typeid.Identifier     `json:"shipTypeId"`
+	ShipName      *string                `json:"shipName"`
+}
+
+func (q *Queries) ListPresence(ctx context.Context) ([]ListPresenceRow, error) {
+	rows, err := q.db.QueryContext(ctx, listPresence)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []ListPresenceRow
+	for rows.Next() {
+		var i ListPresenceRow
+		if err := rows.Scan(
+			&i.CharacterID,
+			&i.SolarSystemID,
+			&i.Online,
+			&i.ShipTypeID,
+			&i.ShipName,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const upsertLocation = `-- name: UpsertLocation :one
 INSERT INTO presence_locations (character_id, solar_system_id, station_id, structure_id, fetched_at)
 VALUES (?, ?, ?, ?, ?)

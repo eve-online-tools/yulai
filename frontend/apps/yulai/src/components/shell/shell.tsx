@@ -1,6 +1,6 @@
 import type { CSSProperties } from "react";
-import { Outlet } from "@tanstack/react-router";
-import { skillsFeature, useCharactersWithFeature } from "../../features";
+import { Outlet, useMatches } from "@tanstack/react-router";
+import { presenceFeature, skillsFeature, useCharactersWithFeature } from "../../features";
 import { DataUpdate } from "../data-update";
 import { GettingStarted } from "../getting-started";
 import { NavIcon, NavItem } from "../nav-item";
@@ -11,11 +11,20 @@ import styles from "./shell.module.scss";
 export function Shell() {
   const { width, collapsed, handleProps } = useSidebarWidth();
   const skillCharacters = useCharactersWithFeature(skillsFeature);
+  const presenceCharacters = useCharactersWithFeature(presenceFeature);
+  const fullBleed = useMatches({ select: (matches) => matches.some((m) => m.staticData.fullBleed) });
   return (
     <div className={styles.shell} style={{ "--sidebar-w": `${width}px` } as CSSProperties}>
       <aside className={styles.sidebar} data-collapsed={collapsed || undefined}>
         <nav className={styles.nav} aria-label="Tools">
           <NavItem to="/overview" icon="user" label="Overview" collapsed={collapsed} />
+          <NavItem
+            to="/map"
+            icon="map"
+            label="New Eden"
+            collapsed={collapsed}
+            disabled={presenceCharacters.length === 0 ? `Needs a character with ${presenceFeature}` : undefined}
+          />
           <NavItem
             to="/ship-tree"
             icon="ship"
@@ -34,7 +43,7 @@ export function Shell() {
         <div className={styles.handle} {...handleProps} />
       </aside>
       <div className={styles.main}>
-        <main className={styles.content}>
+        <main className={styles.content} data-full-bleed={fullBleed || undefined}>
           <Outlet />
         </main>
         <DataUpdate />
