@@ -7,6 +7,7 @@ export {
 };
 
 export {
+    Bonus,
     Certificate,
     CertificateSkill,
     CloneGrade,
@@ -21,6 +22,10 @@ export {
     ShipTreeElement,
     ShipTreeFaction,
     ShipTreeGroup,
+    Skill,
+    SkillBonuses,
     Text,
-    Type
+    Type,
+    TypeBonus,
+    TypeElements
 } from "./models.js";

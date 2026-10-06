@@ -23,6 +23,7 @@ export const keys = {
   sde: ["sde"] as const,
   progress: (key: string) => ["progress", key] as const,
   skills: (characterID: number) => ["skills", characterID] as const,
+  skillQueue: (characterID: number) => ["skills", characterID, "queue"] as const,
   shipTree: ["shipTree"] as const,
 };
 
@@ -58,6 +59,12 @@ export const skillsQuery = (characterID: number) =>
   queryOptions({
     queryKey: keys.skills(characterID),
     queryFn: () => Skills.List(characterID),
+  });
+
+export const skillQueueQuery = (characterID: number) =>
+  queryOptions({
+    queryKey: keys.skillQueue(characterID),
+    queryFn: () => Skills.Queue(characterID),
   });
 
 // Built from the SDE, so it only changes with it.

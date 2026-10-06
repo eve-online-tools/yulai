@@ -1,44 +1,28 @@
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { getRouteApi } from "@tanstack/react-router";
 import {
+  FactionSelector,
+  FactionSummary,
   Grid,
   ShipTree,
   TreeDisplay,
   preloadShipTreeSprites,
+  shipTreeFactionOrder,
   type FactionIdentifier,
   type PreloadedData,
   type Skills,
+  type SkillTraining,
 } from "@eve-online-tools/eve-ship-tree";
 import "@eve-online-tools/eve-ship-tree/styles.css";
 import type { Data as ShipTreeData } from "@bindings/github.com/eve-online-tools/yulai/feature/shiptree";
-import type { Skill } from "@bindings/github.com/eve-online-tools/yulai/feature/skills";
+import type { Skill, SkillQueue } from "@bindings/github.com/eve-online-tools/yulai/feature/skills";
+import { selectClass } from "@xaroth.nl/design/parts";
 import { Alert, EmptyState, PageHead, Select } from "@xaroth.nl/design/react";
 import { AppIcon } from "@yulai/ui";
 import { skillsFeature, useCharactersWithFeature } from "../../features";
-import { shipTreeQuery, skillsQuery } from "../../queries";
+import { shipTreeQuery, skillQueueQuery, skillsQuery } from "../../queries";
 import styles from "./ship-tree.module.scss";
-
-// In the client's order: empires and ORE, pirates, then the rest.
-const factions: { id: FactionIdentifier; name: string }[] = [
-  { id: 500003, name: "Amarr Empire" },
-  { id: 500001, name: "Caldari State" },
-  { id: 500004, name: "Gallente Federation" },
-  { id: 500002, name: "Minmatar Republic" },
-  { id: 500014, name: "ORE" },
-  { id: 500010, name: "Guristas Pirates" },
-  { id: 500019, name: "Sansha's Nation" },
-  { id: 500012, name: "Blood Raider Covenant" },
-  { id: 500011, name: "Angel Cartel" },
-  { id: 500020, name: "Serpentis" },
-  { id: 500016, name: "Servant Sisters of EVE" },
-  { id: 500018, name: "Mordu's Legion Command" },
-  { id: 500026, name: "Triglavian Collective" },
-  { id: 500027, name: "EDENCOM" },
-  { id: 500006, name: "CONCORD Assembly" },
-  { id: 500017, name: "The Society of Conscious Thought" },
-  { id: 500029, name: "Deathless Circle" },
-];
 
 // ShipTree also does this on mount; starting with the page chunk gets the status sprites ready sooner.
 void preloadShipTreeSprites();
@@ -50,7 +34,7 @@ export function ShipTreePage() {
   const search = route.useSearch();
   const navigate = route.useNavigate();
   const character = characters.find((c) => c.id === search.character) ?? characters[0];
-  const faction = search.faction ?? factions[0].id;
+  const faction = search.faction ?? shipTreeFactionOrder[0];
 
   if (!character) {
     return (
@@ -84,100 +68,40 @@ export function ShipTreePage() {
   );
 }
 
-// Sits in the pane's top-left corner, like the client's faction box: a grid of logos, or a dropdown when the window is
-// too narrow for it.
+// Sits in the pane's top-left corner, like the client's faction box: a grid of logos over a summary of the selected or
+// hovered faction, or a dropdown when the window is too narrow for it.
 function FactionPicker({ value, onChange }: { value: FactionIdentifier; onChange: (f: FactionIdentifier) => void }) {
+  const { data } = useQuery(shipTreeQuery);
+  const [hovered, setHovered] = useState<FactionIdentifier | null>(null);
+  const summary = useMemo(() => (data ? toData(data) : undefined), [data]);
   return (
     <div className={styles.factions}>
       <div className={styles.box}>
-        <div className={styles.logos} role="radiogroup" aria-label="Faction">
-          {factions.map((f) => (
-            <button
-              key={f.id}
-              type="button"
-              role="radio"
-              aria-checked={f.id === value}
-              aria-label={f.name}
-              className={styles.logo}
-              data-faction={f.id}
-              onClick={() => onChange(f.id)}
-            />
-          ))}
-        </div>
-        <FactionSummary faction={value} />
+        <FactionSelector value={value} onChange={onChange} onHoverChange={setHovered} label="Faction" />
+        <FactionSummary faction={hovered ?? value} data={summary} />
       </div>
-      <Select
-        className={styles.dropdown}
-        aria-label="Faction"
+      <FactionSelector
+        className={selectClass({ className: styles.dropdown })}
+        variant="compact"
         value={value}
-        onChange={(e) => onChange(Number(e.target.value) as FactionIdentifier)}
-      >
-        {factions.map((f) => (
-          <option key={f.id} value={f.id}>
-            {f.name}
-          </option>
-        ))}
-      </Select>
+        onChange={onChange}
+        label="Faction"
+      />
     </div>
   );
-}
-
-// The panel under the logos: what the faction's ships excel at, and how they fight.
-function FactionSummary({ faction }: { faction: FactionIdentifier }) {
-  const { data } = useQuery(shipTreeQuery);
-  const summary = data?.shipTreeFactions[faction];
-  const name = factions.find((f) => f.id === faction)?.name;
-  return (
-    <div className={styles.summary}>
-      <span className={styles.summaryLogo} data-faction={faction} aria-hidden="true" />
-      <div>
-        <div className={styles.summaryName}>{name}</div>
-        <div className={styles.elements}>
-          {summary?.elements.map(({ _value: id }) => {
-            const label = data?.shipTreeElements[id]?.name.en ?? "";
-            return (
-              <span
-                key={id}
-                className={styles.element}
-                data-element={id}
-                data-missing={elementIconMissing(id) || undefined}
-                role="img"
-                aria-label={label}
-              />
-            );
-          })}
-        </div>
-      </div>
-      {summary?.description.en && <p className={styles.description}>{summary.description.en}</p>}
-    </div>
-  );
-}
-
-// The package has no icon for some elements and sets their variable to url(""); those show a placeholder.
-const iconMissing = new Map<number, boolean>();
-function elementIconMissing(id: number): boolean {
-  let missing = iconMissing.get(id);
-  if (missing === undefined) {
-    const probe = document.createElement("span");
-    probe.dataset.element = String(id);
-    document.body.append(probe);
-    const icon = getComputedStyle(probe).getPropertyValue("--ship-tree-elements-icons").trim();
-    probe.remove();
-    missing = icon === "" || /url\(\s*["']?["']?\s*\)/.test(icon);
-    iconMissing.set(id, missing);
-  }
-  return missing;
 }
 
 function Tree({ characterID, faction }: { characterID: number; faction: FactionIdentifier }) {
   const tables = useQuery(shipTreeQuery);
   const { data: trained } = useQuery(skillsQuery(characterID));
+  const { data: queue } = useQuery(skillQueueQuery(characterID));
   const data = useMemo(() => tables.data && toData(tables.data), [tables.data]);
   const skills = useMemo(() => toLevels(trained ?? []), [trained]);
+  const training = useMemo(() => inTraining(queue ?? []), [queue]);
   if (tables.isError) return <Alert tone="danger">{String(tables.error)}</Alert>;
   if (!data) return null;
   return (
-    <ShipTree.Root skills={skills} faction={faction} data={data} className={styles.tree}>
+    <ShipTree.Root skills={skills} training={training} faction={faction} data={data} className={styles.tree}>
       <Grid className={styles.grid} disclaimer={null}>
         <TreeDisplay />
       </Grid>
@@ -192,4 +116,11 @@ function toData(d: ShipTreeData): PreloadedData {
 
 function toLevels(skills: Skill[]): Skills {
   return Object.fromEntries(skills.map((s) => [s.skillId, s.activeSkillLevel])) as Skills;
+}
+
+// The entry training now: started and not yet finished. A paused queue has no dates.
+function inTraining(queue: SkillQueue[]): SkillTraining | undefined {
+  const now = Date.now();
+  const e = queue.find((e) => e.startDate && e.finishDate && Date.parse(e.finishDate) > now);
+  return e && { skillId: e.skillId, level: e.finishedLevel as SkillTraining["level"] };
 }

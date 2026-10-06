@@ -25,3 +25,15 @@ func (s *Service) List(ctx context.Context, characterID int64) ([]Skill, error) 
 	}
 	return rows, nil
 }
+
+// Queue returns the character's skill queue in order, empty before the first fetch.
+func (s *Service) Queue(ctx context.Context, characterID int64) ([]SkillQueue, error) {
+	rows, err := s.q.ListQueue(ctx, characterID)
+	if err != nil {
+		return nil, err
+	}
+	if rows == nil {
+		rows = []SkillQueue{}
+	}
+	return rows, nil
+}

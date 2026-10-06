@@ -5,6 +5,10 @@
 // @ts-ignore: Unused imports
 import { Create as $Create } from "@wailsio/runtime";
 
+// eslint-disable-next-line @typescript-eslint/ban-ts-comment
+// @ts-ignore: Unused imports
+import * as typeid$0 from "../../../lib-esi-go/common/typeid/models.js";
+
 export class Skill {
     "characterId": number;
     "skillId": number;
@@ -39,5 +43,62 @@ export class Skill {
     static createFrom($$source: any = {}): Skill {
         let $$parsedSource = typeof $$source === 'string' ? JSON.parse($$source) : $$source;
         return new Skill($$parsedSource as Partial<Skill>);
+    }
+}
+
+export class SkillQueue {
+    "characterId": number;
+    "queuePosition": number;
+    "skillId": typeid$0.Identifier;
+    "finishedLevel": number;
+    "startDate": string | null;
+    "finishDate": string | null;
+    "trainingStartSp": number | null;
+    "levelStartSp": number | null;
+    "levelEndSp": number | null;
+    "fetchedAt": string;
+
+    /** Creates a new SkillQueue instance. */
+    constructor($$source: Partial<SkillQueue> = {}) {
+        if (!("characterId" in $$source)) {
+            this["characterId"] = 0;
+        }
+        if (!("queuePosition" in $$source)) {
+            this["queuePosition"] = 0;
+        }
+        if (!("skillId" in $$source)) {
+            this["skillId"] = 0;
+        }
+        if (!("finishedLevel" in $$source)) {
+            this["finishedLevel"] = 0;
+        }
+        if (!("startDate" in $$source)) {
+            this["startDate"] = null;
+        }
+        if (!("finishDate" in $$source)) {
+            this["finishDate"] = null;
+        }
+        if (!("trainingStartSp" in $$source)) {
+            this["trainingStartSp"] = null;
+        }
+        if (!("levelStartSp" in $$source)) {
+            this["levelStartSp"] = null;
+        }
+        if (!("levelEndSp" in $$source)) {
+            this["levelEndSp"] = null;
+        }
+        if (!("fetchedAt" in $$source)) {
+            this["fetchedAt"] = "0001-01-01T00:00:00.000Z";
+        }
+
+        Object.assign(this, $$source);
+    }
+
+    /**
+     * Creates a new SkillQueue instance from a string or object.
+     */
+    static createFrom($$source: any = {}): SkillQueue {
+        let $$parsedSource = typeof $$source === 'string' ? JSON.parse($$source) : $$source;
+        return new SkillQueue($$parsedSource as Partial<SkillQueue>);
     }
 }

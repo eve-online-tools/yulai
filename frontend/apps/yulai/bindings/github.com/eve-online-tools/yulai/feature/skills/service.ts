@@ -23,6 +23,17 @@ export function List(characterID: number): $CancellablePromise<$models.Skill[]> 
     });
 }
 
+/**
+ * Queue returns the character's skill queue in order, empty before the first fetch.
+ */
+export function Queue(characterID: number): $CancellablePromise<$models.SkillQueue[]> {
+    return $Call.ByID(4006968111, characterID).then(($result: any) => {
+        return $$createType3($result);
+    });
+}
+
 // Private type creation functions
 const $$createType0 = $models.Skill.createFrom;
 const $$createType1 = $Create.Array($$createType0);
+const $$createType2 = $models.SkillQueue.createFrom;
+const $$createType3 = $Create.Array($$createType2);

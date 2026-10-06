@@ -92,12 +92,13 @@ func (q *Queries) GetMeta(ctx context.Context) (Meta, error) {
 }
 
 const shipTreeElements = `-- name: ShipTreeElements :many
-SELECT key, name_en FROM ship_tree_elements ORDER BY key
+SELECT key, name_en, description_en FROM ship_tree_elements ORDER BY key
 `
 
 type ShipTreeElementsRow struct {
-	Key    int64   `json:"key"`
-	NameEn *string `json:"nameEn"`
+	Key           int64   `json:"key"`
+	NameEn        *string `json:"nameEn"`
+	DescriptionEn *string `json:"descriptionEn"`
 }
 
 func (q *Queries) ShipTreeElements(ctx context.Context) ([]ShipTreeElementsRow, error) {
@@ -109,7 +110,7 @@ func (q *Queries) ShipTreeElements(ctx context.Context) ([]ShipTreeElementsRow, 
 	var items []ShipTreeElementsRow
 	for rows.Next() {
 		var i ShipTreeElementsRow
-		if err := rows.Scan(&i.Key, &i.NameEn); err != nil {
+		if err := rows.Scan(&i.Key, &i.NameEn, &i.DescriptionEn); err != nil {
 			return nil, err
 		}
 		items = append(items, i)
@@ -209,33 +210,6 @@ func (q *Queries) ShipTreeGroupElements(ctx context.Context) ([]ShipTreeGroupsEl
 	return items, nil
 }
 
-const shipTreeGroupKeys = `-- name: ShipTreeGroupKeys :many
-SELECT key FROM ship_tree_groups ORDER BY key
-`
-
-func (q *Queries) ShipTreeGroupKeys(ctx context.Context) ([]int64, error) {
-	rows, err := q.db.QueryContext(ctx, shipTreeGroupKeys)
-	if err != nil {
-		return nil, err
-	}
-	defer rows.Close()
-	var items []int64
-	for rows.Next() {
-		var key int64
-		if err := rows.Scan(&key); err != nil {
-			return nil, err
-		}
-		items = append(items, key)
-	}
-	if err := rows.Close(); err != nil {
-		return nil, err
-	}
-	if err := rows.Err(); err != nil {
-		return nil, err
-	}
-	return items, nil
-}
-
 const shipTreeGroupSkills = `-- name: ShipTreeGroupSkills :many
 SELECT p.parent AS group_id, p.key AS faction_id, s.key AS skill_id, s.display, s.level
 FROM ship_tree_groups_pre_req_skills p
@@ -280,6 +254,39 @@ func (q *Queries) ShipTreeGroupSkills(ctx context.Context) ([]ShipTreeGroupSkill
 	return items, nil
 }
 
+const shipTreeGroups = `-- name: ShipTreeGroups :many
+SELECT key, name_en, description_en FROM ship_tree_groups ORDER BY key
+`
+
+type ShipTreeGroupsRow struct {
+	Key           int64   `json:"key"`
+	NameEn        *string `json:"nameEn"`
+	DescriptionEn *string `json:"descriptionEn"`
+}
+
+func (q *Queries) ShipTreeGroups(ctx context.Context) ([]ShipTreeGroupsRow, error) {
+	rows, err := q.db.QueryContext(ctx, shipTreeGroups)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []ShipTreeGroupsRow
+	for rows.Next() {
+		var i ShipTreeGroupsRow
+		if err := rows.Scan(&i.Key, &i.NameEn, &i.DescriptionEn); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const shipTreeMasteries = `-- name: ShipTreeMasteries :many
 SELECT m.parent AS type_id, m.key AS level, v.value AS certificate_id
 FROM masteries_value m
@@ -305,6 +312,144 @@ func (q *Queries) ShipTreeMasteries(ctx context.Context) ([]ShipTreeMasteriesRow
 	for rows.Next() {
 		var i ShipTreeMasteriesRow
 		if err := rows.Scan(&i.TypeID, &i.Level, &i.CertificateID); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const shipTreeMiscBonuses = `-- name: ShipTreeMiscBonuses :many
+SELECT m.parent AS type_id, m.bonus, m.bonus_text_en, m.importance, m.unit_id
+FROM type_bonus_misc_bonuses m
+JOIN types t ON t.key = m.parent
+WHERE t.ship_tree_group_id IS NOT NULL AND t.group_id IN (SELECT key FROM groups WHERE category_id = 6)
+ORDER BY m.parent, m.idx
+`
+
+type ShipTreeMiscBonusesRow struct {
+	TypeID      typeid.Identifier `json:"typeId"`
+	Bonus       *float64          `json:"bonus"`
+	BonusTextEn *string           `json:"bonusTextEn"`
+	Importance  *int64            `json:"importance"`
+	UnitID      *int64            `json:"unitId"`
+}
+
+func (q *Queries) ShipTreeMiscBonuses(ctx context.Context) ([]ShipTreeMiscBonusesRow, error) {
+	rows, err := q.db.QueryContext(ctx, shipTreeMiscBonuses)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []ShipTreeMiscBonusesRow
+	for rows.Next() {
+		var i ShipTreeMiscBonusesRow
+		if err := rows.Scan(
+			&i.TypeID,
+			&i.Bonus,
+			&i.BonusTextEn,
+			&i.Importance,
+			&i.UnitID,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const shipTreeRoleBonuses = `-- name: ShipTreeRoleBonuses :many
+SELECT r.parent AS type_id, r.bonus, r.bonus_text_en, r.importance, r.unit_id
+FROM type_bonus_role_bonuses r
+JOIN types t ON t.key = r.parent
+WHERE t.ship_tree_group_id IS NOT NULL AND t.group_id IN (SELECT key FROM groups WHERE category_id = 6)
+ORDER BY r.parent, r.idx
+`
+
+type ShipTreeRoleBonusesRow struct {
+	TypeID      typeid.Identifier `json:"typeId"`
+	Bonus       *float64          `json:"bonus"`
+	BonusTextEn *string           `json:"bonusTextEn"`
+	Importance  *int64            `json:"importance"`
+	UnitID      *int64            `json:"unitId"`
+}
+
+func (q *Queries) ShipTreeRoleBonuses(ctx context.Context) ([]ShipTreeRoleBonusesRow, error) {
+	rows, err := q.db.QueryContext(ctx, shipTreeRoleBonuses)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []ShipTreeRoleBonusesRow
+	for rows.Next() {
+		var i ShipTreeRoleBonusesRow
+		if err := rows.Scan(
+			&i.TypeID,
+			&i.Bonus,
+			&i.BonusTextEn,
+			&i.Importance,
+			&i.UnitID,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const shipTreeSkillBonuses = `-- name: ShipTreeSkillBonuses :many
+SELECT b.parent AS type_id, b.key AS skill_id, v.bonus, v.bonus_text_en, v.importance, v.unit_id
+FROM type_bonus_types b
+JOIN type_bonus_types_value v ON v.parent = b.id
+JOIN types t ON t.key = b.parent
+WHERE t.ship_tree_group_id IS NOT NULL AND t.group_id IN (SELECT key FROM groups WHERE category_id = 6)
+ORDER BY b.parent, b.rowid, v.idx
+`
+
+type ShipTreeSkillBonusesRow struct {
+	TypeID      typeid.Identifier `json:"typeId"`
+	SkillID     int64             `json:"skillId"`
+	Bonus       *float64          `json:"bonus"`
+	BonusTextEn *string           `json:"bonusTextEn"`
+	Importance  *int64            `json:"importance"`
+	UnitID      *int64            `json:"unitId"`
+}
+
+func (q *Queries) ShipTreeSkillBonuses(ctx context.Context) ([]ShipTreeSkillBonusesRow, error) {
+	rows, err := q.db.QueryContext(ctx, shipTreeSkillBonuses)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []ShipTreeSkillBonusesRow
+	for rows.Next() {
+		var i ShipTreeSkillBonusesRow
+		if err := rows.Scan(
+			&i.TypeID,
+			&i.SkillID,
+			&i.Bonus,
+			&i.BonusTextEn,
+			&i.Importance,
+			&i.UnitID,
+		); err != nil {
 			return nil, err
 		}
 		items = append(items, i)
@@ -357,9 +502,40 @@ func (q *Queries) ShipTreeTypeAttributes(ctx context.Context) ([]ShipTreeTypeAtt
 	return items, nil
 }
 
+const shipTreeTypeElements = `-- name: ShipTreeTypeElements :many
+SELECT e.parent, e.key, e.value
+FROM type_elements_elements e
+JOIN types t ON t.key = e.parent
+WHERE t.ship_tree_group_id IS NOT NULL AND t.group_id IN (SELECT key FROM groups WHERE category_id = 6)
+ORDER BY e.parent, e.key
+`
+
+func (q *Queries) ShipTreeTypeElements(ctx context.Context) ([]TypeElementsElement, error) {
+	rows, err := q.db.QueryContext(ctx, shipTreeTypeElements)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []TypeElementsElement
+	for rows.Next() {
+		var i TypeElementsElement
+		if err := rows.Scan(&i.Parent, &i.Key, &i.Value); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const shipTreeTypes = `-- name: ShipTreeTypes :many
 
-SELECT key, ship_tree_group_id, faction_id, meta_group_id, tech_level
+SELECT key, name_en, ship_tree_group_id, faction_id, meta_group_id, tech_level
 FROM types
 WHERE ship_tree_group_id IS NOT NULL AND group_id IN (SELECT key FROM groups WHERE category_id = 6)
 ORDER BY key
@@ -367,6 +543,7 @@ ORDER BY key
 
 type ShipTreeTypesRow struct {
 	Key             typeid.Identifier   `json:"key"`
+	NameEn          *string             `json:"nameEn"`
 	ShipTreeGroupID *int64              `json:"shipTreeGroupId"`
 	FactionID       *faction.Identifier `json:"factionId"`
 	MetaGroupID     *int64              `json:"metaGroupId"`
@@ -386,11 +563,46 @@ func (q *Queries) ShipTreeTypes(ctx context.Context) ([]ShipTreeTypesRow, error)
 		var i ShipTreeTypesRow
 		if err := rows.Scan(
 			&i.Key,
+			&i.NameEn,
 			&i.ShipTreeGroupID,
 			&i.FactionID,
 			&i.MetaGroupID,
 			&i.TechLevel,
 		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const skillNames = `-- name: SkillNames :many
+SELECT key, name_en FROM types
+WHERE group_id IN (SELECT key FROM groups WHERE category_id = 16)
+ORDER BY key
+`
+
+type SkillNamesRow struct {
+	Key    typeid.Identifier `json:"key"`
+	NameEn *string           `json:"nameEn"`
+}
+
+func (q *Queries) SkillNames(ctx context.Context) ([]SkillNamesRow, error) {
+	rows, err := q.db.QueryContext(ctx, skillNames)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []SkillNamesRow
+	for rows.Next() {
+		var i SkillNamesRow
+		if err := rows.Scan(&i.Key, &i.NameEn); err != nil {
 			return nil, err
 		}
 		items = append(items, i)

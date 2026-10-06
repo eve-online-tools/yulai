@@ -41,12 +41,16 @@ type Data struct {
 	CloneGrades    map[int64]CloneGrade     `json:"cloneGrades"`
 	ShipTreeGroups map[int64]ShipTreeGroup  `json:"shipTreeGroups"`
 	ShipSizes      map[int64]ShipSize       `json:"shipSizes"`
-	// For the faction summary; the tree itself does not read these.
+	// For the faction summary and tooltips; the tree itself does not read these.
 	ShipTreeFactions map[int64]ShipTreeFaction `json:"shipTreeFactions"`
 	ShipTreeElements map[int64]ShipTreeElement `json:"shipTreeElements"`
+	Skills           map[int64]Skill           `json:"skills"`
+	TypeBonus        map[int64]TypeBonus       `json:"typeBonus"`
+	TypeElements     map[int64]TypeElements    `json:"typeElements"`
 }
 
 type Type struct {
+	Name            *Text  `json:"name,omitempty"`
 	ShipTreeGroupID *int64 `json:"shipTreeGroupID,omitempty"`
 	FactionID       *int64 `json:"factionID,omitempty"`
 	MetaGroupID     *int64 `json:"metaGroupID,omitempty"`
@@ -86,6 +90,8 @@ type CloneGradeSkill struct {
 }
 
 type ShipTreeGroup struct {
+	Name         *Text         `json:"name,omitempty"`
+	Description  *Text         `json:"description,omitempty"`
 	Elements     []Element     `json:"elements"`
 	PreReqSkills []GroupSkills `json:"preReqSkills"`
 }
@@ -109,13 +115,43 @@ type GroupSkill struct {
 
 // ShipTreeFaction is a faction's summary: what it excels at and how it fights.
 type ShipTreeFaction struct {
-	Description Text      `json:"description"`
+	Description *Text     `json:"description,omitempty"`
 	Elements    []Element `json:"elements"`
 }
 
 // ShipTreeElement is a trait a faction or group excels at, like Armor or Drones.
 type ShipTreeElement struct {
-	Name Text `json:"name"`
+	Name        *Text `json:"name,omitempty"`
+	Description *Text `json:"description,omitempty"`
+}
+
+// Skill is a skill the ships require, named in tooltips.
+type Skill struct {
+	Name *Text `json:"name,omitempty"`
+}
+
+// TypeBonus holds a ship's bonuses: per level of the skill in Types[].Key, role and misc.
+type TypeBonus struct {
+	Types       []SkillBonuses `json:"types,omitempty"`
+	RoleBonuses []Bonus        `json:"roleBonuses,omitempty"`
+	MiscBonuses []Bonus        `json:"miscBonuses,omitempty"`
+}
+
+type SkillBonuses struct {
+	Key   int64   `json:"_key"`
+	Value []Bonus `json:"_value"`
+}
+
+type Bonus struct {
+	Bonus      *float64 `json:"bonus,omitempty"`
+	BonusText  *Text    `json:"bonusText,omitempty"`
+	Importance *int64   `json:"importance,omitempty"`
+	UnitID     *int64   `json:"unitID,omitempty"`
+}
+
+// TypeElements are the traits shown on a ship's tooltip, size first.
+type TypeElements struct {
+	Elements []Element `json:"elements"`
 }
 
 // Text is a localized SDE string. Only English is built.
@@ -141,6 +177,9 @@ func build(ctx context.Context, q *sde.Queries) (*Data, error) {
 
 		ShipTreeFactions: map[int64]ShipTreeFaction{},
 		ShipTreeElements: map[int64]ShipTreeElement{},
+		Skills:           map[int64]Skill{},
+		TypeBonus:        map[int64]TypeBonus{},
+		TypeElements:     map[int64]TypeElements{},
 	}
 
 	types, err := q.ShipTreeTypes(ctx)
@@ -166,6 +205,7 @@ func build(ctx context.Context, q *sde.Queries) (*Data, error) {
 		id := int64(t.Key)
 		a := attrs[id]
 		row := Type{
+			Name:            text(t.NameEn),
 			ShipTreeGroupID: t.ShipTreeGroupID,
 			MetaGroupID:     t.MetaGroupID,
 			TechLevel:       techLevel(t.TechLevel, a),
@@ -227,12 +267,17 @@ func build(ctx context.Context, q *sde.Queries) (*Data, error) {
 		d.CloneGrades[g.Parent] = grade
 	}
 
-	groups, err := q.ShipTreeGroupKeys(ctx)
+	groups, err := q.ShipTreeGroups(ctx)
 	if err != nil {
 		return nil, err
 	}
 	for _, g := range groups {
-		d.ShipTreeGroups[g] = ShipTreeGroup{Elements: []Element{}, PreReqSkills: []GroupSkills{}}
+		d.ShipTreeGroups[g.Key] = ShipTreeGroup{
+			Name:         text(g.NameEn),
+			Description:  text(g.DescriptionEn),
+			Elements:     []Element{},
+			PreReqSkills: []GroupSkills{},
+		}
 	}
 
 	elements, err := q.ShipTreeGroupElements(ctx)
@@ -271,7 +316,7 @@ func build(ctx context.Context, q *sde.Queries) (*Data, error) {
 		return nil, err
 	}
 	for _, f := range factions {
-		d.ShipTreeFactions[f.Key] = ShipTreeFaction{Description: Text{En: derefString(f.DescriptionEn)}, Elements: []Element{}}
+		d.ShipTreeFactions[f.Key] = ShipTreeFaction{Description: text(f.DescriptionEn), Elements: []Element{}}
 	}
 	factionElements, err := q.ShipTreeFactionElements(ctx)
 	if err != nil {
@@ -291,10 +336,96 @@ func build(ctx context.Context, q *sde.Queries) (*Data, error) {
 		return nil, err
 	}
 	for _, e := range shipTreeElements {
-		d.ShipTreeElements[e.Key] = ShipTreeElement{Name: Text{En: derefString(e.NameEn)}}
+		d.ShipTreeElements[e.Key] = ShipTreeElement{Name: text(e.NameEn), Description: text(e.DescriptionEn)}
 	}
 
+	if err := buildTooltips(ctx, q, d); err != nil {
+		return nil, err
+	}
 	return d, nil
+}
+
+// buildTooltips adds the ship bonuses and elements, and the names of the
+// skills the tooltips list.
+func buildTooltips(ctx context.Context, q *sde.Queries, d *Data) error {
+	elements, err := q.ShipTreeTypeElements(ctx)
+	if err != nil {
+		return err
+	}
+	for _, e := range elements {
+		if e.Value == nil {
+			continue
+		}
+		t := d.TypeElements[e.Parent]
+		t.Elements = append(t.Elements, Element{Key: e.Key, Value: *e.Value})
+		d.TypeElements[e.Parent] = t
+	}
+
+	skillBonuses, err := q.ShipTreeSkillBonuses(ctx)
+	if err != nil {
+		return err
+	}
+	for _, b := range skillBonuses {
+		id := int64(b.TypeID)
+		t := d.TypeBonus[id]
+		if n := len(t.Types); n == 0 || t.Types[n-1].Key != b.SkillID {
+			t.Types = append(t.Types, SkillBonuses{Key: b.SkillID})
+		}
+		last := &t.Types[len(t.Types)-1]
+		last.Value = append(last.Value, Bonus{Bonus: b.Bonus, BonusText: text(b.BonusTextEn), Importance: b.Importance, UnitID: b.UnitID})
+		d.TypeBonus[id] = t
+	}
+
+	roleBonuses, err := q.ShipTreeRoleBonuses(ctx)
+	if err != nil {
+		return err
+	}
+	for _, b := range roleBonuses {
+		id := int64(b.TypeID)
+		t := d.TypeBonus[id]
+		t.RoleBonuses = append(t.RoleBonuses, Bonus{Bonus: b.Bonus, BonusText: text(b.BonusTextEn), Importance: b.Importance, UnitID: b.UnitID})
+		d.TypeBonus[id] = t
+	}
+
+	miscBonuses, err := q.ShipTreeMiscBonuses(ctx)
+	if err != nil {
+		return err
+	}
+	for _, b := range miscBonuses {
+		id := int64(b.TypeID)
+		t := d.TypeBonus[id]
+		t.MiscBonuses = append(t.MiscBonuses, Bonus{Bonus: b.Bonus, BonusText: text(b.BonusTextEn), Importance: b.Importance, UnitID: b.UnitID})
+		d.TypeBonus[id] = t
+	}
+
+	used := map[int64]bool{}
+	for _, r := range d.RequiredSkills {
+		for id := range r.RequiredSkills {
+			used[id] = true
+		}
+	}
+	for _, g := range d.ShipTreeGroups {
+		for _, f := range g.PreReqSkills {
+			for _, s := range f.Skills {
+				used[s.Key] = true
+			}
+		}
+	}
+	for _, t := range d.TypeBonus {
+		for _, s := range t.Types {
+			used[s.Key] = true
+		}
+	}
+	names, err := q.SkillNames(ctx)
+	if err != nil {
+		return err
+	}
+	for _, n := range names {
+		if used[int64(n.Key)] {
+			d.Skills[int64(n.Key)] = Skill{Name: text(n.NameEn)}
+		}
+	}
+	return nil
 }
 
 // techLevel prefers the type's own field, then the dogma attribute, then 1.
@@ -327,11 +458,11 @@ func rigSize(group int64, attrs map[int64]float64) int64 {
 	return int64(attrs[attrRigSize])
 }
 
-func derefString(v *string) string {
+func text(v *string) *Text {
 	if v == nil {
-		return ""
+		return nil
 	}
-	return *v
+	return &Text{En: *v}
 }
 
 func deref(v *int64) int64 {
