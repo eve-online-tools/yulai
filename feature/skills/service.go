@@ -1,6 +1,10 @@
 package skills
 
-import "context"
+import (
+	"context"
+
+	"github.com/eve-online-tools/yulai/core/db"
+)
 
 // Service is the Wails-facing side of the stored skills.
 type Service struct {
@@ -31,4 +35,24 @@ func (s *Service) Queue(ctx context.Context, characterID int64) ([]SkillQueue, e
 		rows = []SkillQueue{}
 	}
 	return rows, nil
+}
+
+// Attributes returns the character's attributes, nil before the first fetch.
+func (s *Service) Attributes(ctx context.Context, characterID int64) (*CharacterAttribute, error) {
+	row, err := s.q.GetAttributes(ctx, characterID)
+	found, err := db.Found(err)
+	if err != nil || !found {
+		return nil, err
+	}
+	return &row, nil
+}
+
+// Totals returns the character's total and unallocated SP, nil before the first fetch.
+func (s *Service) Totals(ctx context.Context, characterID int64) (*SkillTotal, error) {
+	row, err := s.q.GetTotals(ctx, characterID)
+	found, err := db.Found(err)
+	if err != nil || !found {
+		return nil, err
+	}
+	return &row, nil
 }

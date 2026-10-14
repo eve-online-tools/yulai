@@ -9,6 +9,63 @@ import { Create as $Create } from "@wailsio/runtime";
 // @ts-ignore: Unused imports
 import * as typeid$0 from "../../../lib-esi-go/common/typeid/models.js";
 
+export class CharacterAttribute {
+    "characterId": number;
+    "charisma": number;
+    "intelligence": number;
+    "memory": number;
+    "perception": number;
+    "willpower": number;
+    "bonusRemaps": number | null;
+    "lastRemapDate": string | null;
+    "accruedRemapCooldownDate": string | null;
+    "fetchedAt": string;
+
+    /** Creates a new CharacterAttribute instance. */
+    constructor($$source: Partial<CharacterAttribute> = {}) {
+        if (!("characterId" in $$source)) {
+            this["characterId"] = 0;
+        }
+        if (!("charisma" in $$source)) {
+            this["charisma"] = 0;
+        }
+        if (!("intelligence" in $$source)) {
+            this["intelligence"] = 0;
+        }
+        if (!("memory" in $$source)) {
+            this["memory"] = 0;
+        }
+        if (!("perception" in $$source)) {
+            this["perception"] = 0;
+        }
+        if (!("willpower" in $$source)) {
+            this["willpower"] = 0;
+        }
+        if (!("bonusRemaps" in $$source)) {
+            this["bonusRemaps"] = null;
+        }
+        if (!("lastRemapDate" in $$source)) {
+            this["lastRemapDate"] = null;
+        }
+        if (!("accruedRemapCooldownDate" in $$source)) {
+            this["accruedRemapCooldownDate"] = null;
+        }
+        if (!("fetchedAt" in $$source)) {
+            this["fetchedAt"] = "0001-01-01T00:00:00.000Z";
+        }
+
+        Object.assign(this, $$source);
+    }
+
+    /**
+     * Creates a new CharacterAttribute instance from a string or object.
+     */
+    static createFrom($$source: any = {}): CharacterAttribute {
+        let $$parsedSource = typeof $$source === 'string' ? JSON.parse($$source) : $$source;
+        return new CharacterAttribute($$parsedSource as Partial<CharacterAttribute>);
+    }
+}
+
 export class Skill {
     "characterId": number;
     "skillId": number;
@@ -100,5 +157,38 @@ export class SkillQueue {
     static createFrom($$source: any = {}): SkillQueue {
         let $$parsedSource = typeof $$source === 'string' ? JSON.parse($$source) : $$source;
         return new SkillQueue($$parsedSource as Partial<SkillQueue>);
+    }
+}
+
+export class SkillTotal {
+    "characterId": number;
+    "totalSp": number;
+    "unallocatedSp": number | null;
+    "fetchedAt": string;
+
+    /** Creates a new SkillTotal instance. */
+    constructor($$source: Partial<SkillTotal> = {}) {
+        if (!("characterId" in $$source)) {
+            this["characterId"] = 0;
+        }
+        if (!("totalSp" in $$source)) {
+            this["totalSp"] = 0;
+        }
+        if (!("unallocatedSp" in $$source)) {
+            this["unallocatedSp"] = null;
+        }
+        if (!("fetchedAt" in $$source)) {
+            this["fetchedAt"] = "0001-01-01T00:00:00.000Z";
+        }
+
+        Object.assign(this, $$source);
+    }
+
+    /**
+     * Creates a new SkillTotal instance from a string or object.
+     */
+    static createFrom($$source: any = {}): SkillTotal {
+        let $$parsedSource = typeof $$source === 'string' ? JSON.parse($$source) : $$source;
+        return new SkillTotal($$parsedSource as Partial<SkillTotal>);
     }
 }
