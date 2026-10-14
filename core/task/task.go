@@ -8,12 +8,11 @@ import (
 	"fmt"
 	"reflect"
 	"runtime"
-	"slices"
 	"strings"
 )
 
-// Subjecter is optional on inputs. The subject keys dedupe, backoff and subject
-// pauses, conventionally "kind:id" (e.g. "char:123"). Inputs without it share one key.
+// Subjecter is optional on inputs. The subject keys dedupe and backoff,
+// conventionally "kind:id" (e.g. "char:123"). Inputs without it share one key.
 type Subjecter interface {
 	Subject() string
 }
@@ -36,37 +35,28 @@ func New[R, I, O any](run func(R, context.Context, I) (O, error), opts ...Option
 	for _, o := range opts {
 		o(&t.cfg)
 	}
-	t.name = t.cfg.name
-	if t.name == "" {
-		t.name = funcName(run)
-	}
-	validate[R, I](t.name, t.cfg)
+	t.name = funcName(run)
+	validate[I](t.name, t.cfg)
 	return t
 }
 
-// Name is the Pausable name, or one derived from the method.
+// Name is derived from the method, e.g. "sde.(*Updater).Check".
 func (t *Task[R, I, O]) Name() string { return t.name }
 
-// Bind attaches the receiver. Options that need runtime dependencies (e.g. a
-// condition over a live store) can be added here.
+// Bind attaches the receiver. Options that need runtime dependencies, like a seed
+// over a live store, can be added here.
 func (t *Task[R, I, O]) Bind(r R, opts ...Option) Binding {
 	cfg := t.cfg
-	cfg.conds = slices.Clone(cfg.conds)
 	for _, o := range opts {
 		o(&cfg)
 	}
-	name := t.name
-	if cfg.name != "" {
-		name = cfg.name
-	}
-	validate[R, I](name, cfg)
+	validate[I](t.name, cfg)
 
 	e := &entry{
-		key:      t,
-		name:     name,
-		pausable: cfg.name != "",
-		cfg:      cfg,
-		zero:     func() any { var z I; return z },
+		key:  t,
+		name: t.name,
+		cfg:  cfg,
+		zero: func() any { var z I; return z },
 		run: func(ctx context.Context, in any) (any, error) {
 			return t.run(r, ctx, in.(I))
 		},
@@ -84,13 +74,11 @@ func (t *Task[R, I, O]) Bind(r R, opts ...Option) Binding {
 			return out, nil
 		}
 	}
-	if check, _ := cfg.check.(func(R, context.Context, I) Verdict); check != nil {
-		e.check = func(ctx context.Context, in any) Verdict { return check(r, ctx, in.(I)) }
-	}
 	return e
 }
 
-// Queue runs the task in the background on the scheduler from ctx, or Default.
+// Queue runs the task in the background on the scheduler from ctx. Runs carry
+// theirs, so a task can queue another; elsewhere use On.
 func (t *Task[R, I, O]) Queue(ctx context.Context, in I) error {
 	s, err := resolve(ctx)
 	if err != nil {
@@ -99,8 +87,8 @@ func (t *Task[R, I, O]) Queue(ctx context.Context, in I) error {
 	return t.On(s).Queue(ctx, in)
 }
 
-// Run queues the task and waits for its result. Cancelling ctx stops the wait,
-// not the run.
+// Run queues the task on the scheduler from ctx and waits for its result.
+// Cancelling ctx stops the wait, not the run.
 func (t *Task[R, I, O]) Run(ctx context.Context, in I) (O, error) {
 	s, err := resolve(ctx)
 	if err != nil {
@@ -147,29 +135,15 @@ type Binding interface {
 
 // entry is the type-erased form of a bound task.
 type entry struct {
-	key      any // the *Task, identifies the task within a scheduler
-	name     string
-	pausable bool
-	cfg      config
-	zero     func() any
-	seed     func(ctx context.Context) ([]any, error) // nil: one tick runs the zero input
-	check    func(ctx context.Context, in any) Verdict
-	run      func(ctx context.Context, in any) (any, error)
+	key  any // the *Task, identifies the task within a scheduler
+	name string
+	cfg  config
+	zero func() any
+	seed func(ctx context.Context) ([]any, error) // nil: one tick runs the zero input
+	run  func(ctx context.Context, in any) (any, error)
 }
 
 func (e *entry) binding() *entry { return e }
-
-func (e *entry) allowed(ctx context.Context, in any) Verdict {
-	for _, c := range e.cfg.conds {
-		if v := c.Check(ctx); !v.OK {
-			return v
-		}
-	}
-	if e.check != nil {
-		return e.check(ctx, in)
-	}
-	return Allow()
-}
 
 func subject(in any) string {
 	if s, ok := in.(Subjecter); ok {
@@ -178,19 +152,13 @@ func subject(in any) string {
 	return ""
 }
 
-func validate[R, I any](name string, c config) {
+func validate[I any](name string, c config) {
 	if c.seed != nil {
 		if _, ok := c.seed.(Seed[I]); !ok {
 			panic(fmt.Sprintf("task %s: WithParameters seed is %T, want task.Seed[%s]", name, c.seed, typeName[I]()))
 		}
 		if c.interval <= 0 && !c.startup {
 			panic(fmt.Sprintf("task %s: WithParameters needs WithInterval or WithStartup", name))
-		}
-	}
-	if c.check != nil {
-		if _, ok := c.check.(func(R, context.Context, I) Verdict); !ok {
-			panic(fmt.Sprintf("task %s: WithCheck is %T, want func(%s, context.Context, %s) task.Verdict",
-				name, c.check, typeName[R](), typeName[I]()))
 		}
 	}
 	if c.interval < 0 || c.timeout < 0 {

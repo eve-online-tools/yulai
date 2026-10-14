@@ -1,6 +1,4 @@
-// Package pool limits how many task runs execute at once. Waiters with priority
-// are served before the rest.
-package pool
+package task
 
 import (
 	"context"
@@ -9,24 +7,25 @@ import (
 	"sync"
 )
 
-type Pool struct {
+// pool limits how many runs execute at once. Waiters with priority, on-demand
+// runs, are served before the rest.
+type pool struct {
 	mu   sync.Mutex
 	free int
 	high []chan struct{}
 	low  []chan struct{}
 }
 
-// Create returns a pool with n slots. Share a pool by sharing the pointer.
-func Create(n int) *Pool {
+func newPool(n int) *pool {
 	if n < 1 {
-		panic(fmt.Sprintf("pool: size must be at least 1, got %d", n))
+		panic(fmt.Sprintf("task: pool size must be at least 1, got %d", n))
 	}
-	return &Pool{free: n}
+	return &pool{free: n}
 }
 
-// Acquire blocks until a slot is free or ctx ends. Every nil return must be paired
-// with a Release.
-func (p *Pool) Acquire(ctx context.Context, priority bool) error {
+// acquire blocks until a slot is free or ctx ends. Every nil return must be paired
+// with a release.
+func (p *pool) acquire(ctx context.Context, priority bool) error {
 	p.mu.Lock()
 	if p.free > 0 && len(p.high) == 0 && len(p.low) == 0 {
 		p.free--
@@ -50,13 +49,13 @@ func (p *Pool) Acquire(ctx context.Context, priority bool) error {
 		p.mu.Unlock()
 		if !removed {
 			// Granted between ctx ending and taking the lock.
-			p.Release()
+			p.release()
 		}
 		return ctx.Err()
 	}
 }
 
-func (p *Pool) Release() {
+func (p *pool) release() {
 	p.mu.Lock()
 	defer p.mu.Unlock()
 	switch {
@@ -71,7 +70,7 @@ func (p *Pool) Release() {
 	}
 }
 
-func (p *Pool) remove(ch chan struct{}) bool {
+func (p *pool) remove(ch chan struct{}) bool {
 	if i := slices.Index(p.high, ch); i >= 0 {
 		p.high = slices.Delete(p.high, i, i+1)
 		return true

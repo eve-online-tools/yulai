@@ -11,8 +11,6 @@ import (
 	"sync"
 
 	_ "modernc.org/sqlite"
-
-	"github.com/eve-online-tools/yulai/core/task"
 )
 
 var ErrNotInstalled = errors.New("sde: static data not installed yet")
@@ -146,16 +144,4 @@ func (s *Store) Close() error {
 	err := s.conn.Close()
 	s.conn, s.q, s.meta = nil, nil, nil
 	return err
-}
-
-// Installed is a task condition that holds once an SDE is installed.
-func (s *Store) Installed() task.Condition { return installed{s} }
-
-type installed struct{ s *Store }
-
-func (i installed) Check(context.Context) task.Verdict {
-	if i.s.Meta() == nil {
-		return task.Deny("static data not installed yet")
-	}
-	return task.Allow()
 }

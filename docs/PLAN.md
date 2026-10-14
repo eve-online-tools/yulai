@@ -105,7 +105,8 @@ Rules:
   status (`ok` | `needs_login`), status_error, added_at, updated_at
 - `tokens`: character_id (FK, cascade), access_token, refresh_token_enc, expires_at,
   scopes (space separated `scp`), issued_at (`iat`)
-- `task_pauses`: (kind, value) PK. kind is `task` or `subject`. Scheduling itself is not persisted, see `docs/SCHEDULER.md`.
+
+Scheduling is not persisted (`00005_drop_task_pauses` removes the old pause table), see `docs/SCHEDULER.md`.
 
 Each feature adds its own tables in a new migration: `00002_presence` (`presence_online`,
 `presence_locations`, `presence_ships`), `00003_charactersheet` (`character_sheets`, `corporations`,

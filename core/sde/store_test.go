@@ -80,9 +80,6 @@ func TestInstall(t *testing.T) {
 	if err := s.Read(t.Context(), func(*Queries) error { return nil }); !errors.Is(err, ErrNotInstalled) {
 		t.Fatalf("Read before install: %v", err)
 	}
-	if v := s.Installed().Check(t.Context()); v.OK {
-		t.Fatal("Installed before install")
-	}
 	if !s.Outdated(Build{Number: 1}) {
 		t.Fatal("not outdated before install")
 	}
@@ -99,9 +96,6 @@ func TestInstall(t *testing.T) {
 	}
 	if s.Outdated(Build{Number: 1}) || !s.Outdated(Build{Number: 2}) {
 		t.Fatal("Outdated does not compare the build")
-	}
-	if v := s.Installed().Check(t.Context()); !v.OK {
-		t.Fatal("not Installed after install")
 	}
 
 	for q, want := range map[string]any{

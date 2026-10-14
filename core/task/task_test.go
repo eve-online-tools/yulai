@@ -13,8 +13,6 @@ import (
 	"testing"
 	"testing/synctest"
 	"time"
-
-	"github.com/eve-online-tools/yulai/core/task/pool"
 )
 
 type charIn struct{ ID int64 }
@@ -26,7 +24,6 @@ type recv struct {
 	calls []int64
 	fail  error
 	block chan struct{}
-	deny  int64 // CanRun denies this ID
 }
 
 func (r *recv) Do(ctx context.Context, in charIn) (string, error) {
@@ -48,13 +45,6 @@ func (r *recv) Do(ctx context.Context, in charIn) (string, error) {
 }
 
 func (r *recv) Panic(context.Context, charIn) (string, error) { panic("boom") }
-
-func (r *recv) CanRun(_ context.Context, in charIn) Verdict {
-	if in.ID == r.deny {
-		return Deny("denied")
-	}
-	return Allow()
-}
 
 func (r *recv) count() int {
 	r.mu.Lock()
@@ -142,13 +132,7 @@ func TestResolve(t *testing.T) {
 		if _, err := tk.Run(WithScheduler(t.Context(), s), charIn{1}); err != nil {
 			t.Fatal(err)
 		}
-
-		Default = s
-		defer func() { Default = nil }()
-		if _, err := tk.Run(t.Context(), charIn{1}); err != nil {
-			t.Fatal(err)
-		}
-		if _, err := New((*recv).Do).Run(t.Context(), charIn{1}); !errors.Is(err, ErrNotRegistered) {
+		if _, err := New((*recv).Do).Run(WithScheduler(t.Context(), s), charIn{1}); !errors.Is(err, ErrNotRegistered) {
 			t.Fatalf("err = %v, want ErrNotRegistered", err)
 		}
 	})
@@ -181,12 +165,10 @@ func TestValidation(t *testing.T) {
 	mustPanic(t, "WithParameters seed", func() {
 		New((*recv).Do, WithStartup(), WithParameters(Seed[int](nil)))
 	})
-	mustPanic(t, "WithCheck", func() {
-		New((*recv).Do, WithCheck(func(*recv, context.Context, int) Verdict { return Allow() }))
-	})
-	mustPanic(t, "duplicate Pausable name", func() {
+	mustPanic(t, "registered twice", func() {
+		tk := New((*recv).Do)
 		s := newScheduler(Options{})
-		s.Register(New((*recv).Do, Pausable("x")).Bind(&recv{}), New((*recv).Do, Pausable("x")).Bind(&recv{}))
+		s.Register(tk.Bind(&recv{}), tk.Bind(&recv{}))
 	})
 
 	// A func literal infers the seed type.
@@ -195,9 +177,6 @@ func TestValidation(t *testing.T) {
 
 func TestName(t *testing.T) {
 	if got := New((*recv).Do).Name(); got != "core/task.(*recv).Do" {
-		t.Fatalf("name = %q", got)
-	}
-	if got := New((*recv).Do, Pausable("wallet.balance")).Name(); got != "wallet.balance" {
 		t.Fatalf("name = %q", got)
 	}
 }
@@ -284,35 +263,6 @@ func TestOnDemandCoalesces(t *testing.T) {
 	})
 }
 
-func TestConditions(t *testing.T) {
-	synctest.Test(t, func(t *testing.T) {
-		r := &recv{deny: 2}
-		gate := NewGate("esi error limit")
-		tk := New((*recv).Do, When(gate), WithCheck((*recv).CanRun))
-		s := newScheduler(Options{})
-		s.Register(tk.Bind(r))
-		h := tk.On(s)
-
-		gate.Close(time.Now().Add(time.Minute))
-		_, err := h.Run(t.Context(), charIn{1})
-		var be *BlockedError
-		if !errors.As(err, &be) || be.Reason != "esi error limit" || !errors.Is(err, ErrBlocked) {
-			t.Fatalf("err = %v", err)
-		}
-
-		time.Sleep(time.Minute)
-		if _, err := h.Run(t.Context(), charIn{1}); err != nil {
-			t.Fatalf("gate should reopen at until: %v", err)
-		}
-		if _, err := h.Run(t.Context(), charIn{2}); !errors.As(err, &be) || be.Reason != "denied" {
-			t.Fatalf("check: err = %v", err)
-		}
-		if st := status(s, "char:2"); st.LastSkip != "denied" {
-			t.Fatalf("status = %+v", st)
-		}
-	})
-}
-
 func TestBackoff(t *testing.T) {
 	synctest.Test(t, func(t *testing.T) {
 		r := &recv{fail: errors.New("esi 502")}
@@ -350,71 +300,6 @@ func TestBackoff(t *testing.T) {
 	})
 }
 
-func TestRetryAt(t *testing.T) {
-	synctest.Test(t, func(t *testing.T) {
-		r := &recv{}
-		r.fail = RetryAt(errors.New("420"), time.Now().Add(5*time.Minute))
-		tk := New((*recv).Do)
-		s := newScheduler(Options{})
-		s.Register(tk.Bind(r))
-
-		_, err := tk.On(s).Run(t.Context(), charIn{1})
-		if err == nil || err.Error() != "420" {
-			t.Fatalf("err = %v", err)
-		}
-		if got := time.Until(status(s, "char:1").BackoffUntil); got != 5*time.Minute {
-			t.Fatalf("backoff = %v, want 5m", got)
-		}
-	})
-}
-
-func TestPauses(t *testing.T) {
-	synctest.Test(t, func(t *testing.T) {
-		r := &recv{}
-		tk := New((*recv).Do, WithParameters(seedOf(1, 2)), WithInterval(time.Minute), Pausable("wallet"))
-		store := NewMemoryPauses()
-		_ = store.Set(t.Context(), Pause{PauseSubject, "char:2"}, true)
-		s := started(t, Options{Pauses: store}, tk.Bind(r))
-
-		// Subject pause loaded from the store at Start.
-		time.Sleep(time.Minute + 30*time.Second)
-		synctest.Wait()
-		if r.count() != 1 || r.calls[0] != 1 || status(s, "char:2").LastSkip != "subject paused" {
-			t.Fatalf("calls = %v", r.calls)
-		}
-
-		if err := s.Pause(t.Context(), Pause{PauseTask, "wallet"}); err != nil {
-			t.Fatal(err)
-		}
-		time.Sleep(time.Minute)
-		synctest.Wait()
-		if r.count() != 1 {
-			t.Fatalf("ran while task paused: %v", r.calls)
-		}
-
-		// On demand ignores pauses.
-		if _, err := tk.On(s).Run(t.Context(), charIn{2}); err != nil || r.count() != 2 {
-			t.Fatalf("err = %v, calls = %v", err, r.calls)
-		}
-
-		if err := s.Resume(t.Context(), Pause{PauseTask, "wallet"}); err != nil {
-			t.Fatal(err)
-		}
-		time.Sleep(time.Minute)
-		synctest.Wait()
-		if r.count() != 3 {
-			t.Fatalf("calls = %v after resume", r.calls)
-		}
-
-		if err := s.Pause(t.Context(), Pause{PauseTask, "nope"}); !errors.Is(err, ErrNotFound) {
-			t.Fatalf("err = %v", err)
-		}
-		if ps, _ := store.List(t.Context()); len(ps) != 1 {
-			t.Fatalf("store = %v, want the subject pause only", ps)
-		}
-	})
-}
-
 func TestTimeoutAndPanic(t *testing.T) {
 	synctest.Test(t, func(t *testing.T) {
 		r := &recv{block: make(chan struct{})}
@@ -432,30 +317,12 @@ func TestTimeoutAndPanic(t *testing.T) {
 	})
 }
 
-func TestTrigger(t *testing.T) {
-	synctest.Test(t, func(t *testing.T) {
-		r := &recv{}
-		s := started(t, Options{}, New((*recv).Do, WithParameters(seedOf(5)), WithStartup(), Pausable("p")).Bind(r))
-
-		if err := s.Trigger(t.Context(), "p", "char:5"); err != nil {
-			t.Fatal(err)
-		}
-		synctest.Wait()
-		if r.count() != 2 || r.calls[1] != 5 {
-			t.Fatalf("calls = %v", r.calls)
-		}
-		if err := s.Trigger(t.Context(), "p", "char:6"); !errors.Is(err, ErrNotFound) {
-			t.Fatalf("err = %v", err)
-		}
-	})
-}
-
-func TestPool(t *testing.T) {
+func TestWorkers(t *testing.T) {
 	synctest.Test(t, func(t *testing.T) {
 		r := &recv{block: make(chan struct{})}
 		defer close(r.block)
-		tk := New((*recv).Do, WithPool(pool.Create(1)))
-		s := newScheduler(Options{})
+		tk := New((*recv).Do)
+		s := newScheduler(Options{Workers: 1})
 		s.Register(tk.Bind(r))
 
 		_ = tk.On(s).Queue(t.Context(), charIn{1})

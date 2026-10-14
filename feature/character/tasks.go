@@ -14,7 +14,7 @@ import (
 
 // RefreshTokens renews every healthy token at startup, so a revoked refresh token is
 // flagged and the last refreshed time is current before the user looks.
-var RefreshTokens = task.New((*Service).refreshToken, task.WithStartup(), task.Pausable("character.refresh-token"))
+var RefreshTokens = task.New((*Service).refreshToken, task.WithStartup())
 
 // Feature is always on: the character list and token upkeep.
 func Feature(s *Service) feature.Feature {

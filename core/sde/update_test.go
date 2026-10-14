@@ -169,7 +169,7 @@ func TestUpdateRestartsBadPart(t *testing.T) {
 
 func TestServiceStatus(t *testing.T) {
 	u, _, _, s := setup(t, 8)
-	svc := NewService(u, s.List)
+	svc := NewService(u, s)
 	if st := svc.Status(); st.Build != 0 {
 		t.Fatalf("status before check = %+v", st)
 	}

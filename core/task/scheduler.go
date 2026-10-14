@@ -9,8 +9,6 @@ import (
 	"slices"
 	"sync"
 	"time"
-
-	"github.com/eve-online-tools/yulai/core/task/pool"
 )
 
 const (
@@ -21,15 +19,10 @@ const (
 	changeDebounce = 250 * time.Millisecond
 )
 
-var ErrStopped = errors.New("task: scheduler stopped")
-
-// Default is the scheduler Queue and Run use when ctx carries none. Set by app wiring.
-var Default *Scheduler
-
 type ctxKey struct{}
 
-// WithScheduler makes Queue and Run on ctx use s instead of Default. Runs get it
-// on their ctx, so tasks queued from inside a task stay on the same scheduler.
+// WithScheduler makes Queue and Run on ctx use s. Runs get it on their ctx, so
+// tasks queued from inside a task stay on the same scheduler.
 func WithScheduler(ctx context.Context, s *Scheduler) context.Context {
 	return context.WithValue(ctx, ctxKey{}, s)
 }
@@ -38,18 +31,13 @@ func resolve(ctx context.Context) (*Scheduler, error) {
 	if s, ok := ctx.Value(ctxKey{}).(*Scheduler); ok && s != nil {
 		return s, nil
 	}
-	if Default != nil {
-		return Default, nil
-	}
 	return nil, ErrNoScheduler
 }
 
 type Options struct {
-	// Workers is the size of the pool for tasks without WithPool. Default 4.
+	// Workers is how many runs execute at once. Default 4.
 	Workers int
-	// Pauses persists user pauses. Default: in memory.
-	Pauses PauseStore
-	Log    *slog.Logger
+	Log     *slog.Logger
 	// OnChange is called, debounced, after run status changes.
 	OnChange func()
 	// OnProgress is called for runs of tasks with WithProgress, from the run's goroutine.
@@ -58,8 +46,7 @@ type Options struct {
 
 type Scheduler struct {
 	log        *slog.Logger
-	pool       *pool.Pool
-	pauses     PauseStore
+	pool       *pool
 	onChange   func()
 	onProgress func(ProgressEvent)
 
@@ -71,10 +58,8 @@ type Scheduler struct {
 	started  bool
 	stopping bool
 	entries  map[any]*entry
-	names    map[string]*entry
 	progress map[string]*entry // by WithProgress key
 	states   map[stateKey]*state
-	paused   map[Pause]bool
 
 	changeMu      sync.Mutex
 	changePending bool
@@ -86,7 +71,6 @@ type stateKey struct {
 }
 
 type state struct {
-	in           any  // last input seen, for Trigger
 	running      bool // waiting for a pool slot or executing
 	executing    bool
 	next         *pending // coalesced follow-up requested while running
@@ -116,31 +100,25 @@ func NewScheduler(o Options) *Scheduler {
 	if o.Workers <= 0 {
 		o.Workers = 4
 	}
-	if o.Pauses == nil {
-		o.Pauses = NewMemoryPauses()
-	}
 	if o.Log == nil {
 		o.Log = slog.Default()
 	}
 	ctx, cancel := context.WithCancel(context.Background())
 	return &Scheduler{
 		log:        o.Log,
-		pool:       pool.Create(o.Workers),
-		pauses:     o.Pauses,
+		pool:       newPool(o.Workers),
 		onChange:   o.OnChange,
 		onProgress: o.OnProgress,
 		ctx:        ctx,
 		cancel:     cancel,
 		entries:    map[any]*entry{},
-		names:      map[string]*entry{},
 		progress:   map[string]*entry{},
 		states:     map[stateKey]*state{},
-		paused:     map[Pause]bool{},
 	}
 }
 
 // Register adds bound tasks. It panics on a task registered twice, a duplicate
-// Pausable name, or when called after Start.
+// progress key, or when called after Start.
 func (s *Scheduler) Register(bs ...Binding) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
@@ -152,12 +130,6 @@ func (s *Scheduler) Register(bs ...Binding) {
 		if _, dup := s.entries[e.key]; dup {
 			panic(fmt.Sprintf("task %s: registered twice", e.name))
 		}
-		if e.pausable {
-			if _, dup := s.names[e.name]; dup {
-				panic(fmt.Sprintf("task %s: duplicate Pausable name", e.name))
-			}
-			s.names[e.name] = e
-		}
 		if k := e.cfg.progress; k != "" {
 			if _, dup := s.progress[k]; dup {
 				panic(fmt.Sprintf("task %s: duplicate progress key %q", e.name, k))
@@ -168,23 +140,15 @@ func (s *Scheduler) Register(bs ...Binding) {
 	}
 }
 
-// Start loads pauses, starts the schedules and blocks until ctx ends. It then
-// waits for in-flight runs, whose ctx is cancelled, to return.
+// Start starts the schedules and blocks until ctx ends. It then waits for
+// in-flight runs, whose ctx is cancelled, to return.
 func (s *Scheduler) Start(ctx context.Context) error {
-	pauses, err := s.pauses.List(ctx)
-	if err != nil {
-		return fmt.Errorf("task: load pauses: %w", err)
-	}
-
 	s.mu.Lock()
 	if s.started {
 		s.mu.Unlock()
 		return errors.New("task: scheduler already started")
 	}
 	s.started = true
-	for _, p := range pauses {
-		s.paused[p] = true
-	}
 	for _, e := range s.entries {
 		if e.cfg.startup || e.cfg.interval > 0 {
 			s.wg.Add(1)
@@ -226,13 +190,6 @@ func (s *Scheduler) loop(e *entry) {
 }
 
 func (s *Scheduler) tick(e *entry) {
-	s.mu.Lock()
-	paused := s.pausedReason(e, "") != ""
-	s.mu.Unlock()
-	if paused {
-		return
-	}
-
 	inputs := []any{e.zero()}
 	if e.seed != nil {
 		var err error
@@ -265,7 +222,7 @@ func (s *Scheduler) tick(e *entry) {
 
 // Refresh runs the seed of every parameterized task now and dispatches the inputs
 // for subject want, so a subject that just appeared, e.g. a logged-in character, does
-// not wait for the next tick. Pauses, backoff and dedupe apply as on a tick.
+// not wait for the next tick. Backoff and dedupe apply as on a tick.
 func (s *Scheduler) Refresh(want string) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
@@ -273,7 +230,7 @@ func (s *Scheduler) Refresh(want string) {
 		return
 	}
 	for _, e := range s.entries {
-		if e.seed == nil || s.pausedReason(e, "") != "" {
+		if e.seed == nil {
 			continue
 		}
 		s.wg.Add(1)
@@ -302,7 +259,7 @@ func spread(interval time.Duration, n int) time.Duration {
 }
 
 func (s *Scheduler) scheduled(e *entry, in any) {
-	if err := s.submit(s.ctx, e, in, false, nil); err != nil && !errors.Is(err, ErrBlocked) && !errors.Is(err, ErrStopped) {
+	if err := s.submit(s.ctx, e, in, false, nil); err != nil && !errors.Is(err, ErrStopped) {
 		s.log.Warn("task submit failed", "task", e.name, "err", err)
 	}
 }
@@ -319,7 +276,7 @@ func (s *Scheduler) request(ctx context.Context, key any, in any, waiter chan<- 
 }
 
 // submit starts a run, coalesces it into the running one (user only), or skips
-// it. User requests ignore pauses and backoff but not conditions.
+// it. User requests ignore backoff.
 func (s *Scheduler) submit(ctx context.Context, e *entry, in any, user bool, waiter chan<- result) error {
 	k := stateKey{e, subject(in)}
 
@@ -328,31 +285,12 @@ func (s *Scheduler) submit(ctx context.Context, e *entry, in any, user bool, wai
 		s.mu.Unlock()
 		return ErrStopped
 	}
-	st := s.state(k)
-	st.in = in
-	if !user {
-		if reason := s.skipReason(e, k.subject, st); reason != "" {
-			st.lastSkip = reason
-			s.mu.Unlock()
-			s.changed()
-			return nil
-		}
-	}
-	s.mu.Unlock()
-
-	// Conditions may do I/O, so they run outside the lock.
-	if v := e.allowed(ctx, in); !v.OK {
-		s.mu.Lock()
-		st.lastSkip = v.Reason
-		s.mu.Unlock()
-		s.changed()
-		return &BlockedError{Reason: v.Reason}
-	}
-
-	s.mu.Lock()
 	defer s.mu.Unlock()
-	if s.stopping {
-		return ErrStopped
+	st := s.state(k)
+	if !user && time.Now().Before(st.backoffUntil) {
+		st.lastSkip = "backing off after failure"
+		s.changed()
+		return nil
 	}
 	if st.running {
 		if !user {
@@ -381,29 +319,6 @@ func (s *Scheduler) submit(ctx context.Context, e *entry, in any, user bool, wai
 	return nil
 }
 
-func (s *Scheduler) skipReason(e *entry, subject string, st *state) string {
-	if r := s.pausedReason(e, subject); r != "" {
-		return r
-	}
-	if time.Now().Before(st.backoffUntil) {
-		return "backing off after failure"
-	}
-	if st.running {
-		return "already running"
-	}
-	return ""
-}
-
-func (s *Scheduler) pausedReason(e *entry, subject string) string {
-	if e.pausable && s.paused[Pause{PauseTask, e.name}] {
-		return "task paused"
-	}
-	if subject != "" && s.paused[Pause{PauseSubject, subject}] {
-		return "subject paused"
-	}
-	return ""
-}
-
 func (s *Scheduler) state(k stateKey) *state {
 	st, ok := s.states[k]
 	if !ok {
@@ -416,8 +331,7 @@ func (s *Scheduler) state(k stateKey) *state {
 func (s *Scheduler) execute(e *entry, k stateKey, st *state, p *pending) {
 	defer s.wg.Done()
 
-	pl := cmp.Or(e.cfg.pool, s.pool)
-	if err := pl.Acquire(s.ctx, p.user); err != nil {
+	if err := s.pool.acquire(s.ctx, p.user); err != nil {
 		s.mu.Lock()
 		deliver(p.waiters, result{err: ErrStopped})
 		if st.next != nil {
@@ -448,7 +362,7 @@ func (s *Scheduler) execute(e *entry, k stateKey, st *state, p *pending) {
 	ctx, cancel := context.WithTimeout(ctx, cmp.Or(e.cfg.timeout, DefaultTimeout))
 	out, err := safeRun(ctx, e, p.in)
 	cancel()
-	pl.Release()
+	s.pool.release()
 	if rep != nil {
 		s.mu.Lock()
 		last := st.progress
@@ -469,7 +383,7 @@ func (s *Scheduler) execute(e *entry, k stateKey, st *state, p *pending) {
 	if err != nil {
 		st.failures++
 		st.lastErr = err.Error()
-		st.backoffUntil = backoffUntil(now, st.failures, err)
+		st.backoffUntil = backoffUntil(now, st.failures)
 		s.log.Warn("task failed", "task", e.name, "subject", k.subject, "failures", st.failures,
 			"retry", st.backoffUntil, "err", err)
 	} else {
@@ -510,11 +424,7 @@ func safeRun(ctx context.Context, e *entry, in any) (out any, err error) {
 	return e.run(ctx, in)
 }
 
-func backoffUntil(now time.Time, failures int, err error) time.Time {
-	var re *retryError
-	if errors.As(err, &re) {
-		return re.at
-	}
+func backoffUntil(now time.Time, failures int) time.Time {
 	d := backoffMin
 	for i := 1; i < failures && d < backoffMax; i++ {
 		d *= 2
@@ -522,78 +432,10 @@ func backoffUntil(now time.Time, failures int, err error) time.Time {
 	return now.Add(min(d, backoffMax))
 }
 
-// Pause stops scheduled runs for a task (by Pausable name) or a subject until
-// Resume. On-demand runs still go through.
-func (s *Scheduler) Pause(ctx context.Context, p Pause) error  { return s.setPause(ctx, p, true) }
-func (s *Scheduler) Resume(ctx context.Context, p Pause) error { return s.setPause(ctx, p, false) }
-
-func (s *Scheduler) setPause(ctx context.Context, p Pause, paused bool) error {
-	switch p.Kind {
-	case PauseTask:
-		s.mu.Lock()
-		_, ok := s.names[p.Value]
-		s.mu.Unlock()
-		if !ok {
-			return fmt.Errorf("%w: pausable task %q", ErrNotFound, p.Value)
-		}
-	case PauseSubject:
-		if p.Value == "" {
-			return errors.New("task: empty subject")
-		}
-	default:
-		return fmt.Errorf("task: unknown pause kind %q", p.Kind)
-	}
-	if err := s.pauses.Set(ctx, p, paused); err != nil {
-		return err
-	}
-	s.mu.Lock()
-	if paused {
-		s.paused[p] = true
-	} else {
-		delete(s.paused, p)
-	}
-	s.mu.Unlock()
-	s.changed()
-	return nil
-}
-
-// Pauses lists the active user pauses.
-func (s *Scheduler) Pauses() []Pause {
-	s.mu.Lock()
-	defer s.mu.Unlock()
-	out := make([]Pause, 0, len(s.paused))
-	for p := range s.paused {
-		out = append(out, p)
-	}
-	return out
-}
-
-// Trigger runs a Pausable task on demand by name, for the UI. Parameterized
-// tasks reuse the last input seen for the subject.
-func (s *Scheduler) Trigger(ctx context.Context, name, subject string) error {
-	s.mu.Lock()
-	e, ok := s.names[name]
-	var in any
-	if ok {
-		if st := s.states[stateKey{e, subject}]; st != nil {
-			in = st.in
-		} else if subject == "" && e.seed == nil {
-			in = e.zero()
-		}
-	}
-	s.mu.Unlock()
-	if !ok || in == nil {
-		return fmt.Errorf("%w: %s %s", ErrNotFound, name, subject)
-	}
-	return s.submit(ctx, e, in, true, nil)
-}
-
 // Status is one task and subject as the UI sees it. Times are zero when unset.
 type Status struct {
 	Task         string    `json:"task"`
 	Subject      string    `json:"subject"`
-	Pausable     bool      `json:"pausable"`
-	Paused       bool      `json:"paused"`
 	Queued       bool      `json:"queued"`
 	Running      bool      `json:"running"`
 	LastRun      time.Time `json:"lastRun"`
@@ -615,8 +457,6 @@ func (s *Scheduler) List() []Status {
 		out = append(out, Status{
 			Task:         k.e.name,
 			Subject:      k.subject,
-			Pausable:     k.e.pausable,
-			Paused:       s.pausedReason(k.e, k.subject) != "",
 			Queued:       st.running && !st.executing,
 			Running:      st.executing,
 			LastRun:      st.lastRun,
@@ -628,7 +468,7 @@ func (s *Scheduler) List() []Status {
 	}
 	for _, e := range s.entries {
 		if !seen[e] && e.seed == nil {
-			out = append(out, Status{Task: e.name, Pausable: e.pausable, Paused: s.pausedReason(e, "") != ""})
+			out = append(out, Status{Task: e.name})
 		}
 	}
 	slices.SortFunc(out, func(a, b Status) int {
