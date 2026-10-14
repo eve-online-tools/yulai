@@ -48,11 +48,13 @@ How Yulai is put together and where features plug in. The architecture comes fro
 2. `app.New()`:
    1. `db.Open(DBPath)` runs migrations.
    2. `crypt.Open(keyring.OS{Service: "eve-online-tools/yulai", User: "master-key"})`
-   3. SSO client → verifier → login flow → token store → ESI client
-   4. Token store (dead tokens → `Characters.MarkNeedsLogin`), ESI client, character service, scheduler.
-   5. `feature.Deps`, then the `[]feature.Feature` list. Every feature's tasks are registered; those with
-      scopes go on the picker, in list order.
-   6. Login server (`login.New`), handler `Characters.Store` then `Scheduler.Refresh` for the character.
+   3. SSO client and verifier, `sde.Open` (`sde.sqlite` in the data dir).
+   4. Token store (dead tokens → `Characters.MarkNeedsLogin`), ESI client, character service, scheduler,
+      SDE updater.
+   5. `feature.Deps`, then the `[]feature.Feature` list (`sde` first, then the feature packages). Every
+      feature's tasks are registered; those with scopes go on the picker, in list order.
+   6. Login server (`login.New`), whose handler calls `Characters.Store` then `Scheduler.Refresh` for the
+      character.
 3. Wails app with `a.Services()`, single-instance, and the main window. A second launch exits
    here and focuses the first.
 4. `a.Start(ctx)` binds the login port (busy port is fatal) and starts the scheduler goroutine.
@@ -71,8 +73,8 @@ in `identity/login` runs for the whole app lifetime.
 4. `GET /callback` matches `state` to the attempt, exchanges the code, verifies the JWT, hands the
    result to the character service, then redirects to `/done`. The redirect keeps a reload from
    replaying a used code.
-5. `/done` names the character and links back to `/` to add another. It notes that EVE SSO
-   remembers the account, so adding a character from another account needs an SSO logout first.
+5. `/done` names the character and offers "Add another character", which posts the previous feature
+   choice straight to `/start`.
 
 Rules:
 
@@ -95,9 +97,9 @@ Rules:
   `/.well-known/openid-configuration`: authorize and token endpoints, `jwks_uri` for signature
   keys, and `issuer`, which must equal the configured one and is what `iss` is validated against.
 
-## Data model (first migration, `core/db/migrations/00001_init.sql`)
+## Data model (`core/db/migrations`)
 
-Ported from asset-manager, minus `presence`:
+`00001_init`:
 
 - `characters`: id, name, owner_hash, corporation_id, alliance_id, account_label,
   status (`ok` | `needs_login`), status_error, added_at, updated_at
@@ -105,10 +107,10 @@ Ported from asset-manager, minus `presence`:
   scopes (space separated `scp`), issued_at (`iat`)
 - `task_pauses`: (kind, value) PK. kind is `task` or `subject`. Scheduling itself is not persisted, see `docs/SCHEDULER.md`.
 
-Each feature then adds its own tables in a new migration (`00002_presence.sql`: `presence_online`, `presence_locations`, `presence_ships`, `00003_charactersheet.sql`: `character_sheets`, `corporations`, `alliances`). Once a table exists, the hand-written
-`ListRow` / `SyncJob` structs are replaced by sqlc-generated ones (`sqlc_*.go`, `*_sqlc.go`). Keep the
-field names and JSON tags so the bindings don't change. `sqlc.yaml` is added together with the first
-`queries.sql` (copy asset-manager's anchor-based layout).
+Each feature adds its own tables in a new migration: `00002_presence` (`presence_online`,
+`presence_locations`, `presence_ships`), `00003_charactersheet` (`character_sheets`, `corporations`,
+`alliances`), `00004_skills` (`character_attributes`, `skill_totals`, `skills`, `skill_queue`). Row types
+and queries are sqlc-generated (`sqlc_*.go`, `*_sqlc.go`) from each package's `queries.sql`.
 
 ## Adding a feature (the extension point)
 
@@ -140,9 +142,9 @@ field names and JSON tags so the bindings don't change. `sqlc.yaml` is added tog
   Wails version in `go.mod`.
 - Hash history, so secondary windows open at `/#/<route>`.
 - Routes under `layout` get the sidebar shell. Routes directly under root sit in the frame only.
-- `/` redirects to `/welcome` while there are no characters. It has no shell and a horizontal stepper:
-  add a character, synchronizing (until the character's tasks have all run once this session), complete (redirects
-  to `/characters`). Optional onboarding is the sidebar checklist in `components/getting-started`. Its items
+- `/` redirects to `/welcome` while there are no characters, otherwise to `/overview`. `/welcome` has no shell
+  and a horizontal stepper: add a character, synchronizing (until the character's tasks have all run once this
+  session and the SDE is installed), complete (redirects to `/overview`). Optional onboarding is the sidebar checklist in `components/getting-started`. Its items
   are derived from backend state; only skips and dismissal are kept, in `localStorage`.
 - Loaders call `queryClient.ensureQueryData` and components use `useSuspenseQuery`.
 - Bindings are generated as classes (`-ts`, no `-i`) and committed.
@@ -164,7 +166,7 @@ field names and JSON tags so the bindings don't change. `sqlc.yaml` is added tog
 
 ## Open questions
 
-- **What Yulai's features are.** That decides scopes, tables and pages beyond the shell.
+- **Further features.** Which features come next decides new scopes, tables and pages.
 - **Shared module.** `core/*`, `identity/*` and `feature` are app-agnostic and would be
   duplicated with asset-manager. They could be extracted into a shared `eve-online-tools/*` module once both
   apps have stabilised them. Until then, port by copy.
