@@ -17,7 +17,7 @@ import (
 	"github.com/eve-online-tools/yulai/feature"
 )
 
-const EventChanged = "skills:changed"
+const Topic = "skills"
 
 const (
 	every   = 5 * time.Minute

@@ -76,7 +76,7 @@ func (c *fakeChars) SetAffiliation(_ context.Context, id, corp int64, _ *int64) 
 
 type nopEmitter struct{}
 
-func (nopEmitter) Emit(string) {}
+func (nopEmitter) Changed(string) {}
 
 func newTestSheet(t *testing.T) (*Sheet, *fakeESI, *fakeChars, context.Context) {
 	t.Helper()

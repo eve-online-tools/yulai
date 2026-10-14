@@ -142,7 +142,7 @@ success).
    `Start`, checked at dispatch.
 9. **Status.** `List()` returns, per task and key: running, last run, last error, last skip reason, backoff
    until, paused, queued. Changes call `Options.OnChange` (debounced 250ms); `app` turns that into the
-   `task:changed` Wails event, so `core/task` does not import Wails.
+   `data:changed` event with topic `tasks`, so `core/task` does not import Wails.
 10. **Progress.** Opt-in with `WithProgress(key)`. A run emits `ProgressStart` when it starts executing,
    `ProgressUpdate` on `Report` (at most every 100ms) and `ProgressDone` (with the last progress and the error)
    when it ends, through `Options.OnProgress`, so a UI shows a bar on start and hides it on done.

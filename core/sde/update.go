@@ -18,7 +18,8 @@ import (
 	"github.com/eve-online-tools/yulai/core/task"
 )
 
-const EventChanged = "sde:changed"
+// Topic is the data:changed topic sent after an install.
+const Topic = "sde"
 
 // ProgressKey is the task.WithProgress key of Update.
 const ProgressKey = "sde.update"
@@ -29,7 +30,7 @@ const (
 )
 
 type Emitter interface {
-	Emit(name string)
+	Changed(topic string)
 }
 
 // Updater keeps the store at the latest SDE build.
@@ -171,7 +172,7 @@ func (u *Updater) Update(ctx context.Context, b Build) (*Meta, error) {
 	if err := os.Remove(zipPath); err != nil {
 		return nil, err
 	}
-	u.events.Emit(EventChanged)
+	u.events.Changed(Topic)
 	return u.store.Meta(), nil
 }
 

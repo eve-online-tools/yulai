@@ -53,7 +53,7 @@ func (f *Presence) ship(ctx context.Context, in Input) (*PresenceShip, error) {
 		return nil, err
 	}
 	if !existed || db.Changed(prev, row) {
-		f.events.Emit(EventChanged)
+		f.events.Changed(Topic)
 	}
 	return &row, nil
 }

@@ -16,20 +16,20 @@ export const queryClient = new QueryClient({
   },
 });
 
-// One key per backend list. Features add their own here alongside a query and an event.
+// Keys start with the topic the backend sends in data:changed, so a change refetches every query under it.
+// A query that also depends on other topics lists them in meta.topics.
 export const keys = {
   characters: ["characters"] as const,
   features: ["features"] as const,
   tasks: ["tasks"] as const,
   setup: ["setup"] as const,
-  sde: ["sde"] as const,
-  map: ["map"] as const,
+  sde: ["sde", "status"] as const,
+  map: ["sde", "map"] as const,
   presence: ["presence"] as const,
   progress: (key: string) => ["progress", key] as const,
-  allSkills: ["skills"] as const,
   skills: (characterID: number) => ["skills", characterID] as const,
   skillQueue: (characterID: number) => ["skills", characterID, "queue"] as const,
-  shipTree: ["shipTree"] as const,
+  shipTree: ["sde", "shipTree"] as const,
 };
 
 export const charactersQuery = queryOptions({
@@ -95,6 +95,8 @@ export const mapQuery = queryOptions({
 export const presenceQuery = queryOptions({
   queryKey: keys.presence,
   queryFn: () => Presence.List(),
+  // Removing a character drops its presence.
+  meta: { topics: ["characters"] },
 });
 
 // Progress of the running task with that task.WithProgress key, null when it is not running.
@@ -106,25 +108,19 @@ export const progressQuery = (key: string) =>
     staleTime: Infinity,
   });
 
-// Backend emits events when data changes; we invalidate the matching queries.
+declare module "@tanstack/react-query" {
+  interface Register {
+    queryMeta: { topics?: string[] };
+  }
+}
+
+// The backend sends data:changed with a topic when stored data changes; refetch the queries under it.
 export function listenForBackendEvents() {
-  Events.On("character:changed", () => {
-    queryClient.invalidateQueries({ queryKey: keys.characters });
-    queryClient.invalidateQueries({ queryKey: keys.presence });
-  });
-  Events.On("task:changed", () => {
-    queryClient.invalidateQueries({ queryKey: keys.tasks });
-  });
-  Events.On("skills:changed", () => {
-    queryClient.invalidateQueries({ queryKey: keys.allSkills });
-  });
-  Events.On("sde:changed", () => {
-    queryClient.invalidateQueries({ queryKey: keys.sde });
-    queryClient.invalidateQueries({ queryKey: keys.shipTree });
-    queryClient.invalidateQueries({ queryKey: keys.map });
-  });
-  Events.On("presence:changed", () => {
-    queryClient.invalidateQueries({ queryKey: keys.presence });
+  Events.On("data:changed", (e) => {
+    const topic = e.data;
+    queryClient.invalidateQueries({
+      predicate: (q) => q.queryKey[0] === topic || (q.meta?.topics?.includes(topic) ?? false),
+    });
   });
   const setProgress = (ev: ProgressEvent, running: boolean) =>
     queryClient.setQueryData(keys.progress(ev.key), running ? ev.progress : null);

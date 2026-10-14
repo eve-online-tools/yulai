@@ -3,7 +3,7 @@
 
 /**
  * TaskService reports what the scheduler is doing. The UI refetches List on
- * EventTasksChanged and follows progress through the progress events.
+ * TopicTasks and follows progress through the progress events.
  * @module
  */
 

@@ -64,7 +64,7 @@ func (s *Sheet) alliance(ctx context.Context, in AllianceInput) (_ *Alliance, er
 		return nil, err
 	}
 	if !existed || db.Changed(prev, row) {
-		s.events.Emit(EventChanged)
+		s.events.Changed(Topic)
 	}
 	return &row, nil
 }

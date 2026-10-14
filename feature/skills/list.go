@@ -89,7 +89,7 @@ func (f *Skills) skills(ctx context.Context, in Input) (*SkillList, error) {
 		return nil, err
 	}
 	if changed {
-		f.events.Emit(EventChanged)
+		f.events.Changed(Topic)
 	}
 	return &out, nil
 }

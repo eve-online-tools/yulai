@@ -56,7 +56,7 @@ func (f *Skills) attributes(ctx context.Context, in Input) (*CharacterAttribute,
 		return nil, err
 	}
 	if !existed || db.Changed(prev, row) {
-		f.events.Emit(EventChanged)
+		f.events.Changed(Topic)
 	}
 	return &row, nil
 }

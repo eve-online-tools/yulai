@@ -63,7 +63,7 @@ func (s *Sheet) character(ctx context.Context, in feature.CharacterInput) (*Char
 		return nil, err
 	}
 	if !existed || db.Changed(prev, row) {
-		s.events.Emit(EventChanged)
+		s.events.Changed(Topic)
 	}
 
 	corp := CorporationInput{CorporationID: row.CorporationID}

@@ -16,7 +16,7 @@ import (
 	"github.com/eve-online-tools/yulai/feature"
 )
 
-const EventChanged = "presence:changed"
+const Topic = "presence"
 
 const (
 	onlineFast = time.Minute

@@ -8,8 +8,8 @@ plan for the framework and where features plug in.
 - **Feature = consent.** A feature names the SSO scopes it needs. A character has a feature
   when its token's `scp` claim covers those scopes. Consent is never stored separately.
 - **Backend owns state, frontend renders it.** The Go side persists everything in sqlite and emits
-  a Wails event when something changes. The frontend reads through bound services with TanStack
-  Query and invalidates on events. It never polls.
+  `data:changed` with a topic when something changes. The frontend reads through bound services with
+  TanStack Query and invalidates the queries under that topic. It never polls.
 - **Packages own their tables.** The schema is global (one goose migration set), but each table
   has one owning package with its own `queries.sql` and sqlc output. Other packages go through
   the owner's Go API.
@@ -92,7 +92,7 @@ Rules:
   and `[::1]`.
 - Port in use is fatal at boot. Use Wails single-instance so a second launch focuses the running
   app instead of hitting that error.
-- No in-app progress for now. The character list updates through `character:changed`.
+- No in-app progress for now. The character list updates through the `characters` topic.
 - The SSO is the configured host (default `https://login.eveonline.com`), overridable with
   `YULAI_SSO_HOST` at build time, `"ssoHost"` in the SSO file, or `YULAI_SSO_HOST` at runtime. Everything else comes from its
   `/.well-known/openid-configuration`: authorize and token endpoints, `jwks_uri` for signature
@@ -122,10 +122,11 @@ field names and JSON tags so the bindings don't change. `sqlc.yaml` is added tog
    endpoint with `var X = task.New((*Receiver).x, opts...)`. See `docs/SCHEDULER.md`.
 3. Tables go in a new migration. Queries go in `feature/<name>/queries.sql` with a matching `sqlc.yaml` entry.
    Follow `docs/CONVENTIONS.md` for ESI calls, task results and table types.
-4. Optional Wails `Service` for the UI, with `ServiceName()`, in the feature's `Services`. Emit
-   `<name>:changed` after writes and register the event in `app/app.go` `init()`.
+4. Optional Wails `Service` for the UI, with `ServiceName()`, in the feature's `Services`. Call
+   `d.Events.Changed(Topic)` after writes that change data.
 5. Add one line to the feature list in `app.New`.
-6. Frontend: add a key, a `queryOptions` and an `Events.On` to `apps/yulai/src/queries.ts`. Add a route in
+6. Frontend: add a key starting with the topic and a `queryOptions` to `apps/yulai/src/queries.ts`. A query
+   that also depends on other topics lists them in `meta.topics`. Add a route in
    `apps/yulai/src/router.tsx` and/or a panel in the character card. Gate pages on the feature ID with
    `useFeature` from `apps/yulai/src/features.ts`.
 
@@ -169,7 +170,7 @@ field names and JSON tags so the bindings don't change. `sqlc.yaml` is added tog
 1. **Infrastructure:** `core/db` + first migration, `core/keyring`, `core/crypt`, `core/esi` (port and test).
    Uncomment `db.Open` in `app.New`.
 2. **Identity:** `identity/sso`, `identity/login`, `identity/token`, sqlc for `tokens`.
-3. **Characters:** `character` queries, `Store`/`Remove`/`MarkNeedsLogin`, `EventChanged`.
+3. **Characters:** `character` queries, `Store`/`Remove`/`MarkNeedsLogin`, change events.
 4. **Scheduler:** `core/task`, seeds and gates, `TaskService` per `docs/SCHEDULER.md`.
 5. **First real feature** using the recipe above.
 

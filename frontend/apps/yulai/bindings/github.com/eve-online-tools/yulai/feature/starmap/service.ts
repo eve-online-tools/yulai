@@ -16,7 +16,7 @@ import * as $models from "./models.js";
 
 /**
  * Data returns known space, built once per installed SDE. It fails with
- * sde.ErrNotInstalled before the first install; the frontend refetches on sde:changed.
+ * sde.ErrNotInstalled before the first install; the frontend refetches when the sde topic changes.
  */
 export function Data(): $CancellablePromise<$models.Data | null> {
     return $Call.ByID(723992234).then(($result: any) => {

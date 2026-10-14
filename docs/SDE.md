@@ -76,14 +76,14 @@ install, so the first `Get` normally finds it ready.
 
 `MapService.Data()` (`feature/starmap`) returns known space (IDs 30,000,000 to 30,999,999) as the `MapData` of
 `@eve-online-tools/eve-map`, built from `map_solar_systems`, `map_stargates`, `map_constellations` and
-`map_regions`. It is a `Derived`, so it is ready before the map opens. The frontend refetches it on `sde:changed`.
+`map_regions`. It is a `Derived`, so it is ready before the map opens. Its query key starts with `sde`, so the frontend refetches it when the `sde` topic changes.
 
 ## Tasks
 
 | Task | Schedule | Does |
 |---|---|---|
 | `Check` | startup, every hour | GET `latest.jsonl` with the last ETag. Queues `Update` when the build differs from `meta.build` or `meta.schema` differs from the compiled schema |
-| `Update` | on demand, 30 min timeout | Downloads the zip, builds `sde.sqlite.tmp` from it, swaps it in, emits `sde:changed` |
+| `Update` | on demand, 30 min timeout | Downloads the zip, builds `sde.sqlite.tmp` from it, swaps it in, sends the `sde` topic |
 
 `Check` is `Pausable("sde.check")`; pausing it stops automatic updates. `Update` has no schedule, so it is not
 pausable.
@@ -151,7 +151,7 @@ the scrolling content: "Updating data", the phase and item, and the update bar w
 1. `core/task`: `Progress`, `Report`, `Status.Progress`.
 2. Generator and generated schema.
 3. Converter and `Store`: build from a zip, indexes, `meta`, swap, progress.
-4. `Check` and `Update` tasks, `SDEService`, wiring in `app.New`, `task:changed` and `sde:changed` events.
+4. `Check` and `Update` tasks, `SDEService`, wiring in `app.New`, `tasks` and `sde` change topics.
 5. Frontend: updating-data bar in the shell and on the welcome screen.
 
 Later: use `changes/<build>.jsonl` to skip the download when no file changed, and a CI job that regenerates

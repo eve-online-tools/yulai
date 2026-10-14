@@ -52,7 +52,12 @@ func (c fakeChars) WithScopes(context.Context, ...string) ([]int64, error) { ret
 
 type countEmitter struct{ n int }
 
-func (c *countEmitter) Emit(string) { c.n++ }
+// Counts only this feature's topic, so emitting another one fails the count checks.
+func (c *countEmitter) Changed(topic string) {
+	if topic == Topic {
+		c.n++
+	}
+}
 
 func newTestFeature(t *testing.T, esi fakeESI) (*Presence, *sql.DB, *countEmitter) {
 	t.Helper()

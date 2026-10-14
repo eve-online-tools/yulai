@@ -38,6 +38,6 @@ func (s *Service) refreshToken(ctx context.Context, in feature.CharacterInput) (
 	if err != nil {
 		return struct{}{}, err
 	}
-	s.events.Emit(EventChanged)
+	s.events.Changed(Topic)
 	return struct{}{}, nil
 }

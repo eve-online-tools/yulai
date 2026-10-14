@@ -17,7 +17,7 @@ import (
 	"github.com/eve-online-tools/yulai/identity/token"
 )
 
-const EventChanged = "character:changed"
+const Topic = "characters"
 
 const (
 	StatusOK         = "ok"
@@ -26,7 +26,7 @@ const (
 
 // Emitter sends app events. Implemented by app with Wails.
 type Emitter interface {
-	Emit(name string)
+	Changed(topic string)
 }
 
 type Service struct {
@@ -110,7 +110,7 @@ func (s *Service) Store(ctx context.Context, r *login.Result) error {
 	if err := s.tokens.Save(ctx, r.CharacterID, &r.Tokens, &r.Identity); err != nil {
 		return err
 	}
-	s.events.Emit(EventChanged)
+	s.events.Changed(Topic)
 	return nil
 }
 
@@ -119,7 +119,7 @@ func (s *Service) Remove(ctx context.Context, characterID int64) error {
 		return err
 	}
 	s.tokens.Forget(characterID)
-	s.events.Emit(EventChanged)
+	s.events.Changed(Topic)
 	return nil
 }
 
@@ -132,7 +132,7 @@ func (s *Service) MarkNeedsLogin(ctx context.Context, characterID int64, reason 
 	}); err != nil {
 		return err
 	}
-	s.events.Emit(EventChanged)
+	s.events.Changed(Topic)
 	return nil
 }
 
@@ -162,7 +162,7 @@ func (s *Service) SetAffiliation(ctx context.Context, characterID, corporationID
 		return err
 	}
 	if n > 0 {
-		s.events.Emit(EventChanged)
+		s.events.Changed(Topic)
 	}
 	return nil
 }

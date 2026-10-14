@@ -31,7 +31,7 @@ func newService(store *sde.Store) *Service {
 func (s *Service) ServiceName() string { return "MapService" }
 
 // Data returns known space, built once per installed SDE. It fails with
-// sde.ErrNotInstalled before the first install; the frontend refetches on sde:changed.
+// sde.ErrNotInstalled before the first install; the frontend refetches when the sde topic changes.
 func (s *Service) Data(ctx context.Context) (*Data, error) {
 	return s.data.Get(ctx)
 }
