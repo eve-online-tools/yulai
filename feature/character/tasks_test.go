@@ -5,6 +5,7 @@ import (
 	"testing"
 
 	"github.com/eve-online-tools/yulai/core/task"
+	"github.com/eve-online-tools/yulai/feature"
 )
 
 func TestWithTokenSkipsNeedsLogin(t *testing.T) {
@@ -13,15 +14,15 @@ func TestWithTokenSkipsNeedsLogin(t *testing.T) {
 	if err := s.Store(ctx, result("esi-a.v1")); err != nil {
 		t.Fatal(err)
 	}
-	got, err := s.withToken(ctx)
+	got, err := feature.ScopeSeed(s)(ctx)
 	if err != nil || len(got) != 1 || got[0].CharacterID != 90000001 {
-		t.Fatalf("withToken = %v, %v", got, err)
+		t.Fatalf("seed = %v, %v", got, err)
 	}
 	if err := s.MarkNeedsLogin(ctx, 90000001, "invalid_grant"); err != nil {
 		t.Fatal(err)
 	}
-	if got, _ := s.withToken(ctx); len(got) != 0 {
-		t.Fatalf("withToken = %v after MarkNeedsLogin, want none", got)
+	if got, _ := feature.ScopeSeed(s)(ctx); len(got) != 0 {
+		t.Fatalf("seed = %v after MarkNeedsLogin, want none", got)
 	}
 }
 

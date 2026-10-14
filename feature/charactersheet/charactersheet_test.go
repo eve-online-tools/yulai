@@ -122,7 +122,7 @@ func TestFanOut(t *testing.T) {
 	s, esi, chars, ctx := newTestSheet(t)
 
 	for _, id := range []int64{pilot, pilotTwo} {
-		row, err := FetchCharacter.Run(ctx, CharacterInput{id})
+		row, err := FetchCharacter.Run(ctx, feature.CharacterInput{CharacterID: id})
 		if err != nil || row.CharacterID != id || row.CorporationID != 98000001 {
 			t.Fatalf("FetchCharacter = %+v, %v", row, err)
 		}

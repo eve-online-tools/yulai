@@ -13,10 +13,10 @@ func TestServiceList(t *testing.T) {
 	if rows, err := s.List(ctx); err != nil || rows == nil || len(rows) != 0 {
 		t.Fatalf("before fetch = %#v, %v, want empty", rows, err)
 	}
-	if _, err := f.online(ctx, Input{pilot}); err != nil {
+	if _, err := f.online(ctx, Input{CharacterID: pilot}); err != nil {
 		t.Fatal(err)
 	}
-	if _, err := f.location(ctx, Input{pilot}); err != nil {
+	if _, err := f.location(ctx, Input{CharacterID: pilot}); err != nil {
 		t.Fatal(err)
 	}
 

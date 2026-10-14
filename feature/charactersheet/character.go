@@ -2,7 +2,6 @@ package charactersheet
 
 import (
 	"context"
-	"fmt"
 	"time"
 
 	esicharacter "github.com/eve-online-tools/lib-esi-go/common/character"
@@ -11,11 +10,8 @@ import (
 	"github.com/eve-online-tools/yulai/core/db"
 	"github.com/eve-online-tools/yulai/core/esi"
 	"github.com/eve-online-tools/yulai/core/task"
+	"github.com/eve-online-tools/yulai/feature"
 )
-
-type CharacterInput struct{ CharacterID int64 }
-
-func (in CharacterInput) Subject() string { return fmt.Sprintf("char:%d", in.CharacterID) }
 
 // Corporations and alliances are only reached by fan-out from here.
 var FetchCharacter = task.New(
@@ -25,19 +21,7 @@ var FetchCharacter = task.New(
 	task.WithTimeout(timeout),
 )
 
-func (s *Sheet) characters(ctx context.Context) ([]CharacterInput, error) {
-	ids, err := s.chars.IDs(ctx)
-	if err != nil {
-		return nil, err
-	}
-	out := make([]CharacterInput, len(ids))
-	for i, id := range ids {
-		out[i] = CharacterInput{CharacterID: id}
-	}
-	return out, nil
-}
-
-func (s *Sheet) character(ctx context.Context, in CharacterInput) (*CharacterSheet, error) {
+func (s *Sheet) character(ctx context.Context, in feature.CharacterInput) (*CharacterSheet, error) {
 	resp, err := getcharacter.Request(
 		ctx, s.esi,
 		&getcharacter.Input{

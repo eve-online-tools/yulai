@@ -116,14 +116,14 @@ func TestFetchPersists(t *testing.T) {
 	ctx := context.Background()
 	f, _, events := newTestFeature(t, fakeESI{"/online": onlineBody, "/location": locationBody, "/ship": shipBody})
 
-	if on, err := f.online(ctx, Input{pilot}); err != nil || !on.Online {
+	if on, err := f.online(ctx, Input{CharacterID: pilot}); err != nil || !on.Online {
 		t.Fatalf("online = %v, %v", on, err)
 	}
 	// Runs return the stored row, so on-demand callers get the data.
-	if row, err := f.location(ctx, Input{pilot}); err != nil || row.SolarSystemID != 30000142 {
+	if row, err := f.location(ctx, Input{CharacterID: pilot}); err != nil || row.SolarSystemID != 30000142 {
 		t.Fatalf("location = %+v, %v", row, err)
 	}
-	if _, err := f.ship(ctx, Input{pilot}); err != nil {
+	if _, err := f.ship(ctx, Input{CharacterID: pilot}); err != nil {
 		t.Fatal(err)
 	}
 	on, err := f.q.GetOnline(ctx, pilot)
@@ -143,7 +143,7 @@ func TestFetchPersists(t *testing.T) {
 	}
 
 	// Unchanged data is written but not announced.
-	if _, err := f.location(ctx, Input{pilot}); err != nil {
+	if _, err := f.location(ctx, Input{CharacterID: pilot}); err != nil {
 		t.Fatal(err)
 	}
 	if events.n != 3 {
@@ -172,7 +172,7 @@ func TestDue(t *testing.T) {
 	}
 
 	// Coming online makes location due right away and then every locationFast.
-	if _, err := f.online(ctx, Input{pilot}); err != nil {
+	if _, err := f.online(ctx, Input{CharacterID: pilot}); err != nil {
 		t.Fatal(err)
 	}
 	if got, _ := f.due(partLocation)(ctx); len(got) != 1 {

@@ -5,7 +5,6 @@ package skills
 import (
 	"context"
 	"database/sql"
-	"fmt"
 	"net/http"
 	"time"
 
@@ -30,31 +29,27 @@ var scopes = []string{
 	"esi-skills.read_skillqueue.v1",
 }
 
-type Input struct {
-	CharacterID int64
-}
-
-func (in Input) Subject() string { return fmt.Sprintf("char:%d", in.CharacterID) }
+type Input = feature.CharacterInput
 
 type Skills struct {
 	conn   *sql.DB
 	q      *Queries
 	esi    *http.Client
 	tokens feature.Tokens
-	chars  feature.Characters
 	events feature.Emitter
 }
 
 func Feature(d feature.Deps) feature.Feature {
 	f := newSkills(d)
+	seed := task.WithParameters(feature.ScopeSeed(d.Characters, scopes...))
 	return feature.Feature{
 		ID:     "skills",
 		Name:   "Skill Management",
 		Scopes: scopes,
 		Tasks: []task.Binding{
-			FetchAttributes.Bind(f, task.WithParameters(f.characters)),
-			FetchSkills.Bind(f, task.WithParameters(f.characters)),
-			FetchQueue.Bind(f, task.WithParameters(f.characters)),
+			FetchAttributes.Bind(f, seed),
+			FetchSkills.Bind(f, seed),
+			FetchQueue.Bind(f, seed),
 		},
 		Services: []application.Service{
 			application.NewService(&Service{q: f.q}),
@@ -68,21 +63,8 @@ func newSkills(d feature.Deps) *Skills {
 		q:      New(d.DB),
 		esi:    d.ESI,
 		tokens: d.Tokens,
-		chars:  d.Characters,
 		events: d.Events,
 	}
-}
-
-func (f *Skills) characters(ctx context.Context) ([]Input, error) {
-	ids, err := f.chars.WithScopes(ctx, scopes...)
-	if err != nil {
-		return nil, err
-	}
-	out := make([]Input, len(ids))
-	for i, id := range ids {
-		out[i] = Input{CharacterID: id}
-	}
-	return out, nil
 }
 
 func (f *Skills) auth(characterID int64) request.RequestOption {

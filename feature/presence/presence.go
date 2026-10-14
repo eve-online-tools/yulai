@@ -4,7 +4,6 @@ package presence
 
 import (
 	"context"
-	"fmt"
 	"net/http"
 	"sync"
 	"time"
@@ -42,11 +41,7 @@ var scopes = []string{
 	"esi-location.read_ship_type.v1",
 }
 
-type Input struct {
-	CharacterID int64
-}
-
-func (in Input) Subject() string { return fmt.Sprintf("char:%d", in.CharacterID) }
+type Input = feature.CharacterInput
 
 type part int
 

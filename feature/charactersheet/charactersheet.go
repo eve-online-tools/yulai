@@ -63,7 +63,7 @@ func newSheet(d feature.Deps, chars Characters) *Sheet {
 
 func (s *Sheet) tasks() []task.Binding {
 	return []task.Binding{
-		FetchCharacter.Bind(s, task.WithParameters(s.characters)),
+		FetchCharacter.Bind(s, task.WithParameters(feature.CharacterSeed(s.chars.IDs))),
 		FetchCorporation.Bind(s),
 		FetchAlliance.Bind(s),
 	}

@@ -4,7 +4,6 @@ import (
 	"context"
 	"database/sql"
 	"errors"
-	"fmt"
 	"io/fs"
 	"log/slog"
 	"net/http"
@@ -135,7 +134,7 @@ func New(ctx context.Context, cfg *Config, web fs.FS) (*App, error) {
 			return err
 		}
 		// Sync the character now instead of on the next tick, which can be an hour away.
-		task.Default.Refresh(fmt.Sprintf("char:%d", r.CharacterID))
+		task.Default.Refresh(feature.CharacterSubject(r.CharacterID))
 		return nil
 	})
 	if err != nil {
