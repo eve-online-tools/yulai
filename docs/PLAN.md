@@ -144,7 +144,8 @@ and queries are sqlc-generated (`sqlc_*.go`, `*_sqlc.go`) from each package's `q
 - Routes under `layout` get the sidebar shell. Routes directly under root sit in the frame only.
 - `/` redirects to `/welcome` while there are no characters, otherwise to `/overview`. `/welcome` has no shell
   and a horizontal stepper: add a character, synchronizing (until the character's tasks have all run once this
-  session and the SDE is installed), complete (redirects to `/overview`). Optional onboarding is the sidebar checklist in `components/getting-started`. Its items
+  session and the SDE is installed), complete (redirects to `/overview`). Optional onboarding is the sidebar
+  checklist in `components/getting-started`. Its items
   are derived from backend state; only skips and dismissal are kept, in `localStorage`.
 - Loaders call `queryClient.ensureQueryData` and components use `useSuspenseQuery`.
 - Bindings are generated as classes (`-ts`, no `-i`) and committed.
