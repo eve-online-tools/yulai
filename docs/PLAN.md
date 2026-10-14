@@ -166,7 +166,6 @@ field names and JSON tags so the bindings don't change. `sqlc.yaml` is added tog
 3. **Characters:** `character` queries, `Store`/`Remove`/`MarkNeedsLogin`, `EventChanged`.
 4. **Scheduler:** `core/task`, seeds and gates, `TaskService` per `docs/SCHEDULER.md`.
 5. **First real feature** using the recipe above.
-6. Done: delete `core/todo`.
 
 ## Open questions
 
