@@ -5,38 +5,6 @@
 // @ts-ignore: Unused imports
 import { Create as $Create } from "@wailsio/runtime";
 
-/**
- * FeatureInfo is what the frontend needs to show opt-in choices.
- */
-export class FeatureInfo {
-    "name": string;
-    "scopes": string[];
-
-    /** Creates a new FeatureInfo instance. */
-    constructor($$source: Partial<FeatureInfo> = {}) {
-        if (!("name" in $$source)) {
-            this["name"] = "";
-        }
-        if (!("scopes" in $$source)) {
-            this["scopes"] = [];
-        }
-
-        Object.assign(this, $$source);
-    }
-
-    /**
-     * Creates a new FeatureInfo instance from a string or object.
-     */
-    static createFrom($$source: any = {}): FeatureInfo {
-        const $$createField1_0 = $$createType0;
-        let $$parsedSource = typeof $$source === 'string' ? JSON.parse($$source) : $$source;
-        if ("scopes" in $$parsedSource) {
-            $$parsedSource["scopes"] = $$createField1_0($$parsedSource["scopes"]);
-        }
-        return new FeatureInfo($$parsedSource as Partial<FeatureInfo>);
-    }
-}
-
 export class ListRow {
     "id": number;
     "name": string;
@@ -89,6 +57,3 @@ export class ListRow {
         return new ListRow($$parsedSource as Partial<ListRow>);
     }
 }
-
-// Private type creation functions
-const $$createType0 = $Create.Array($Create.Any);

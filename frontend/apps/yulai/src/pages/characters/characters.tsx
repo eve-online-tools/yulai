@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { useMutation, useSuspenseQuery } from "@tanstack/react-query";
-import { Service as Characters } from "@bindings/github.com/eve-online-tools/yulai/feature/character";
-import type { FeatureInfo, ListRow as Character } from "@bindings/github.com/eve-online-tools/yulai/feature/character";
+import { Consent, type Feature } from "@bindings/github.com/eve-online-tools/yulai/identity/login";
+import { Service as Characters, type ListRow as Character } from "@bindings/github.com/eve-online-tools/yulai/feature/character";
 import { Alert, Button, ConfirmDialog, EmptyState, Icon, PageHead, Table, Tag, Tooltip } from "@xaroth.nl/design/react";
 import { Portrait, enabledFeatures } from "@yulai/ui";
 import { charactersQuery, featuresQuery } from "../../queries";
@@ -16,8 +16,8 @@ const columns = [
 export function CharactersPage() {
   const { data: characters } = useSuspenseQuery(charactersQuery);
   const { data: features } = useSuspenseQuery(featuresQuery);
-  const add = useMutation({ mutationFn: () => Characters.AddCharacter() });
-  const relogin = useMutation({ mutationFn: (id: number) => Characters.Relogin(id) });
+  const add = useMutation({ mutationFn: () => Consent.AddCharacter() });
+  const relogin = useMutation({ mutationFn: (id: number) => Consent.Relogin(id) });
   const now = useNow();
   const [removing, setRemoving] = useState<Character | null>(null);
 
@@ -48,7 +48,7 @@ export function CharactersPage() {
 
 function characterRow(
   c: Character,
-  features: FeatureInfo[],
+  features: Feature[],
   nowSec: number,
   onRelogin: (id: number) => void,
   onRemove: (c: Character) => void,

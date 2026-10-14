@@ -138,7 +138,7 @@ success).
    Persisted through a `PauseStore` (`MemoryPauses` until the sqlite store backs `task_pauses`), loaded at
    `Start`, checked at dispatch.
 8. **Status.** `List()` returns, per task and key: running, last run, last error, last skip reason, backoff
-   until, paused, queued. Changes call `Options.OnChange` (debounced 250ms); `SyncService` turns that into the
+   until, paused, queued. Changes call `Options.OnChange` (debounced 250ms); `app` turns that into the
    `task:changed` Wails event, so `core/task` does not import Wails.
 9. **Progress.** Opt-in with `WithProgress(key)`. A run emits `ProgressStart` when it starts executing,
    `ProgressUpdate` on `Report` (at most every 100ms) and `ProgressDone` (with the last progress and the error)
@@ -156,7 +156,7 @@ core/task/               engine, gates, pause store; owns task_pauses (the one t
 core/task/pool/          concurrency pools with priority for on-demand runs
 core/esi/                Pool, Timeout, ErrorLimit and Offline gates, Cached(resp)
 identity/token/          seeds over tokens, e.g. CharactersWithScope
-feature/sync/            Wails SyncService: List, Pause, Resume, Trigger(name, subject)
+app/tasks.go             Wails TaskService: List, Progress
 feature/<name>/
   feature.go             Feature: Name, Scopes, Tasks() []task.Binding
   db/                    sqlc output, imported by tasks and the feature

@@ -13,7 +13,7 @@ import { OverviewPage } from "./pages/overview";
 import { CharactersPage } from "./pages/characters";
 import { WelcomePage } from "./pages/welcome";
 import { SettingsPage } from "./pages/settings";
-import { charactersQuery, featuresQuery, presenceQuery, queryClient, setupQuery, syncJobsQuery } from "./queries";
+import { charactersQuery, featuresQuery, presenceQuery, queryClient, setupQuery, tasksQuery } from "./queries";
 
 // Hash history: Wails serves one index.html. Every page sits in the frame (title bar, window controls).
 const rootRoute = createRootRoute({ component: WindowFrame });
@@ -44,7 +44,7 @@ const welcomeRoute = createRoute({
     Promise.all([
       queryClient.ensureQueryData(setupQuery),
       queryClient.ensureQueryData(charactersQuery),
-      queryClient.ensureQueryData(syncJobsQuery),
+      queryClient.ensureQueryData(tasksQuery),
     ]),
   component: WelcomePage,
 });

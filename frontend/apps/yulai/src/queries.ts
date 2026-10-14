@@ -3,11 +3,11 @@ import { Events } from "@wailsio/runtime";
 import { Service as Characters } from "@bindings/github.com/eve-online-tools/yulai/feature/character";
 import { Service as ShipTree } from "@bindings/github.com/eve-online-tools/yulai/feature/shiptree";
 import { Service as Skills } from "@bindings/github.com/eve-online-tools/yulai/feature/skills";
-import { Service as Sync } from "@bindings/github.com/eve-online-tools/yulai/feature/sync";
 import { Service as SDE } from "@bindings/github.com/eve-online-tools/yulai/core/sde";
 import { Service as Presence } from "@bindings/github.com/eve-online-tools/yulai/feature/presence";
-import { ProgressService, SetupService as Setup } from "@bindings/github.com/eve-online-tools/yulai/app";
-import type { ProgressEvent } from "@bindings/github.com/eve-online-tools/yulai/core/task";
+import { Consent } from "@bindings/github.com/eve-online-tools/yulai/identity/login";
+import { SetupService as Setup, TaskService as Tasks } from "@bindings/github.com/eve-online-tools/yulai/app";
+import type { ProgressEvent, Status } from "@bindings/github.com/eve-online-tools/yulai/core/task";
 
 export const queryClient = new QueryClient({
   defaultOptions: {
@@ -19,7 +19,7 @@ export const queryClient = new QueryClient({
 export const keys = {
   characters: ["characters"] as const,
   features: ["features"] as const,
-  syncJobs: ["syncJobs"] as const,
+  tasks: ["tasks"] as const,
   setup: ["setup"] as const,
   sde: ["sde"] as const,
   map: ["map"] as const,
@@ -38,7 +38,7 @@ export const charactersQuery = queryOptions({
 
 export const featuresQuery = queryOptions({
   queryKey: keys.features,
-  queryFn: () => Characters.Features(),
+  queryFn: () => Consent.Features(),
   staleTime: Infinity,
 });
 
@@ -49,9 +49,10 @@ export const setupQuery = queryOptions({
   staleTime: Infinity,
 });
 
-export const syncJobsQuery = queryOptions({
-  queryKey: keys.syncJobs,
-  queryFn: () => Sync.List(),
+// Status per task and subject, seen this session. Character tasks use subject "char:<id>".
+export const tasksQuery = queryOptions({
+  queryKey: keys.tasks,
+  queryFn: () => Tasks.List(),
 });
 
 export const sdeQuery = queryOptions({
@@ -70,6 +71,11 @@ export const skillQueueQuery = (characterID: number) =>
     queryKey: keys.skillQueue(characterID),
     queryFn: () => Skills.Queue(characterID),
   });
+
+export const characterTasks = (tasks: Status[], characterID: number) => tasks.filter((t) => t.subject === `char:${characterID}`);
+
+// Go's zero time means the task has not run this session.
+export const hasRun = (t: Status) => !t.lastRun.startsWith("0001-");
 
 // Built from the SDE, so it only changes with it.
 export const shipTreeQuery = queryOptions({
@@ -95,7 +101,7 @@ export const presenceQuery = queryOptions({
 export const progressQuery = (key: string) =>
   queryOptions({
     queryKey: keys.progress(key),
-    queryFn: () => ProgressService.Get(key),
+    queryFn: () => Tasks.Progress(key),
     staleTime: Infinity,
   });
 
@@ -104,10 +110,9 @@ export function listenForBackendEvents() {
   Events.On("character:changed", () => {
     queryClient.invalidateQueries({ queryKey: keys.characters });
     queryClient.invalidateQueries({ queryKey: keys.presence });
-    queryClient.invalidateQueries({ queryKey: keys.syncJobs });
   });
-  Events.On("sync:jobs:changed", () => {
-    queryClient.invalidateQueries({ queryKey: keys.syncJobs });
+  Events.On("task:changed", () => {
+    queryClient.invalidateQueries({ queryKey: keys.tasks });
   });
   Events.On("skills:changed", () => {
     queryClient.invalidateQueries({ queryKey: keys.allSkills });

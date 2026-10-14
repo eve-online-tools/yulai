@@ -97,5 +97,69 @@ export class ProgressEvent {
     }
 }
 
+/**
+ * Status is one task and subject as the UI sees it. Times are zero when unset.
+ */
+export class Status {
+    "task": string;
+    "subject": string;
+    "pausable": boolean;
+    "paused": boolean;
+    "queued": boolean;
+    "running": boolean;
+    "lastRun": string;
+    "lastError": string;
+    "lastSkip": string;
+    "failures": number;
+    "backoffUntil": string;
+
+    /** Creates a new Status instance. */
+    constructor($$source: Partial<Status> = {}) {
+        if (!("task" in $$source)) {
+            this["task"] = "";
+        }
+        if (!("subject" in $$source)) {
+            this["subject"] = "";
+        }
+        if (!("pausable" in $$source)) {
+            this["pausable"] = false;
+        }
+        if (!("paused" in $$source)) {
+            this["paused"] = false;
+        }
+        if (!("queued" in $$source)) {
+            this["queued"] = false;
+        }
+        if (!("running" in $$source)) {
+            this["running"] = false;
+        }
+        if (!("lastRun" in $$source)) {
+            this["lastRun"] = "0001-01-01T00:00:00.000Z";
+        }
+        if (!("lastError" in $$source)) {
+            this["lastError"] = "";
+        }
+        if (!("lastSkip" in $$source)) {
+            this["lastSkip"] = "";
+        }
+        if (!("failures" in $$source)) {
+            this["failures"] = 0;
+        }
+        if (!("backoffUntil" in $$source)) {
+            this["backoffUntil"] = "0001-01-01T00:00:00.000Z";
+        }
+
+        Object.assign(this, $$source);
+    }
+
+    /**
+     * Creates a new Status instance from a string or object.
+     */
+    static createFrom($$source: any = {}): Status {
+        let $$parsedSource = typeof $$source === 'string' ? JSON.parse($$source) : $$source;
+        return new Status($$parsedSource as Partial<Status>);
+    }
+}
+
 // Private type creation functions
 const $$createType0 = Progress.createFrom;

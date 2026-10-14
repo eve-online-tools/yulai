@@ -9,36 +9,10 @@ import { Call as $Call, CancellablePromise as $CancellablePromise, Create as $Cr
 // @ts-ignore: Unused imports
 import * as $models from "./models.js";
 
-/**
- * AddCharacter opens the login server's feature picker in the system browser.
- * Completed logins arrive through Store and are reported through EventChanged.
- */
-export function AddCharacter(): $CancellablePromise<void> {
-    return $Call.ByID(1521250203);
-}
-
-/**
- * Features lists every opt-in feature and the scopes it needs. The frontend diffs
- * them against a character's token scopes to show what is enabled.
- */
-export function Features(): $CancellablePromise<$models.FeatureInfo[]> {
-    return $Call.ByID(1135145226).then(($result: any) => {
-        return $$createType1($result);
-    });
-}
-
 export function List(): $CancellablePromise<$models.ListRow[]> {
     return $Call.ByID(195734209).then(($result: any) => {
-        return $$createType3($result);
+        return $$createType1($result);
     });
-}
-
-/**
- * Relogin opens the feature picker with the character's current features checked,
- * to replace a token that stopped working.
- */
-export function Relogin(characterID: number): $CancellablePromise<void> {
-    return $Call.ByID(4067193629, characterID);
 }
 
 export function Remove(characterID: number): $CancellablePromise<void> {
@@ -46,7 +20,5 @@ export function Remove(characterID: number): $CancellablePromise<void> {
 }
 
 // Private type creation functions
-const $$createType0 = $models.FeatureInfo.createFrom;
+const $$createType0 = $models.ListRow.createFrom;
 const $$createType1 = $Create.Array($$createType0);
-const $$createType2 = $models.ListRow.createFrom;
-const $$createType3 = $Create.Array($$createType2);

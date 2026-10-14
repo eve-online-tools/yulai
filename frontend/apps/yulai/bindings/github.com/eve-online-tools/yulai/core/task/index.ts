@@ -3,5 +3,6 @@
 
 export {
     Progress,
-    ProgressEvent
+    ProgressEvent,
+    Status
 } from "./models.js";

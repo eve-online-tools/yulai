@@ -9,7 +9,7 @@ import (
 
 func TestWithTokenSkipsNeedsLogin(t *testing.T) {
 	ctx := context.Background()
-	s, _, _ := newTestService(t, pilot)
+	s, _ := newTestService(t, pilot)
 	if err := s.Store(ctx, result("esi-a.v1")); err != nil {
 		t.Fatal(err)
 	}
@@ -27,13 +27,13 @@ func TestWithTokenSkipsNeedsLogin(t *testing.T) {
 
 // Task options are validated at Bind and Register, which panic on mistakes.
 func TestTasksRegister(t *testing.T) {
-	s, _, _ := newTestService(t, pilot)
+	s, _ := newTestService(t, pilot)
 	task.NewScheduler(task.Options{}).Register(s.Tasks()...)
 }
 
 func TestWithScopes(t *testing.T) {
 	ctx := context.Background()
-	s, _, _ := newTestService(t, pilot)
+	s, _ := newTestService(t, pilot)
 	if err := s.Store(ctx, result("esi-a.v1", "esi-b.v1")); err != nil {
 		t.Fatal(err)
 	}
@@ -59,7 +59,7 @@ func (scoped) Tasks() []task.Binding { return nil }
 
 func TestSetAffiliation(t *testing.T) {
 	ctx := context.Background()
-	s, _, _ := newTestService(t, pilot)
+	s, _ := newTestService(t, pilot)
 	if err := s.Store(ctx, result()); err != nil {
 		t.Fatal(err)
 	}

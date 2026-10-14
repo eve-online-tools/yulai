@@ -126,7 +126,7 @@ func Report(ctx context.Context, p Progress)
   bar.
 - `Report` outside such a run does nothing, so progress is opt-in.
 - `app` forwards the three as `progress:start`, `progress:update` and `progress:done` Wails events carrying
-  `{key, subject, state, progress, error}`. `ProgressService.Get(key)` returns the current progress for a UI that
+  `{key, subject, state, progress, error}`. `TaskService.Progress(key)` returns the current progress for a UI that
   opens mid-run.
 
 `Update` reports one deterministic bar for the whole run: `Done / Total` is the overall fraction, scaled to

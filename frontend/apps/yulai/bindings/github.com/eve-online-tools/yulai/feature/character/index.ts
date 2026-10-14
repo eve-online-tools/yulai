@@ -7,6 +7,5 @@ export {
 };
 
 export {
-    FeatureInfo,
     ListRow
 } from "./models.js";
