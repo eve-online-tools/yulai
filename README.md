@@ -67,10 +67,15 @@ identity/       who you are and your tokens
   token/        tokens table, encrypted refresh tokens, RefreshableToken for ESI
 feature/        feature.go: Feature and Deps. One subpackage per feature
   character/    characters table, list, remove, needs-login
+  charactersheet/  public character, corporation and alliance details
+  presence/     online state, location and ship
+  skills/       attributes, skills and skill queue
+  shiptree/     ship tree data from the SDE
+  starmap/      map data from the SDE
 frontend/       pnpm workspaces, Vite + React
   apps/yulai/   the Wails app (TanStack Router/Query), builds to frontend/dist/yulai
     bindings/   generated Wails bindings, imported as @bindings/...
   apps/webserver/  loopback server pages (login), builds to frontend/dist/webserver
   packages/ui/  @yulai/ui: shared styles and components, no Wails imports
-docs/           PLAN.md, SCHEDULER.md, SDE.md, DESIGN.md
+docs/           PLAN.md (architecture), CONVENTIONS.md, SCHEDULER.md, SDE.md, DESIGN.md
 ```
