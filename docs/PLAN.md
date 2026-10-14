@@ -36,6 +36,7 @@ How Yulai is put together and where features plug in. The architecture comes fro
 | `feature/charactersheet` | Always on. `character_sheets`, `corporations`, `alliances` |
 | `feature/presence`       | `presence_online`, `presence_locations`, `presence_ships`, paced by online state |
 | `feature/skills`         | `character_attributes`, `skill_totals`, `skills`, `skill_queue`, every 5 minutes |
+| `feature/freelance`      | Public freelance jobs (cursor crawl), each character's jobs and participation, every 5 minutes |
 | `feature/shiptree`       | Ship tree tables derived from the SDE |
 | `feature/starmap`        | Known space derived from the SDE, for the map |
 | `frontend`               | pnpm workspaces: `apps/yulai` (router, queries, pages), `apps/webserver`, `packages/ui` |
@@ -110,8 +111,24 @@ Scheduling is not persisted (`00005_drop_task_pauses` removes the old pause tabl
 
 Each feature adds its own tables in a new migration: `00002_presence` (`presence_online`,
 `presence_locations`, `presence_ships`), `00003_charactersheet` (`character_sheets`, `corporations`,
-`alliances`), `00004_skills` (`character_attributes`, `skill_totals`, `skills`, `skill_queue`). Row types
+`alliances`), `00004_skills` (`character_attributes`, `skill_totals`, `skills`, `skill_queue`), `00006_freelance`
+(`freelance_jobs`, `freelance_cursors`, `character_freelance_jobs`, `character_freelance_participation`). Row types
 and queries are sqlc-generated (`sqlc_*.go`, `*_sqlc.go`) from each package's `queries.sql`.
+
+## Cursor-paginated listings
+
+Routes added under compatibility dates page with opaque `before`/`after` cursors instead of `X-Pages`.
+`feature/freelance` crawls `/freelance-jobs` this way:
+
+1. First run: request without a cursor, keep its `after`, then follow `before` until an empty page.
+2. Later runs: follow `after` from the saved token until an empty page. Only changed records come back.
+3. Each page and the cursor after it are written in one transaction, so a crawl cut short by an error or
+   its timeout resumes at the next page. Each page that changed rows emits `data:changed` on its own, so the
+   frontend fills in while a long backfill runs.
+4. Records repeat across pages when they change mid-crawl. The copy with the later `last_modified` wins.
+
+Cursors live in `freelance_cursors`, keyed by listing. lib-esi-go cannot encode the pointer query fields of
+its generated inputs, so the feature declares the request with `request.Create` and value fields.
 
 ## Adding a feature (the extension point)
 
