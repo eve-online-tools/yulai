@@ -1,7 +1,7 @@
-# Yulai application framework plan
+# Yulai architecture
 
-Yulai follows the architecture proven in asset-manager's `poc` branch. This document is the
-plan for the framework and where features plug in.
+How Yulai is put together and where features plug in. The architecture comes from asset-manager's
+`poc` branch.
 
 ## Principles
 
@@ -18,30 +18,27 @@ plan for the framework and where features plug in.
 
 ## Layers
 
-| Package            | Responsibility                                                     | Skeleton state |
-|--------------------|--------------------------------------------------------------------|----------------|
-| `main.go`          | Load config, build `app.App`, create the Wails app and main window | done           |
-| `app`              | Config, wiring, event registration                                 | done           |
-| `core/db`          | sqlite (modernc, pure Go), WAL, single writer, goose migrations   | done           |
-| `core/esi`         | lib-esi-go transport, rate limit + disk cache middleware, `Check`/`Fetch`/`ExpiresAt` | ported (tested) |
-| `core/keyring`     | `Store` interface, OS impl via zalando/go-keyring                  | done           |
-| `core/crypt`       | AES-GCM `Sealer`, master key in keyring                            | done (tested)  |
-| `identity/sso`     | Discovery, PKCE, exchange, refresh (`ErrInvalidGrant`), JWT verify | ported         |
-| `identity/login`   | Permanent loopback server: feature picker, SSO redirect, callback  | done (tested)   |
-| `identity/token`   | `tokens` table, sealed refresh tokens, `For()` → `RefreshableToken`| ported         |
-| `feature`          | `Feature` (ID, name, scopes, tasks, services), `Deps`, `Covers()`  | done (tested) |
-| `feature/character`| `characters` table, list, remove, needs-login                      | done (tested) |
-| `feature/presence` | `presence_online`, `presence_locations`, `presence_ships`. Paced by online state | sync done (tested), no UI yet |
-| `feature/charactersheet`| Always on, no scopes. `character_sheets`, `corporations`, `alliances` | sync done (tested), no UI yet |
-| `feature/skills`   | `character_attributes`, `skill_totals`, `skills`, `skill_queue`. Every 5 minutes | sync done (tested), no UI yet |
-| `feature/shiptree` | Ship tree tables derived from the SDE                              | done (tested)  |
-| `feature/starmap`  | Known space derived from the SDE, for the map                      | done (tested)  |
-| `core/task`        | Generic in-memory scheduler, `task_pauses` table (see SCHEDULER.md) | engine done (tested), not wired |
-| `core/sde`         | Static Data Export in its own `sde.sqlite`, checked hourly (see SDE.md) | planned |
-| `frontend`         | pnpm workspaces: `apps/yulai` (router, query layer, events, pages), `packages/ui` | done, renders stub data |
-
-The asset-manager `poc` implementations are the reference for every stub. Port each one and
-replace the asset-manager module path and `github.com/xaroth/lib-esi-go` with the paths below.
+| Package                  | Responsibility |
+|--------------------------|----------------|
+| `main.go`                | Load config, build `app.App`, create the Wails app and main window |
+| `app`                    | Config, the feature list, Wails services and events (`SetupService`, `TaskService`) |
+| `core/db`                | sqlite (modernc, pure Go), WAL, single writer, goose migrations |
+| `core/esi`               | lib-esi-go transport with rate limit and disk cache middleware, `ResponseError`, `ExpiresAt` |
+| `core/keyring`           | `Store` interface, OS impl via zalando/go-keyring |
+| `core/crypt`             | AES-GCM `Sealer`, master key in keyring |
+| `core/task`              | In-memory scheduler: interval, startup and on-demand tasks (see SCHEDULER.md) |
+| `core/sde`               | Static Data Export in its own `sde.sqlite`, checked hourly (see SDE.md) |
+| `identity/sso`           | Discovery, PKCE, exchange, refresh (`ErrInvalidGrant`), JWT verify |
+| `identity/login`         | Loopback server (feature picker, SSO redirect, callback) and `ConsentService` |
+| `identity/token`         | `tokens` table, sealed refresh tokens, `For()` → `RefreshableToken` |
+| `feature`                | `Feature`, `Deps`, `CharacterInput` and seeds, `Covers()` |
+| `feature/character`      | `characters` table, list, remove, needs-login, token refresh |
+| `feature/charactersheet` | Always on. `character_sheets`, `corporations`, `alliances` |
+| `feature/presence`       | `presence_online`, `presence_locations`, `presence_ships`, paced by online state |
+| `feature/skills`         | `character_attributes`, `skill_totals`, `skills`, `skill_queue`, every 5 minutes |
+| `feature/shiptree`       | Ship tree tables derived from the SDE |
+| `feature/starmap`        | Known space derived from the SDE, for the map |
+| `frontend`               | pnpm workspaces: `apps/yulai` (router, queries, pages), `apps/webserver`, `packages/ui` |
 
 ## Boot sequence
 
@@ -51,11 +48,13 @@ replace the asset-manager module path and `github.com/xaroth/lib-esi-go` with th
 2. `app.New()`:
    1. `db.Open(DBPath)` runs migrations.
    2. `crypt.Open(keyring.OS{Service: "eve-online-tools/yulai", User: "master-key"})`
-   3. SSO client → verifier → login flow → token store → ESI client
-   4. Token store (dead tokens → `Characters.MarkNeedsLogin`), ESI client, character service, scheduler.
-   5. `feature.Deps`, then the `[]feature.Feature` list. Every feature's tasks are registered; those with
-      scopes go on the picker, in list order.
-   6. Login server (`login.New`), handler `Characters.Store` then `Scheduler.Refresh` for the character.
+   3. SSO client and verifier, `sde.Open` (`sde.sqlite` in the data dir).
+   4. Token store (dead tokens → `Characters.MarkNeedsLogin`), ESI client, character service, scheduler,
+      SDE updater.
+   5. `feature.Deps`, then the `[]feature.Feature` list (`sde` first, then the feature packages). Every
+      feature's tasks are registered; those with scopes go on the picker, in list order.
+   6. Login server (`login.New`), whose handler calls `Characters.Store` then `Scheduler.Refresh` for the
+      character.
 3. Wails app with `a.Services()`, single-instance, and the main window. A second launch exits
    here and focuses the first.
 4. `a.Start(ctx)` binds the login port (busy port is fatal) and starts the scheduler goroutine.
@@ -74,8 +73,8 @@ in `identity/login` runs for the whole app lifetime.
 4. `GET /callback` matches `state` to the attempt, exchanges the code, verifies the JWT, hands the
    result to the character service, then redirects to `/done`. The redirect keeps a reload from
    replaying a used code.
-5. `/done` names the character and links back to `/` to add another. It notes that EVE SSO
-   remembers the account, so adding a character from another account needs an SSO logout first.
+5. `/done` names the character and offers "Add another character", which posts the previous feature
+   choice straight to `/start`.
 
 Rules:
 
@@ -98,9 +97,9 @@ Rules:
   `/.well-known/openid-configuration`: authorize and token endpoints, `jwks_uri` for signature
   keys, and `issuer`, which must equal the configured one and is what `iss` is validated against.
 
-## Data model (first migration, `core/db/migrations/00001_init.sql`)
+## Data model (`core/db/migrations`)
 
-Ported from asset-manager, minus `presence`:
+`00001_init`:
 
 - `characters`: id, name, owner_hash, corporation_id, alliance_id, account_label,
   status (`ok` | `needs_login`), status_error, added_at, updated_at
@@ -108,10 +107,10 @@ Ported from asset-manager, minus `presence`:
   scopes (space separated `scp`), issued_at (`iat`)
 - `task_pauses`: (kind, value) PK. kind is `task` or `subject`. Scheduling itself is not persisted, see `docs/SCHEDULER.md`.
 
-Each feature then adds its own tables in a new migration (`00002_presence.sql`: `presence_online`, `presence_locations`, `presence_ships`, `00003_charactersheet.sql`: `character_sheets`, `corporations`, `alliances`). Once a table exists, the hand-written
-`ListRow` / `SyncJob` structs are replaced by sqlc-generated ones (`sqlc_*.go`, `*_sqlc.go`). Keep the
-field names and JSON tags so the bindings don't change. `sqlc.yaml` is added together with the first
-`queries.sql` (copy asset-manager's anchor-based layout).
+Each feature adds its own tables in a new migration: `00002_presence` (`presence_online`,
+`presence_locations`, `presence_ships`), `00003_charactersheet` (`character_sheets`, `corporations`,
+`alliances`), `00004_skills` (`character_attributes`, `skill_totals`, `skills`, `skill_queue`). Row types
+and queries are sqlc-generated (`sqlc_*.go`, `*_sqlc.go`) from each package's `queries.sql`.
 
 ## Adding a feature (the extension point)
 
@@ -143,9 +142,10 @@ field names and JSON tags so the bindings don't change. `sqlc.yaml` is added tog
   Wails version in `go.mod`.
 - Hash history, so secondary windows open at `/#/<route>`.
 - Routes under `layout` get the sidebar shell. Routes directly under root sit in the frame only.
-- `/` redirects to `/welcome` while there are no characters. It has no shell and a horizontal stepper:
-  add a character, synchronizing (until the character's tasks have all run once this session), complete (redirects
-  to `/characters`). Optional onboarding is the sidebar checklist in `components/getting-started`. Its items
+- `/` redirects to `/welcome` while there are no characters, otherwise to `/overview`. `/welcome` has no shell
+  and a horizontal stepper: add a character, synchronizing (until the character's tasks have all run once this
+  session and the SDE is installed), complete (redirects to `/overview`). Optional onboarding is the sidebar
+  checklist in `components/getting-started`. Its items
   are derived from backend state; only skips and dismissal are kept, in `localStorage`.
 - Loaders call `queryClient.ensureQueryData` and components use `useSuspenseQuery`.
 - Bindings are generated as classes (`-ts`, no `-i`) and committed.
@@ -165,18 +165,9 @@ field names and JSON tags so the bindings don't change. `sqlc.yaml` is added tog
 - Imports in use: the root package (`CompatibilityDate`), `transport`, `request`, `middleware/authentication`,
   `middleware/cache`, `middleware/ratelimiting{,/memory}` and the generated `esi/*` endpoints.
 
-## Milestones
-
-1. **Infrastructure:** `core/db` + first migration, `core/keyring`, `core/crypt`, `core/esi` (port and test).
-   Uncomment `db.Open` in `app.New`.
-2. **Identity:** `identity/sso`, `identity/login`, `identity/token`, sqlc for `tokens`.
-3. **Characters:** `character` queries, `Store`/`Remove`/`MarkNeedsLogin`, change events.
-4. **Scheduler:** `core/task`, seeds and gates, `TaskService` per `docs/SCHEDULER.md`.
-5. **First real feature** using the recipe above.
-
 ## Open questions
 
-- **What Yulai's features are.** That decides scopes, tables and pages beyond the shell.
+- **Further features.** Which features come next decides new scopes, tables and pages.
 - **Shared module.** `core/*`, `identity/*` and `feature` are app-agnostic and would be
   duplicated with asset-manager. They could be extracted into a shared `eve-online-tools/*` module once both
   apps have stabilised them. Until then, port by copy.
