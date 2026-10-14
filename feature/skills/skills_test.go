@@ -158,6 +158,36 @@ func TestListsReplaced(t *testing.T) {
 	}
 }
 
+func TestServiceGetters(t *testing.T) {
+	ctx := context.Background()
+	f, _, _ := newTestFeature(t, fakeESI{"/attributes": attributesBody, "/skills": skillsBody})
+	s := &Service{q: f.q}
+
+	attrs, err := s.Attributes(ctx, pilot)
+	if err != nil || attrs != nil {
+		t.Fatalf("attributes before fetch = %+v, %v", attrs, err)
+	}
+	totals, err := s.Totals(ctx, pilot)
+	if err != nil || totals != nil {
+		t.Fatalf("totals before fetch = %+v, %v", totals, err)
+	}
+
+	if _, err := f.attributes(ctx, Input{CharacterID: pilot}); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := f.skills(ctx, Input{CharacterID: pilot}); err != nil {
+		t.Fatal(err)
+	}
+	attrs, err = s.Attributes(ctx, pilot)
+	if err != nil || attrs == nil || attrs.Intelligence != 24 {
+		t.Fatalf("attributes = %+v, %v", attrs, err)
+	}
+	totals, err = s.Totals(ctx, pilot)
+	if err != nil || totals == nil || totals.TotalSp != 5000000 {
+		t.Fatalf("totals = %+v, %v", totals, err)
+	}
+}
+
 // Task options are validated at Bind and Register, which panic on mistakes.
 func TestTasksRegister(t *testing.T) {
 	_, conn, _ := newTestFeature(t, fakeESI{})

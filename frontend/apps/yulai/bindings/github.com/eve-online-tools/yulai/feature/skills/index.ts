@@ -7,6 +7,8 @@ export {
 };
 
 export {
+    CharacterAttribute,
     Skill,
-    SkillQueue
+    SkillQueue,
+    SkillTotal
 } from "./models.js";

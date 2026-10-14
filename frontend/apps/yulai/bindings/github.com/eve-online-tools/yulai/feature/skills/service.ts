@@ -15,11 +15,20 @@ import { Call as $Call, CancellablePromise as $CancellablePromise, Create as $Cr
 import * as $models from "./models.js";
 
 /**
+ * Attributes returns the character's attributes, nil before the first fetch.
+ */
+export function Attributes(characterID: number): $CancellablePromise<$models.CharacterAttribute | null> {
+    return $Call.ByID(2125985097, characterID).then(($result: any) => {
+        return $$createType1($result);
+    });
+}
+
+/**
  * List returns the character's trained skills, empty before the first fetch.
  */
 export function List(characterID: number): $CancellablePromise<$models.Skill[]> {
     return $Call.ByID(4096199240, characterID).then(($result: any) => {
-        return $$createType1($result);
+        return $$createType3($result);
     });
 }
 
@@ -28,12 +37,25 @@ export function List(characterID: number): $CancellablePromise<$models.Skill[]> 
  */
 export function Queue(characterID: number): $CancellablePromise<$models.SkillQueue[]> {
     return $Call.ByID(4006968111, characterID).then(($result: any) => {
-        return $$createType3($result);
+        return $$createType5($result);
+    });
+}
+
+/**
+ * Totals returns the character's total and unallocated SP, nil before the first fetch.
+ */
+export function Totals(characterID: number): $CancellablePromise<$models.SkillTotal | null> {
+    return $Call.ByID(2213051211, characterID).then(($result: any) => {
+        return $$createType7($result);
     });
 }
 
 // Private type creation functions
-const $$createType0 = $models.Skill.createFrom;
-const $$createType1 = $Create.Array($$createType0);
-const $$createType2 = $models.SkillQueue.createFrom;
+const $$createType0 = $models.CharacterAttribute.createFrom;
+const $$createType1 = $Create.Nullable($$createType0);
+const $$createType2 = $models.Skill.createFrom;
 const $$createType3 = $Create.Array($$createType2);
+const $$createType4 = $models.SkillQueue.createFrom;
+const $$createType5 = $Create.Array($$createType4);
+const $$createType6 = $models.SkillTotal.createFrom;
+const $$createType7 = $Create.Nullable($$createType6);
