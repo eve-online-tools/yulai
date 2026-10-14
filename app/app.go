@@ -52,6 +52,7 @@ type App struct {
 	conn     *sql.DB
 	sde      *sde.Store
 	tokens   *token.Store
+	tasks    *task.Scheduler
 	features []feature.Feature
 	cancel   context.CancelFunc
 	// done closes when the task scheduler has drained its in-flight runs.
@@ -87,7 +88,7 @@ func New(ctx context.Context, cfg *Config, web fs.FS) (*App, error) {
 	esiClient := esi.NewClient(cfg.SSO.Name, cfg.SSO.Description, cfg.CachePath())
 	app.Characters = character.NewService(conn, emitter{}, app.tokens, esiClient)
 
-	task.Default = task.NewScheduler(task.Options{
+	app.tasks = task.NewScheduler(task.Options{
 		Workers:  taskWorkers,
 		OnChange: func() { emitter{}.Changed(TopicTasks) },
 		OnProgress: func(ev task.ProgressEvent) {
@@ -110,7 +111,7 @@ func New(ctx context.Context, cfg *Config, web fs.FS) (*App, error) {
 		{
 			ID:       "sde",
 			Tasks:    updater.Tasks(),
-			Services: []application.Service{application.NewService(sde.NewService(updater, task.Default.List))},
+			Services: []application.Service{application.NewService(sde.NewService(updater, app.tasks))},
 		},
 		character.Feature(app.Characters),
 		charactersheet.Feature(d, app.Characters),
@@ -122,7 +123,7 @@ func New(ctx context.Context, cfg *Config, web fs.FS) (*App, error) {
 
 	var picker []login.Feature
 	for _, f := range app.features {
-		task.Default.Register(f.Tasks...)
+		app.tasks.Register(f.Tasks...)
 		if len(f.Scopes) > 0 {
 			picker = append(picker, login.Feature{ID: f.ID, Name: f.Name, Scopes: f.Scopes})
 		}
@@ -132,7 +133,7 @@ func New(ctx context.Context, cfg *Config, web fs.FS) (*App, error) {
 			return err
 		}
 		// Sync the character now instead of on the next tick, which can be an hour away.
-		task.Default.Refresh(feature.CharacterSubject(r.CharacterID))
+		app.tasks.Refresh(feature.CharacterSubject(r.CharacterID))
 		return nil
 	})
 	if err != nil {
@@ -153,7 +154,7 @@ func (a *App) Start(ctx context.Context) error {
 	a.done = make(chan struct{})
 	go func() {
 		defer close(a.done)
-		if err := task.Default.Start(ctx); err != nil {
+		if err := a.tasks.Start(ctx); err != nil {
 			slog.Error("task scheduler", "err", err)
 		}
 	}()
@@ -164,7 +165,7 @@ func (a *App) Services() []application.Service {
 	out := []application.Service{
 		application.NewService(login.NewConsent(a.Login, browser{}, a.tokens)),
 		application.NewService(newSetupService(a.Config, a.Login.URL())),
-		application.NewService(&TaskService{s: task.Default}),
+		application.NewService(&TaskService{s: a.tasks}),
 	}
 	for _, f := range a.features {
 		out = append(out, f.Services...)

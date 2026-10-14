@@ -66,7 +66,6 @@ getlocation "github.com/eve-online-tools/lib-esi-go/esi/getcharacterscharacterid
 - A task returns a pointer to what it fetched and stored, normally the row from an
   `Upsert ... RETURNING *` query: `return nil, err` on failure, `return &row, nil` on success. A run
   triggered on demand (`Run`) then gets the data, not `struct{}`.
-- `task.Pausable` is for user-facing units only. Do not make the sub-tasks of a feature pausable.
 - One file per ESI endpoint in the feature package, holding its input type, task var and run method.
   Shared state, seeds and wiring go in `<feature>.go`.
 - Fan-out is `Task.Queue` from inside a run. Dedupe in the receiver when many inputs share one target.

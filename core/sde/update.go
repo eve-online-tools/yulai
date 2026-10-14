@@ -72,7 +72,6 @@ var Check = task.New((*Updater).Check,
 	task.WithStartup(),
 	task.WithInterval(time.Hour),
 	task.WithTimeout(time.Minute),
-	task.Pausable("sde.check"),
 )
 
 // Check reads the latest build and queues Update when it is not installed.

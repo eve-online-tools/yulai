@@ -1,4 +1,4 @@
-package pool
+package task
 
 import (
 	"context"
@@ -9,20 +9,20 @@ import (
 
 func TestPriorityServedFirst(t *testing.T) {
 	synctest.Test(t, func(t *testing.T) {
-		p := Create(1)
+		p := newPool(1)
 		ctx := t.Context()
-		if err := p.Acquire(ctx, false); err != nil {
+		if err := p.acquire(ctx, false); err != nil {
 			t.Fatal(err)
 		}
 
 		var order []string
 		done := make(chan struct{}, 2)
 		wait := func(name string, prio bool) {
-			if err := p.Acquire(ctx, prio); err != nil {
+			if err := p.acquire(ctx, prio); err != nil {
 				t.Error(err)
 			}
 			order = append(order, name)
-			p.Release()
+			p.release()
 			done <- struct{}{}
 		}
 		go wait("low", false)
@@ -30,7 +30,7 @@ func TestPriorityServedFirst(t *testing.T) {
 		go wait("high", true)
 		synctest.Wait()
 
-		p.Release()
+		p.release()
 		<-done
 		<-done
 		if len(order) != 2 || order[0] != "high" {
@@ -41,13 +41,13 @@ func TestPriorityServedFirst(t *testing.T) {
 
 func TestAcquireCancelled(t *testing.T) {
 	synctest.Test(t, func(t *testing.T) {
-		p := Create(1)
-		if err := p.Acquire(t.Context(), false); err != nil {
+		p := newPool(1)
+		if err := p.acquire(t.Context(), false); err != nil {
 			t.Fatal(err)
 		}
 		ctx, cancel := context.WithCancel(t.Context())
 		errc := make(chan error)
-		go func() { errc <- p.Acquire(ctx, false) }()
+		go func() { errc <- p.acquire(ctx, false) }()
 		synctest.Wait()
 		cancel()
 		if err := <-errc; !errors.Is(err, context.Canceled) {
@@ -55,8 +55,8 @@ func TestAcquireCancelled(t *testing.T) {
 		}
 
 		// The cancelled waiter must not have kept a slot.
-		p.Release()
-		if err := p.Acquire(t.Context(), false); err != nil {
+		p.release()
+		if err := p.acquire(t.Context(), false); err != nil {
 			t.Fatal(err)
 		}
 	})

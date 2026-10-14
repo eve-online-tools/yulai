@@ -21,13 +21,13 @@ type Status struct {
 
 // Service is the Wails-facing side of the updater.
 type Service struct {
-	u    *Updater
-	list func() []task.Status
+	u *Updater
+	s *task.Scheduler
 }
 
-// list returns the scheduler's task statuses, e.g. task.Default.List.
-func NewService(u *Updater, list func() []task.Status) *Service {
-	return &Service{u: u, list: list}
+// s is the scheduler the updater's tasks are registered with.
+func NewService(u *Updater, s *task.Scheduler) *Service {
+	return &Service{u: u, s: s}
 }
 
 func (s *Service) ServiceName() string { return "SDEService" }
@@ -40,7 +40,7 @@ func (s *Service) Status() Status {
 	if b := s.u.Latest(); b != nil {
 		out.Latest = b.Number
 	}
-	for _, st := range s.list() {
+	for _, st := range s.s.List() {
 		switch st.Task {
 		case Check.Name():
 			out.LastCheck = st.LastRun
@@ -58,5 +58,5 @@ func (s *Service) Status() Status {
 
 // CheckNow runs a check, which queues an update when one is due.
 func (s *Service) CheckNow(ctx context.Context) error {
-	return Check.Queue(ctx, struct{}{})
+	return Check.On(s.s).Queue(ctx, struct{}{})
 }

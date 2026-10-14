@@ -66,8 +66,7 @@ Files not in the schema are skipped. Regenerating against a newer SDE picks up s
 
 `sde.Store` holds the open database (`query_only`) behind a read/write lock.
 `Store.Read(ctx, fn)` runs `fn` with the sqlc `*Queries` under the read lock, so a swap never closes a database
-mid-query. Before the first install it returns `sde.ErrNotInstalled`; `sde.Installed` is a `task.Condition` for
-tasks that need static data. Queries go in `core/sde/queries.sql`, with an `sqlc.yaml` entry over
+mid-query. Before the first install it returns `sde.ErrNotInstalled`. Queries go in `core/sde/queries.sql`, with an `sqlc.yaml` entry over
 `core/sde/schema.sql`.
 
 Data derived from several queries, like a tool's lookup tables, is an `sde.Derived[T]`: built once per install
@@ -84,9 +83,6 @@ install, so the first `Get` normally finds it ready.
 |---|---|---|
 | `Check` | startup, every hour | GET `latest.jsonl` with the last ETag. Queues `Update` when the build differs from `meta.build` or `meta.schema` differs from the compiled schema |
 | `Update` | on demand, 30 min timeout | Downloads the zip, builds `sde.sqlite.tmp` from it, swaps it in, sends the `sde` topic |
-
-`Check` is `Pausable("sde.check")`; pausing it stops automatic updates. `Update` has no schedule, so it is not
-pausable.
 
 `Update` phases:
 

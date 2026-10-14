@@ -103,8 +103,6 @@ export class ProgressEvent {
 export class Status {
     "task": string;
     "subject": string;
-    "pausable": boolean;
-    "paused": boolean;
     "queued": boolean;
     "running": boolean;
     "lastRun": string;
@@ -120,12 +118,6 @@ export class Status {
         }
         if (!("subject" in $$source)) {
             this["subject"] = "";
-        }
-        if (!("pausable" in $$source)) {
-            this["pausable"] = false;
-        }
-        if (!("paused" in $$source)) {
-            this["paused"] = false;
         }
         if (!("queued" in $$source)) {
             this["queued"] = false;
