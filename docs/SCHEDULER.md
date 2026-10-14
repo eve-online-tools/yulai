@@ -51,7 +51,7 @@ type Condition interface {
 
 type Seed[I any] func(ctx context.Context) ([]I, error)
 
-// run is a method expression, e.g. (*Wallet).Balance. R, I and O are inferred from it.
+// run is a method expression, e.g. (*Wallet).balance. R, I and O are inferred from it.
 func New[R, I, O any](run func(R, context.Context, I) (O, error), opts ...Option) *Task[R, I, O]
 
 func (t *Task[R, I, O]) Bind(r R, opts ...Option) Binding         // r is the receiver; runtime-dependent options allowed
@@ -75,7 +75,7 @@ func (s *Scheduler) Refresh(subject string) // run every seed now, dispatch that
 func Report(ctx context.Context, p Progress) // Phase, Item, Done, Total (0: unknown)
 ```
 
-Go only allows a variadic parameter last, so the method comes first: `task.New((*Wallet).Balance, opts...)`.
+Go only allows a variadic parameter last, so the method comes first: `task.New((*Wallet).balance, opts...)`.
 
 ### Options
 
@@ -101,7 +101,7 @@ Without `WithInterval` and `WithStartup` a task is on-demand only. Without `With
 runs once with the zero input.
 
 Tasks without `Pausable` are anonymous. Logs and the status list name them after the method
-(`wallet/tasks.(*Wallet).Journal`). Subject pauses still apply to them.
+(`feature/wallet.(*Wallet).journal`). Subject pauses still apply to them.
 
 ### Gates
 
@@ -183,7 +183,7 @@ hook `app.New` wires to `character.MarkNeedsLogin`.
 
 ## Examples
 
-Scheduled per character, `feature/wallet/wallet.go`:
+Scheduled per character, a hypothetical `feature/wallet/wallet.go`:
 
 ```go
 package wallet
@@ -314,9 +314,9 @@ func TestBalance(t *testing.T) {
 	t.Parallel()
 	synctest.Test(t, func(t *testing.T) {
 		s := task.NewScheduler(task.Options{})
-		s.Register(tasks.Balance.Bind(&tasks.Wallet{DB: testdb(t), ESI: fakeESI(t), Tokens: fakeTokens(t)}))
+		s.Register(Balance.Bind(&Wallet{q: New(testdb(t)), esi: fakeESI(t), tokens: fakeTokens{}}))
 
-		b, err := tasks.Balance.On(s).Run(t.Context(), tasks.Input{CharacterID: 123})
+		b, err := Balance.On(s).Run(t.Context(), Input{CharacterID: 123})
 		// or: ctx := task.WithScheduler(t.Context(), s); svc.Refresh(ctx, 123); synctest.Wait()
 	})
 }

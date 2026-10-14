@@ -41,14 +41,15 @@ type Skills struct {
 
 func Feature(d feature.Deps) feature.Feature {
 	f := newSkills(d)
+	seed := task.WithParameters(feature.ScopeSeed(d.Characters, scopes...))
 	return feature.Feature{
 		ID:     "skills",
 		Name:   "Skill Management",
 		Scopes: scopes,
 		Tasks: []task.Binding{
-			FetchAttributes.Bind(f, task.WithParameters(feature.ScopeSeed(d.Characters, scopes...))),
-			FetchSkills.Bind(f, task.WithParameters(feature.ScopeSeed(d.Characters, scopes...))),
-			FetchQueue.Bind(f, task.WithParameters(feature.ScopeSeed(d.Characters, scopes...))),
+			FetchAttributes.Bind(f, seed),
+			FetchSkills.Bind(f, seed),
+			FetchQueue.Bind(f, seed),
 		},
 		Services: []application.Service{
 			application.NewService(&Service{q: f.q}),

@@ -47,6 +47,9 @@ func TestCharacterSeedError(t *testing.T) {
 }
 
 func TestSubject(t *testing.T) {
+	if CharacterSubject(90000001) != (CharacterInput{CharacterID: 90000001}).Subject() {
+		t.Error("CharacterSubject and Subject disagree")
+	}
 	if got := (CharacterInput{CharacterID: 90000001}).Subject(); got != "char:90000001" {
 		t.Errorf("Subject = %q", got)
 	}
