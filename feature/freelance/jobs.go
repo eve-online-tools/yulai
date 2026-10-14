@@ -94,7 +94,8 @@ func (f *Freelance) jobs(ctx context.Context, in ListingInput) (*Crawl, error) {
 		cur = next
 	}
 
-	for {
+	// Without an after token there is nothing to follow; the next run starts over.
+	for cur.AfterToken != nil {
 		task.Report(ctx, task.Progress{Phase: "update", Done: int64(crawl.Pages)})
 		data, err := f.jobsPage(ctx, &jobsInput{After: *cur.AfterToken})
 		if err != nil {

@@ -243,6 +243,19 @@ func TestCrawlResumes(t *testing.T) {
 	}
 }
 
+func TestCrawlWithoutCursor(t *testing.T) {
+	f, esi, _, ctx := newTestFeature(t)
+	esi.set("/freelance-jobs", `{"freelance_jobs":[]}`)
+
+	crawl, err := FetchJobs.Run(ctx, ListingInput{})
+	if err != nil || crawl.Pages != 1 {
+		t.Fatalf("crawl = %+v, %v", crawl, err)
+	}
+	if c := cursor(t, f); c.AfterToken != nil || c.BeforeToken != nil {
+		t.Fatalf("cursor = %+v", c)
+	}
+}
+
 func waitFor(t *testing.T, cond func() bool) {
 	t.Helper()
 	deadline := time.Now().Add(5 * time.Second)
