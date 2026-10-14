@@ -158,7 +158,7 @@ success).
 core/task/               engine, gates, pause store; owns task_pauses (the one table in core)
 core/task/pool/          concurrency pools with priority for on-demand runs
 core/esi/                Pool, Timeout, ErrorLimit and Offline gates, Cached(resp)
-identity/token/          seeds over tokens, e.g. CharactersWithScope
+feature/input.go         CharacterInput, CharacterSeed, ScopeSeed
 app/tasks.go             Wails TaskService: List, Progress
 feature/<name>/
   <name>.go              Feature(d feature.Deps) feature.Feature, the receiver type, shared state and seeds
@@ -170,77 +170,49 @@ Features hand their bindings to `app` in `feature.Feature.Tasks`.
 
 ### Seeds that need dependencies
 
-`token.CharactersWithScope` needs the token store at tick time, while the task var is built at program
-start. The token package keeps a store handle that `app.New` binds (`token.Use(store)`). The seed only
-returns characters with status `ok`, so dead tokens and missing consent drop out on the next tick and come
-back after a login.
+Seeds read live state, so they are attached at `Bind` with `task.WithParameters`, where the feature has its
+`feature.Deps`. Per-character tasks take `feature.CharacterInput` (subject `char:<id>`), usually as
+`type Input = feature.CharacterInput`, and seed with:
 
-Go cannot set fields on a type parameter, so the seed builds inputs through a pointer-method constraint:
-
-```go
-func CharactersWithScope[I any, P interface {
-	*I
-	SetCharacterID(int64)
-}](scopes ...string) task.Seed[I]
-```
-
-`token.Character` implements it, so most character tasks use `type Input = token.Character`.
+- `feature.ScopeSeed(d.Characters, scopes...)`: characters with a working token that covers the scopes. Dead
+  tokens and missing consent drop out on the next tick and come back after a login.
+- `feature.CharacterSeed(list)`: any `func(ctx) ([]int64, error)`, e.g. every character whatever its token.
 
 Dead refresh tokens are handled by the token store, not the scheduler: on `sso.ErrInvalidGrant` it calls the
 hook `app.New` wires to `character.MarkNeedsLogin`.
 
 ## Examples
 
-Scheduled per character, `feature/wallet/tasks/tasks.go`:
+Scheduled per character, `feature/wallet/wallet.go`:
 
 ```go
-package tasks
+package wallet
 
 const scope = "esi-wallet.read_character_wallet.v1"
 
-type Input = token.Character
+type Input = feature.CharacterInput
 
 type Wallet struct {
-	DB     *db.Queries
-	ESI    *esi.Client
-	Tokens *token.Store
+	q      *Queries
+	esi    *http.Client
+	tokens feature.Tokens
 }
 
-var Balance = task.New((*Wallet).Balance,
-	task.WithParameters(token.CharactersWithScope[Input](scope)),
+var Balance = task.New((*Wallet).balance,
 	task.WithStartup(),
 	task.WithInterval(time.Minute),
-	task.WithTimeout(esi.Timeout),
-	task.WithPool(esi.Pool),
-	task.When(esi.ErrorLimit, esi.Offline),
 	task.Pausable("wallet.balance"),
 )
 
-var Journal = task.New((*Wallet).Journal,
-	task.WithParameters(token.CharactersWithScope[Input](scope)),
+var Journal = task.New((*Wallet).journal,
 	task.WithInterval(time.Minute),
-	task.WithPool(esi.Pool),
-	task.When(esi.ErrorLimit, esi.Offline),
 )
 
-func (w *Wallet) Balance(ctx context.Context, in Input) (float64, error) {
-	resp, err := w.ESI.Get(ctx, w.Tokens.For(in.CharacterID), fmt.Sprintf("/characters/%d/wallet/", in.CharacterID))
-	if err != nil {
-		return 0, err
-	}
-	var b float64
-	if err := esi.Decode(resp, &b); err != nil {
-		return 0, err
-	}
-	if !esi.Cached(resp) {
-		if err := w.DB.SetBalance(ctx, db.SetBalanceParams{CharacterID: in.CharacterID, Balance: b}); err != nil {
-			return 0, err
-		}
-	}
-	return b, nil
+func (w *Wallet) balance(ctx context.Context, in Input) (*WalletBalance, error) {
+	// ESI request per docs/CONVENTIONS.md, then upsert and return the row.
 }
 
-func (w *Wallet) Journal(ctx context.Context, in Input) (int, error) {
+func (w *Wallet) journal(ctx context.Context, in Input) (int, error) {
 	// returns the number of new entries; chains when something changed
 	if added > 0 {
 		_ = Balance.Queue(ctx, in)
@@ -312,13 +284,14 @@ Binding, `feature/wallet/wallet.go`:
 ```go
 func Feature(d feature.Deps) feature.Feature {
 	w := &Wallet{q: New(d.DB), esi: d.ESI, tokens: d.Tokens}
+	seed := task.WithParameters(feature.ScopeSeed(d.Characters, scope))
 	return feature.Feature{
 		ID:     "wallet",
 		Name:   "Wallet",
 		Scopes: []string{scope},
 		Tasks: []task.Binding{
-			Balance.Bind(w),
-			Journal.Bind(w),
+			Balance.Bind(w, seed),
+			Journal.Bind(w, seed),
 		},
 	}
 }
@@ -327,7 +300,6 @@ func Feature(d feature.Deps) feature.Feature {
 Wiring, `app/app.go`:
 
 ```go
-token.Use(tokens)
 task.Default = task.NewScheduler(task.Options{Workers: 8, Pauses: sqlitePauses, Log: slog.Default(), OnChange: syncSvc.Emit})
 for _, f := range features {
 	task.Default.Register(f.Tasks...)

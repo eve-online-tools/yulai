@@ -87,15 +87,15 @@ func TestFetchPersists(t *testing.T) {
 	ctx := context.Background()
 	f, _, events := newTestFeature(t, fakeESI{"/attributes": attributesBody, "/skills": skillsBody, "/skillqueue": queueBody})
 
-	attrs, err := f.attributes(ctx, Input{pilot})
+	attrs, err := f.attributes(ctx, Input{CharacterID: pilot})
 	if err != nil || attrs.Intelligence != 24 || *attrs.BonusRemaps != 1 || attrs.AccruedRemapCooldownDate != nil {
 		t.Fatalf("attributes = %+v, %v", attrs, err)
 	}
-	list, err := f.skills(ctx, Input{pilot})
+	list, err := f.skills(ctx, Input{CharacterID: pilot})
 	if err != nil || list.Totals.TotalSp != 5000000 || len(list.Skills) != 2 || list.Skills[0].SkillID != 3300 {
 		t.Fatalf("skills = %+v, %v", list, err)
 	}
-	queue, err := f.queue(ctx, Input{pilot})
+	queue, err := f.queue(ctx, Input{CharacterID: pilot})
 	if err != nil || len(queue) != 2 || queue[0].SkillID != 3300 || *queue[0].LevelEndSp != 45255 || queue[1].TrainingStartSp != nil {
 		t.Fatalf("queue = %+v, %v", queue, err)
 	}
@@ -105,9 +105,9 @@ func TestFetchPersists(t *testing.T) {
 
 	// Unchanged data is written but not announced.
 	for _, run := range []func() error{
-		func() error { _, err := f.attributes(ctx, Input{pilot}); return err },
-		func() error { _, err := f.skills(ctx, Input{pilot}); return err },
-		func() error { _, err := f.queue(ctx, Input{pilot}); return err },
+		func() error { _, err := f.attributes(ctx, Input{CharacterID: pilot}); return err },
+		func() error { _, err := f.skills(ctx, Input{CharacterID: pilot}); return err },
+		func() error { _, err := f.queue(ctx, Input{CharacterID: pilot}); return err },
 	} {
 		if err := run(); err != nil {
 			t.Fatal(err)
@@ -122,21 +122,21 @@ func TestListsReplaced(t *testing.T) {
 	ctx := context.Background()
 	esi := fakeESI{"/skills": skillsBody, "/skillqueue": queueBody}
 	f, conn, events := newTestFeature(t, esi)
-	if _, err := f.skills(ctx, Input{pilot}); err != nil {
+	if _, err := f.skills(ctx, Input{CharacterID: pilot}); err != nil {
 		t.Fatal(err)
 	}
-	if _, err := f.queue(ctx, Input{pilot}); err != nil {
+	if _, err := f.queue(ctx, Input{CharacterID: pilot}); err != nil {
 		t.Fatal(err)
 	}
 	before := events.n
 
 	esi["/skills"] = `{"total_sp":5000000,"skills":[{"skill_id":3300,"active_skill_level":3,"trained_skill_level":3,"skillpoints_in_skill":8000}]}`
 	esi["/skillqueue"] = `[]`
-	list, err := f.skills(ctx, Input{pilot})
+	list, err := f.skills(ctx, Input{CharacterID: pilot})
 	if err != nil || len(list.Skills) != 1 || list.Totals.UnallocatedSp != nil {
 		t.Fatalf("skills = %+v, %v", list, err)
 	}
-	queue, err := f.queue(ctx, Input{pilot})
+	queue, err := f.queue(ctx, Input{CharacterID: pilot})
 	if err != nil || len(queue) != 0 {
 		t.Fatalf("queue = %+v, %v", queue, err)
 	}
@@ -150,14 +150,6 @@ func TestListsReplaced(t *testing.T) {
 	}
 	if rows, _ := f.q.ListSkills(ctx, pilot); len(rows) != 0 {
 		t.Fatalf("skills = %v after delete, want none", rows)
-	}
-}
-
-func TestSeed(t *testing.T) {
-	f, _, _ := newTestFeature(t, fakeESI{})
-	got, err := f.characters(context.Background())
-	if err != nil || len(got) != 1 || got[0].CharacterID != pilot {
-		t.Fatalf("characters = %v, %v", got, err)
 	}
 }
 
