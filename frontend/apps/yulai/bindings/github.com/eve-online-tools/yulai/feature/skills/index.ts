@@ -7,8 +7,12 @@ export {
 };
 
 export {
+    Catalog,
     CharacterAttribute,
+    RequiredSkill,
     Skill,
+    SkillGroup,
     SkillQueue,
-    SkillTotal
+    SkillTotal,
+    SkillType
 } from "./models.js";

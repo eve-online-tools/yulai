@@ -105,3 +105,25 @@ SELECT key, name_en, region_id FROM map_constellations;
 
 -- name: ListMapRegions :many
 SELECT key, name_en FROM map_regions;
+
+-- Skill catalog: published skills (category 16) and their groups.
+
+-- name: SkillGroups :many
+SELECT key, name_en FROM groups
+WHERE category_id = 16 AND published
+ORDER BY name_en;
+
+-- name: SkillTypes :many
+SELECT key, group_id, name_en, description_en FROM types
+WHERE published AND group_id IN (SELECT key FROM groups WHERE category_id = 16 AND published)
+ORDER BY name_en;
+
+-- Primary and secondary attribute (180, 181), rank (275), required skills 1-6 (182, 183, 184, 1285, 1289, 1290)
+-- and their levels (277, 278, 279, 1286, 1287, 1288).
+-- name: SkillTypeAttributes :many
+SELECT a.parent, a.attribute_id, a.value
+FROM type_dogma_dogma_attributes a
+JOIN types t ON t.key = a.parent
+WHERE t.published AND t.group_id IN (SELECT key FROM groups WHERE category_id = 16 AND published)
+  AND a.attribute_id IN (180, 181, 275, 182, 183, 184, 1285, 1289, 1290, 277, 278, 279, 1286, 1287, 1288)
+ORDER BY a.parent, a.idx;

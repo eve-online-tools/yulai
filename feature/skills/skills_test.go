@@ -12,6 +12,7 @@ import (
 	"github.com/eve-online-tools/lib-esi-go/middleware/authentication"
 
 	"github.com/eve-online-tools/yulai/core/db"
+	"github.com/eve-online-tools/yulai/core/sde/sdetest"
 	"github.com/eve-online-tools/yulai/core/task"
 	"github.com/eve-online-tools/yulai/feature"
 )
@@ -191,5 +192,5 @@ func TestServiceGetters(t *testing.T) {
 // Task options are validated at Bind and Register, which panic on mistakes.
 func TestTasksRegister(t *testing.T) {
 	_, conn, _ := newTestFeature(t, fakeESI{})
-	task.NewScheduler(task.Options{}).Register(Feature(feature.Deps{DB: conn}).Tasks...)
+	task.NewScheduler(task.Options{}).Register(Feature(feature.Deps{DB: conn, SDE: sdetest.Open(t)}).Tasks...)
 }

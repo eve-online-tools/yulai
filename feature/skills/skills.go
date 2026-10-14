@@ -52,7 +52,7 @@ func Feature(d feature.Deps) feature.Feature {
 			FetchQueue.Bind(f, seed),
 		},
 		Services: []application.Service{
-			application.NewService(&Service{q: f.q}),
+			application.NewService(newService(f.q, d.SDE)),
 		},
 	}
 }

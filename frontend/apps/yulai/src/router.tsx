@@ -13,6 +13,7 @@ import { OverviewPage } from "./pages/overview";
 import { CharactersPage } from "./pages/characters";
 import { WelcomePage } from "./pages/welcome";
 import { SettingsPage } from "./pages/settings";
+import { SkillsPage } from "./pages/skills";
 import { charactersQuery, featuresQuery, presenceQuery, queryClient, setupQuery, tasksQuery } from "./queries";
 
 // Hash history: Wails serves one index.html. Every page sits in the frame (title bar, window controls).
@@ -88,6 +89,16 @@ const shipTreeRoute = createRoute({
   component: lazyRouteComponent(() => import("./pages/ship-tree"), "ShipTreePage"),
 });
 
+const skillsRoute = createRoute({
+  getParentRoute: () => layoutRoute,
+  path: "/skills",
+  validateSearch: (search: Record<string, unknown>): { character?: number; group?: number } => ({
+    character: typeof search.character === "number" ? search.character : undefined,
+    group: typeof search.group === "number" ? search.group : undefined,
+  }),
+  component: SkillsPage,
+});
+
 const settingsRoute = createRoute({
   getParentRoute: () => layoutRoute,
   path: "/settings",
@@ -95,7 +106,7 @@ const settingsRoute = createRoute({
 });
 
 export const router = createRouter({
-  routeTree: rootRoute.addChildren([welcomeRoute, layoutRoute.addChildren([indexRoute, overviewRoute, mapRoute, charactersRoute, shipTreeRoute, settingsRoute])]),
+  routeTree: rootRoute.addChildren([welcomeRoute, layoutRoute.addChildren([indexRoute, overviewRoute, mapRoute, charactersRoute, skillsRoute, shipTreeRoute, settingsRoute])]),
   history: createHashHistory(),
   defaultPreload: "intent",
 });

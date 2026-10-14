@@ -26,6 +26,13 @@ export function Shell() {
             disabled={presence.characters.length === 0 ? `Needs a character with ${presence.name}` : undefined}
           />
           <NavItem
+            to="/skills"
+            icon="school"
+            label="Skills"
+            collapsed={collapsed}
+            disabled={skills.characters.length === 0 ? `Needs a character with ${skills.name}` : undefined}
+          />
+          <NavItem
             to="/ship-tree"
             icon="ship"
             label="Ship Tree"

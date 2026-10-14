@@ -9,6 +9,34 @@ import { Create as $Create } from "@wailsio/runtime";
 // @ts-ignore: Unused imports
 import * as typeid$0 from "../../../lib-esi-go/common/typeid/models.js";
 
+/**
+ * Catalog is every published skill, by group, both sorted by name.
+ */
+export class Catalog {
+    "groups": SkillGroup[];
+
+    /** Creates a new Catalog instance. */
+    constructor($$source: Partial<Catalog> = {}) {
+        if (!("groups" in $$source)) {
+            this["groups"] = [];
+        }
+
+        Object.assign(this, $$source);
+    }
+
+    /**
+     * Creates a new Catalog instance from a string or object.
+     */
+    static createFrom($$source: any = {}): Catalog {
+        const $$createField0_0 = $$createType1;
+        let $$parsedSource = typeof $$source === 'string' ? JSON.parse($$source) : $$source;
+        if ("groups" in $$parsedSource) {
+            $$parsedSource["groups"] = $$createField0_0($$parsedSource["groups"]);
+        }
+        return new Catalog($$parsedSource as Partial<Catalog>);
+    }
+}
+
 export class CharacterAttribute {
     "characterId": number;
     "charisma": number;
@@ -66,6 +94,31 @@ export class CharacterAttribute {
     }
 }
 
+export class RequiredSkill {
+    "skillId": number;
+    "level": number;
+
+    /** Creates a new RequiredSkill instance. */
+    constructor($$source: Partial<RequiredSkill> = {}) {
+        if (!("skillId" in $$source)) {
+            this["skillId"] = 0;
+        }
+        if (!("level" in $$source)) {
+            this["level"] = 0;
+        }
+
+        Object.assign(this, $$source);
+    }
+
+    /**
+     * Creates a new RequiredSkill instance from a string or object.
+     */
+    static createFrom($$source: any = {}): RequiredSkill {
+        let $$parsedSource = typeof $$source === 'string' ? JSON.parse($$source) : $$source;
+        return new RequiredSkill($$parsedSource as Partial<RequiredSkill>);
+    }
+}
+
 export class Skill {
     "characterId": number;
     "skillId": number;
@@ -100,6 +153,39 @@ export class Skill {
     static createFrom($$source: any = {}): Skill {
         let $$parsedSource = typeof $$source === 'string' ? JSON.parse($$source) : $$source;
         return new Skill($$parsedSource as Partial<Skill>);
+    }
+}
+
+export class SkillGroup {
+    "id": number;
+    "name": string;
+    "skills": SkillType[];
+
+    /** Creates a new SkillGroup instance. */
+    constructor($$source: Partial<SkillGroup> = {}) {
+        if (!("id" in $$source)) {
+            this["id"] = 0;
+        }
+        if (!("name" in $$source)) {
+            this["name"] = "";
+        }
+        if (!("skills" in $$source)) {
+            this["skills"] = [];
+        }
+
+        Object.assign(this, $$source);
+    }
+
+    /**
+     * Creates a new SkillGroup instance from a string or object.
+     */
+    static createFrom($$source: any = {}): SkillGroup {
+        const $$createField2_0 = $$createType3;
+        let $$parsedSource = typeof $$source === 'string' ? JSON.parse($$source) : $$source;
+        if ("skills" in $$parsedSource) {
+            $$parsedSource["skills"] = $$createField2_0($$parsedSource["skills"]);
+        }
+        return new SkillGroup($$parsedSource as Partial<SkillGroup>);
     }
 }
 
@@ -192,3 +278,64 @@ export class SkillTotal {
         return new SkillTotal($$parsedSource as Partial<SkillTotal>);
     }
 }
+
+export class SkillType {
+    "id": number;
+    "name": string;
+    "description": string;
+    "rank": number;
+
+    /**
+     * Attribute names as in CharacterAttribute, empty when the SDE has none.
+     */
+    "primary": string;
+    "secondary": string;
+    "requires": RequiredSkill[];
+
+    /** Creates a new SkillType instance. */
+    constructor($$source: Partial<SkillType> = {}) {
+        if (!("id" in $$source)) {
+            this["id"] = 0;
+        }
+        if (!("name" in $$source)) {
+            this["name"] = "";
+        }
+        if (!("description" in $$source)) {
+            this["description"] = "";
+        }
+        if (!("rank" in $$source)) {
+            this["rank"] = 0;
+        }
+        if (!("primary" in $$source)) {
+            this["primary"] = "";
+        }
+        if (!("secondary" in $$source)) {
+            this["secondary"] = "";
+        }
+        if (!("requires" in $$source)) {
+            this["requires"] = [];
+        }
+
+        Object.assign(this, $$source);
+    }
+
+    /**
+     * Creates a new SkillType instance from a string or object.
+     */
+    static createFrom($$source: any = {}): SkillType {
+        const $$createField6_0 = $$createType5;
+        let $$parsedSource = typeof $$source === 'string' ? JSON.parse($$source) : $$source;
+        if ("requires" in $$parsedSource) {
+            $$parsedSource["requires"] = $$createField6_0($$parsedSource["requires"]);
+        }
+        return new SkillType($$parsedSource as Partial<SkillType>);
+    }
+}
+
+// Private type creation functions
+const $$createType0 = SkillGroup.createFrom;
+const $$createType1 = $Create.Array($$createType0);
+const $$createType2 = SkillType.createFrom;
+const $$createType3 = $Create.Array($$createType2);
+const $$createType4 = RequiredSkill.createFrom;
+const $$createType5 = $Create.Array($$createType4);

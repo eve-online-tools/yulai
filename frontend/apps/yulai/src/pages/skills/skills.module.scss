@@ -1,0 +1,317 @@
+// Wide: groups over the group's skills on the left, the queue on the right, each scrolling on its own like the
+// client. Narrow: the three stack and the content pane scrolls.
+.layout {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  container-type: inline-size;
+}
+
+.grid {
+  flex: 1;
+  min-height: 420px;
+  display: grid;
+  gap: var(--x-space-4);
+  grid-template-columns: minmax(0, 1fr) minmax(280px, 360px);
+  grid-template-rows: auto minmax(0, 1fr);
+  grid-template-areas:
+    "groups queue"
+    "skills queue";
+}
+
+.groups {
+  grid-area: groups;
+  max-height: 40vh;
+  overflow-y: auto;
+}
+
+.skills,
+.queue {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+}
+
+.skills {
+  grid-area: skills;
+}
+
+.queue {
+  grid-area: queue;
+}
+
+@container (width < 820px) {
+  .grid {
+    min-height: 0;
+    grid-template-columns: minmax(0, 1fr);
+    grid-template-rows: none;
+    grid-template-areas:
+      "groups"
+      "skills"
+      "queue";
+  }
+
+  // Overflow from the fixed-height layout still scrolls the content pane.
+  .grid {
+    flex: none;
+  }
+
+  .groups {
+    max-height: none;
+  }
+
+  .list {
+    overflow: visible;
+  }
+}
+
+.head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: var(--x-space-2) var(--x-space-3);
+  padding: var(--x-space-3) var(--x-space-4);
+  border-bottom: 1px solid var(--x-color-line);
+}
+
+.title {
+  margin: 0;
+  font-size: var(--x-fs-h3);
+}
+
+.search {
+  width: 220px;
+  max-width: 100%;
+}
+
+.list {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.empty {
+  padding: var(--x-space-3) var(--x-space-4);
+}
+
+.foot {
+  padding: var(--x-space-2) var(--x-space-4);
+  border-top: 1px solid var(--x-color-line);
+}
+
+// Group tiles
+
+.tiles {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+  gap: var(--x-space-2);
+}
+
+.tile {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: baseline;
+  gap: var(--x-space-1) var(--x-space-2);
+  padding: var(--x-space-2) var(--x-space-3);
+  font: inherit;
+  font-size: var(--x-fs-small);
+  text-align: left;
+  color: var(--x-color-text);
+  background: var(--x-color-surface);
+  border: 1px solid var(--x-color-line);
+  cursor: pointer;
+  transition: border-color var(--x-duration) var(--x-ease), background var(--x-duration) var(--x-ease);
+
+  &:hover {
+    border-color: var(--x-color-line-strong);
+  }
+
+  &[aria-pressed="true"] {
+    background: var(--x-color-accent-wash);
+    border-color: var(--x-color-accent-edge);
+  }
+
+  &:focus-visible {
+    outline: var(--x-focus-width) solid var(--x-color-focus);
+    outline-offset: var(--x-focus-offset);
+  }
+}
+
+.tileName {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.tileCount {
+  color: var(--x-color-text-muted);
+  font-variant-numeric: tabular-nums;
+
+  .tile[data-training] & {
+    color: var(--x-color-accent);
+  }
+}
+
+// SP towards the whole group at V.
+.tileBar {
+  grid-column: 1 / -1;
+  height: 3px;
+  background:
+    linear-gradient(var(--x-color-accent), var(--x-color-accent)) 0 0 / calc(var(--fill) * 100%) 100% no-repeat,
+    var(--x-color-line);
+}
+
+// Skill rows
+
+.skill {
+  border-bottom: 1px solid var(--x-color-line);
+
+  &:not([data-injected]) .skillName {
+    color: var(--x-color-text-muted);
+  }
+}
+
+.skillRow,
+.entry {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto minmax(8em, auto);
+  align-items: center;
+  gap: var(--x-space-3);
+  padding: var(--x-space-2) var(--x-space-4);
+}
+
+// The queue is narrow; its times are short.
+.entry {
+  grid-template-columns: minmax(0, 1fr) auto auto;
+  gap: var(--x-space-2);
+  font-size: var(--x-fs-small);
+}
+
+.skillRow {
+  width: 100%;
+  font: inherit;
+  text-align: left;
+  color: inherit;
+  background: none;
+  border: 0;
+  cursor: pointer;
+
+  &:hover,
+  .skill[data-open] & {
+    background: var(--x-color-surface);
+  }
+
+  &:focus-visible {
+    outline: var(--x-focus-width) solid var(--x-color-focus);
+    outline-offset: calc(var(--x-focus-width) * -1);
+  }
+}
+
+.skillName,
+.entryName {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.skillSP,
+.entryTime {
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+
+.details {
+  padding: var(--x-space-2) var(--x-space-4) var(--x-space-3);
+  background: var(--x-color-surface);
+}
+
+.description {
+  margin: 0 0 var(--x-space-2);
+  white-space: pre-line;
+  color: var(--x-color-text-muted);
+}
+
+.facts {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: var(--x-space-1) var(--x-space-3);
+  margin: 0;
+
+  dt {
+    color: var(--x-color-text-muted);
+  }
+
+  dd {
+    margin: 0;
+  }
+}
+
+.attrs {
+  text-transform: capitalize;
+}
+
+.requires {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+// Level boxes
+
+.levels {
+  display: inline-flex;
+  gap: 2px;
+}
+
+.box {
+  width: 9px;
+  height: 9px;
+  border: 1px solid var(--x-color-line-strong);
+
+  &[data-kind="trained"] {
+    background: var(--x-color-text);
+    border-color: var(--x-color-text);
+  }
+
+  &[data-kind="training"] {
+    background: var(--x-color-accent);
+    border-color: var(--x-color-accent);
+    animation: pulse 1.6s ease-in-out infinite;
+  }
+
+  &[data-kind="queued"] {
+    border-color: var(--x-color-accent);
+    background: var(--x-color-accent-wash);
+  }
+}
+
+@keyframes pulse {
+  50% {
+    opacity: 0.45;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .box[data-kind="training"] {
+    animation: none;
+  }
+}
+
+// Queue
+
+.entry {
+  border-bottom: 1px solid var(--x-color-line);
+
+  &[data-active] {
+    background: var(--x-color-accent-wash);
+  }
+}
+
+.entryBar {
+  grid-column: 1 / -1;
+}
