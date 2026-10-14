@@ -28,7 +28,7 @@ func TestWithTokenSkipsNeedsLogin(t *testing.T) {
 // Task options are validated at Bind and Register, which panic on mistakes.
 func TestTasksRegister(t *testing.T) {
 	s, _ := newTestService(t, pilot)
-	task.NewScheduler(task.Options{}).Register(s.Tasks()...)
+	task.NewScheduler(task.Options{}).Register(Feature(s).Tasks...)
 }
 
 func TestWithScopes(t *testing.T) {
@@ -43,19 +43,7 @@ func TestWithScopes(t *testing.T) {
 	if got, _ := s.WithScopes(ctx, "esi-a.v1", "esi-c.v1"); len(got) != 0 {
 		t.Fatalf("WithScopes = %v with a missing scope, want none", got)
 	}
-	if got, _ := s.WithFeature(ctx, scoped{"esi-b.v1"}); len(got) != 1 {
-		t.Fatalf("WithFeature = %v, want the pilot", got)
-	}
-	if got, _ := s.WithFeature(ctx, scoped{"esi-c.v1"}); len(got) != 0 {
-		t.Fatalf("WithFeature = %v with a missing scope, want none", got)
-	}
 }
-
-type scoped []string
-
-func (scoped) Name() string          { return "scoped" }
-func (f scoped) Scopes() []string    { return f }
-func (scoped) Tasks() []task.Binding { return nil }
 
 func TestSetAffiliation(t *testing.T) {
 	ctx := context.Background()

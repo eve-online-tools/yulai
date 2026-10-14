@@ -1,16 +1,16 @@
 // Package charactersheet keeps public details of our characters, their corporations
 // and those corporations' alliances. It needs no scopes, so it is always on and not
-// listed as an opt-in feature.
+// on the picker.
 package charactersheet
 
 import (
 	"context"
-	"database/sql"
 	"net/http"
 	"sync"
 	"time"
 
 	"github.com/eve-online-tools/yulai/core/task"
+	"github.com/eve-online-tools/yulai/feature"
 )
 
 const EventChanged = "charactersheet:changed"
@@ -30,15 +30,11 @@ type Characters interface {
 	SetAffiliation(ctx context.Context, characterID, corporationID int64, allianceID *int64) error
 }
 
-type Emitter interface {
-	Emit(name string)
-}
-
 type Sheet struct {
 	q      *Queries
 	esi    *http.Client
 	chars  Characters
-	events Emitter
+	events feature.Emitter
 
 	mu sync.Mutex
 	// fetched dedupes fan-out from characters sharing a corporation or alliance.
@@ -46,17 +42,26 @@ type Sheet struct {
 	fetched map[string]time.Time
 }
 
-func NewSheet(conn *sql.DB, esiClient *http.Client, chars Characters, events Emitter) *Sheet {
+// chars sees every character, not only those with a working token.
+func Feature(d feature.Deps, chars Characters) feature.Feature {
+	s := newSheet(d, chars)
+	return feature.Feature{
+		ID:    "charactersheet",
+		Tasks: s.tasks(),
+	}
+}
+
+func newSheet(d feature.Deps, chars Characters) *Sheet {
 	return &Sheet{
-		q:       New(conn),
-		esi:     esiClient,
+		q:       New(d.DB),
+		esi:     d.ESI,
 		chars:   chars,
-		events:  events,
+		events:  d.Events,
 		fetched: map[string]time.Time{},
 	}
 }
 
-func (s *Sheet) Tasks() []task.Binding {
+func (s *Sheet) tasks() []task.Binding {
 	return []task.Binding{
 		FetchCharacter.Bind(s, task.WithParameters(s.characters)),
 		FetchCorporation.Bind(s),

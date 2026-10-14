@@ -4,7 +4,6 @@ package presence
 
 import (
 	"context"
-	"database/sql"
 	"fmt"
 	"net/http"
 	"sync"
@@ -12,15 +11,13 @@ import (
 
 	"github.com/eve-online-tools/lib-esi-go/middleware/authentication"
 	"github.com/eve-online-tools/lib-esi-go/request"
+	"github.com/wailsapp/wails/v3/pkg/application"
 
 	"github.com/eve-online-tools/yulai/core/task"
 	"github.com/eve-online-tools/yulai/feature"
 )
 
-const (
-	Name         = "Presence"
-	EventChanged = "presence:changed"
-)
+const EventChanged = "presence:changed"
 
 const (
 	onlineFast = time.Minute
@@ -45,20 +42,6 @@ var scopes = []string{
 	"esi-location.read_ship_type.v1",
 }
 
-// Characters lists characters whose token unlocks a feature. Implemented by
-// feature/character.
-type Characters interface {
-	WithFeature(ctx context.Context, f feature.Feature) ([]int64, error)
-}
-
-type Tokens interface {
-	For(characterID int64) authentication.RefreshableToken
-}
-
-type Emitter interface {
-	Emit(name string)
-}
-
 type Input struct {
 	CharacterID int64
 }
@@ -73,12 +56,12 @@ const (
 	partShip
 )
 
-type Feature struct {
+type Presence struct {
 	q      *Queries
 	esi    *http.Client
-	tokens Tokens
-	chars  Characters
-	events Emitter
+	tokens feature.Tokens
+	chars  feature.Characters
+	events feature.Emitter
 
 	mu sync.Mutex
 	// fetched is when each part was last attempted. In memory, so everything is
@@ -91,32 +74,38 @@ type fetchKey struct {
 	part        part
 }
 
-func NewFeature(conn *sql.DB, esiClient *http.Client, tokens Tokens, chars Characters, events Emitter) *Feature {
-	return &Feature{
-		q:       New(conn),
-		esi:     esiClient,
-		tokens:  tokens,
-		chars:   chars,
-		events:  events,
+func Feature(d feature.Deps) feature.Feature {
+	f := newPresence(d)
+	return feature.Feature{
+		ID:     "presence",
+		Name:   "Presence",
+		Scopes: scopes,
+		Tasks: []task.Binding{
+			Online.Bind(f, task.WithParameters(f.due(partOnline))),
+			Location.Bind(f, task.WithParameters(f.due(partLocation))),
+			Ship.Bind(f, task.WithParameters(f.due(partShip))),
+		},
+		Services: []application.Service{
+			application.NewService(&Service{q: f.q}),
+		},
+	}
+}
+
+func newPresence(d feature.Deps) *Presence {
+	return &Presence{
+		q:       New(d.DB),
+		esi:     d.ESI,
+		tokens:  d.Tokens,
+		chars:   d.Characters,
+		events:  d.Events,
 		fetched: map[fetchKey]time.Time{},
 	}
 }
 
-func (f *Feature) Name() string     { return Name }
-func (f *Feature) Scopes() []string { return scopes }
-
-func (f *Feature) Tasks() []task.Binding {
-	return []task.Binding{
-		Online.Bind(f, task.WithParameters(f.due(partOnline))),
-		Location.Bind(f, task.WithParameters(f.due(partLocation))),
-		Ship.Bind(f, task.WithParameters(f.due(partShip))),
-	}
-}
-
 // due seeds a task with the characters whose part is older than its interval.
-func (f *Feature) due(p part) task.Seed[Input] {
+func (f *Presence) due(p part) task.Seed[Input] {
 	return func(ctx context.Context) ([]Input, error) {
-		ids, err := f.chars.WithFeature(ctx, f)
+		ids, err := f.chars.WithScopes(ctx, scopes...)
 		if err != nil || len(ids) == 0 {
 			return nil, err
 		}
@@ -169,14 +158,14 @@ func loggedOutFor(r *PresenceOnline, now time.Time, d time.Duration) bool {
 	return r.LastLogout == nil || now.Sub(*r.LastLogout) >= d
 }
 
-func (f *Feature) mark(characterID int64, p part) {
+func (f *Presence) mark(characterID int64, p part) {
 	f.mu.Lock()
 	defer f.mu.Unlock()
 	f.fetched[fetchKey{characterID, p}] = time.Now()
 }
 
 // forget makes parts due on the next tick.
-func (f *Feature) forget(characterID int64, ps ...part) {
+func (f *Presence) forget(characterID int64, ps ...part) {
 	f.mu.Lock()
 	defer f.mu.Unlock()
 	for _, p := range ps {
@@ -184,6 +173,6 @@ func (f *Feature) forget(characterID int64, ps ...part) {
 	}
 }
 
-func (f *Feature) auth(characterID int64) request.RequestOption {
+func (f *Presence) auth(characterID int64) request.RequestOption {
 	return authentication.WithToken(f.tokens.For(characterID))
 }

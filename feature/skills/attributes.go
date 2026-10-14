@@ -13,13 +13,13 @@ import (
 )
 
 var FetchAttributes = task.New(
-	(*Feature).attributes,
+	(*Skills).attributes,
 	task.WithStartup(),
 	task.WithInterval(every),
 	task.WithTimeout(timeout),
 )
 
-func (f *Feature) attributes(ctx context.Context, in Input) (*CharacterAttribute, error) {
+func (f *Skills) attributes(ctx context.Context, in Input) (*CharacterAttribute, error) {
 	resp, err := getattributes.Request(
 		ctx, f.esi,
 		&getattributes.Input{

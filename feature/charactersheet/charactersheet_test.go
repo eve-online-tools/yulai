@@ -13,6 +13,7 @@ import (
 
 	"github.com/eve-online-tools/yulai/core/db"
 	"github.com/eve-online-tools/yulai/core/task"
+	"github.com/eve-online-tools/yulai/feature"
 )
 
 const (
@@ -91,10 +92,10 @@ func newTestSheet(t *testing.T) (*Sheet, *fakeESI, *fakeChars, context.Context) 
 	}
 	esi := &fakeESI{calls: map[string]int{}}
 	chars := &fakeChars{ids: []int64{pilot, pilotTwo}, corp: map[int64]int64{}}
-	s := NewSheet(conn, &http.Client{Transport: esi}, chars, nopEmitter{})
+	s := newSheet(feature.Deps{DB: conn, ESI: &http.Client{Transport: esi}, Events: nopEmitter{}}, chars)
 
 	sched := task.NewScheduler(task.Options{})
-	sched.Register(s.Tasks()...)
+	sched.Register(s.tasks()...)
 	ctx, cancel := context.WithCancel(context.Background())
 	done := make(chan struct{})
 	go func() { _ = sched.Start(ctx); close(done) }()

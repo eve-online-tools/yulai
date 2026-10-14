@@ -161,23 +161,12 @@ core/esi/                Pool, Timeout, ErrorLimit and Offline gates, Cached(res
 identity/token/          seeds over tokens, e.g. CharactersWithScope
 app/tasks.go             Wails TaskService: List, Progress
 feature/<name>/
-  feature.go             Feature: Name, Scopes, Tasks() []task.Binding
-  db/                    sqlc output, imported by tasks and the feature
-  tasks/                 receiver types with their dependencies, task vars, inputs
+  <name>.go              Feature(d feature.Deps) feature.Feature, the receiver type, shared state and seeds
+  <endpoint>.go          one task var and run method per ESI endpoint
+  queries.sql, sqlc_*    the feature's queries and sqlc output
 ```
 
-The tasks package must not import its feature package (the feature imports it to bind), so sqlc output lives
-in `feature/<name>/db`. If a task needs the feature service, the receiver holds a small interface for it.
-
-`feature.Feature` becomes:
-
-```go
-type Feature interface {
-	Name() string
-	Scopes() []string // drives the consent picker
-	Tasks() []task.Binding
-}
-```
+Features hand their bindings to `app` in `feature.Feature.Tasks`.
 
 ### Seeds that need dependencies
 
@@ -318,14 +307,19 @@ func (u *Updater) Check(ctx context.Context, _ struct{}) (*Build, error) {
 }
 ```
 
-Binding, `feature/wallet/feature.go`:
+Binding, `feature/wallet/wallet.go`:
 
 ```go
-func (f *Feature) Tasks() []task.Binding {
-	w := &tasks.Wallet{DB: db.New(f.conn), ESI: f.esi, Tokens: f.tokens}
-	return []task.Binding{
-		tasks.Balance.Bind(w),
-		tasks.Journal.Bind(w),
+func Feature(d feature.Deps) feature.Feature {
+	w := &Wallet{q: New(d.DB), esi: d.ESI, tokens: d.Tokens}
+	return feature.Feature{
+		ID:     "wallet",
+		Name:   "Wallet",
+		Scopes: []string{scope},
+		Tasks: []task.Binding{
+			Balance.Bind(w),
+			Journal.Bind(w),
+		},
 	}
 }
 ```
@@ -336,7 +330,7 @@ Wiring, `app/app.go`:
 token.Use(tokens)
 task.Default = task.NewScheduler(task.Options{Workers: 8, Pauses: sqlitePauses, Log: slog.Default(), OnChange: syncSvc.Emit})
 for _, f := range features {
-	task.Default.Register(f.Tasks()...)
+	task.Default.Register(f.Tasks...)
 }
 // in Start: go task.Default.Start(ctx)
 ```
@@ -367,7 +361,6 @@ func TestBalance(t *testing.T) {
 
 1. Done: `core/task` and `core/task/pool` with tests (synctest).
 2. `task_pauses` in the first migration, sqlite `PauseStore` with sqlc queries (needs `core/db`).
-3. Done: `feature.Feature` gets `Tasks() []task.Binding`. Remove `Job`, `Run`, `Outcome` and update `feature_test.go`.
-4. `core/esi` gates, pool, `Cached`. `identity/token` seed helpers, `Use`, invalid-grant hook.
-5. Done: replace `feature/sync` with `TaskService` and wire everything in `app.New`. Then the frontend query key,
+3. `core/esi` gates, pool, `Cached`. `identity/token` seed helpers, `Use`, invalid-grant hook.
+4. Done: replace `feature/sync` with `TaskService` and wire everything in `app.New`. Then the frontend query key,
    event listener and status per task.

@@ -1,16 +1,11 @@
 package skills
 
-import (
-	"context"
-	"database/sql"
-)
+import "context"
 
 // Service is the Wails-facing side of the stored skills.
 type Service struct {
 	q *Queries
 }
-
-func NewService(conn *sql.DB) *Service { return &Service{q: New(conn)} }
 
 func (s *Service) ServiceName() string { return "SkillsService" }
 

@@ -7,7 +7,7 @@ import type { ListRow as Character } from "@bindings/github.com/eve-online-tools
 import { Alert, EmptyState, Select } from "@xaroth.nl/design/react";
 import { Portrait } from "@yulai/ui";
 import { mapQuery, presenceQuery } from "../../queries";
-import { presenceFeature, useCharactersWithFeature } from "../../features";
+import { presenceFeature, useFeature } from "../../features";
 import styles from "./map.module.scss";
 
 const onlineColor = "#5ce1e6";
@@ -19,7 +19,7 @@ type Pilot = { character: Character; online: boolean };
 export function MapPage() {
   const map = useQuery(mapQuery);
   const { data: presence = [] } = useQuery(presenceQuery);
-  const tracked = useCharactersWithFeature(presenceFeature);
+  const { characters: tracked } = useFeature(presenceFeature);
   const [selected, setSelected] = useState(all);
   const [frame, setFrame] = useState<HTMLDivElement | null>(null);
 

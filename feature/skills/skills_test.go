@@ -47,13 +47,13 @@ func (fakeTokens) For(int64) authentication.RefreshableToken { return fakeToken{
 
 type fakeChars []int64
 
-func (c fakeChars) WithFeature(context.Context, feature.Feature) ([]int64, error) { return c, nil }
+func (c fakeChars) WithScopes(context.Context, ...string) ([]int64, error) { return c, nil }
 
 type countEmitter struct{ n int }
 
 func (c *countEmitter) Emit(string) { c.n++ }
 
-func newTestFeature(t *testing.T, esi fakeESI) (*Feature, *sql.DB, *countEmitter) {
+func newTestFeature(t *testing.T, esi fakeESI) (*Skills, *sql.DB, *countEmitter) {
 	t.Helper()
 	conn, err := db.Open(context.Background(), filepath.Join(t.TempDir(), "test.sqlite"))
 	if err != nil {
@@ -64,7 +64,13 @@ func newTestFeature(t *testing.T, esi fakeESI) (*Feature, *sql.DB, *countEmitter
 		t.Fatal(err)
 	}
 	events := &countEmitter{}
-	return NewFeature(conn, &http.Client{Transport: esi}, fakeTokens{}, fakeChars{pilot}, events), conn, events
+	return newSkills(feature.Deps{
+		DB:         conn,
+		ESI:        &http.Client{Transport: esi},
+		Tokens:     fakeTokens{},
+		Characters: fakeChars{pilot},
+		Events:     events,
+	}), conn, events
 }
 
 const (
@@ -157,6 +163,6 @@ func TestSeed(t *testing.T) {
 
 // Task options are validated at Bind and Register, which panic on mistakes.
 func TestTasksRegister(t *testing.T) {
-	f, _, _ := newTestFeature(t, fakeESI{})
-	task.NewScheduler(task.Options{}).Register(f.Tasks()...)
+	_, conn, _ := newTestFeature(t, fakeESI{})
+	task.NewScheduler(task.Options{}).Register(Feature(feature.Deps{DB: conn}).Tasks...)
 }

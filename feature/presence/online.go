@@ -13,13 +13,13 @@ import (
 )
 
 var Online = task.New(
-	(*Feature).online,
+	(*Presence).online,
 	task.WithStartup(),
 	task.WithInterval(tick),
 	task.WithTimeout(timeout),
 )
 
-func (f *Feature) online(ctx context.Context, in Input) (*PresenceOnline, error) {
+func (f *Presence) online(ctx context.Context, in Input) (*PresenceOnline, error) {
 	f.mark(in.CharacterID, partOnline)
 
 	resp, err := getonline.Request(

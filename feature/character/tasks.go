@@ -5,7 +5,10 @@ import (
 	"errors"
 	"fmt"
 
+	"github.com/wailsapp/wails/v3/pkg/application"
+
 	"github.com/eve-online-tools/yulai/core/task"
+	"github.com/eve-online-tools/yulai/feature"
 	"github.com/eve-online-tools/yulai/identity/sso"
 	"github.com/eve-online-tools/yulai/identity/token"
 )
@@ -21,11 +24,17 @@ func (in Input) Subject() string { return fmt.Sprintf("char:%d", in.CharacterID)
 // flagged and the last refreshed time is current before the user looks.
 var RefreshTokens = task.New((*Service).refreshToken, task.WithStartup(), task.Pausable("character.refresh-token"))
 
-// Tasks binds the character tasks to this service.
-//
-//wails:ignore
-func (s *Service) Tasks() []task.Binding {
-	return []task.Binding{RefreshTokens.Bind(s, task.WithParameters(s.withToken))}
+// Feature is always on: the character list and token upkeep.
+func Feature(s *Service) feature.Feature {
+	return feature.Feature{
+		ID: "character",
+		Tasks: []task.Binding{
+			RefreshTokens.Bind(s, task.WithParameters(s.withToken)),
+		},
+		Services: []application.Service{
+			application.NewService(s),
+		},
+	}
 }
 
 // withToken lists characters with a stored token that still works.

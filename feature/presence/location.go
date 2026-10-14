@@ -13,13 +13,13 @@ import (
 )
 
 var Location = task.New(
-	(*Feature).location,
+	(*Presence).location,
 	task.WithStartup(),
 	task.WithInterval(tick),
 	task.WithTimeout(timeout),
 )
 
-func (f *Feature) location(ctx context.Context, in Input) (*PresenceLocation, error) {
+func (f *Presence) location(ctx context.Context, in Input) (*PresenceLocation, error) {
 	f.mark(in.CharacterID, partLocation)
 
 	resp, err := getlocation.Request(

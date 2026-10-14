@@ -13,13 +13,13 @@ import (
 )
 
 var Ship = task.New(
-	(*Feature).ship,
+	(*Presence).ship,
 	task.WithStartup(),
 	task.WithInterval(tick),
 	task.WithTimeout(timeout),
 )
 
-func (f *Feature) ship(ctx context.Context, in Input) (*PresenceShip, error) {
+func (f *Presence) ship(ctx context.Context, in Input) (*PresenceShip, error) {
 	f.mark(in.CharacterID, partShip)
 
 	resp, err := getship.Request(

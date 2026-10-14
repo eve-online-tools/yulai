@@ -13,8 +13,8 @@ plan for the framework and where features plug in.
 - **Packages own their tables.** The schema is global (one goose migration set), but each table
   has one owning package with its own `queries.sql` and sqlc output. Other packages go through
   the owner's Go API.
-- **Dependencies point inward.** `app` → `feature/*` → `identity/*` → `core/*`. Features depend
-  on interfaces (`Enroller`, `Browser`, `Tokens`), not on each other, and `app` wires them.
+- **Dependencies point inward.** `app` → `feature/*` → `identity/*` → `core/*`. Features build from
+  `feature.Deps`, not from each other, and `app` lists them.
 
 ## Layers
 
@@ -29,11 +29,13 @@ plan for the framework and where features plug in.
 | `identity/sso`     | Discovery, PKCE, exchange, refresh (`ErrInvalidGrant`), JWT verify | ported         |
 | `identity/login`   | Permanent loopback server: feature picker, SSO redirect, callback  | done (tested)   |
 | `identity/token`   | `tokens` table, sealed refresh tokens, `For()` → `RefreshableToken`| ported         |
-| `feature`          | `Feature` contract (`Tasks() []task.Binding`), `Enabled()`, `Covers()` | done (tested) |
+| `feature`          | `Feature` (ID, name, scopes, tasks, services), `Deps`, `Covers()`  | done (tested) |
 | `feature/character`| `characters` table, list, remove, needs-login                      | done (tested) |
 | `feature/presence` | `presence_online`, `presence_locations`, `presence_ships`. Paced by online state | sync done (tested), no UI yet |
 | `feature/charactersheet`| Always on, no scopes. `character_sheets`, `corporations`, `alliances` | sync done (tested), no UI yet |
 | `feature/skills`   | `character_attributes`, `skill_totals`, `skills`, `skill_queue`. Every 5 minutes | sync done (tested), no UI yet |
+| `feature/shiptree` | Ship tree tables derived from the SDE                              | done (tested)  |
+| `feature/starmap`  | Known space derived from the SDE, for the map                      | done (tested)  |
 | `core/task`        | Generic in-memory scheduler, `task_pauses` table (see SCHEDULER.md) | engine done (tested), not wired |
 | `core/sde`         | Static Data Export in its own `sde.sqlite`, checked hourly (see SDE.md) | planned |
 | `frontend`         | pnpm workspaces: `apps/yulai` (router, query layer, events, pages), `packages/ui` | done, renders stub data |
@@ -50,12 +52,13 @@ replace the asset-manager module path and `github.com/xaroth/lib-esi-go` with th
    1. `db.Open(DBPath)` runs migrations.
    2. `crypt.Open(keyring.OS{Service: "eve-online-tools/yulai", User: "master-key"})`
    3. SSO client → verifier → login flow → token store → ESI client
-   4. Build the `[]feature.Feature` list. Its order is the UI order.
-   5. Scheduler (with `onAuth` → `Characters.MarkNeedsLogin`), then the character service.
-   6. Login server (`login.New`), handler `Characters.Store`.
+   4. Token store (dead tokens → `Characters.MarkNeedsLogin`), ESI client, character service, scheduler.
+   5. `feature.Deps`, then the `[]feature.Feature` list. Every feature's tasks are registered; those with
+      scopes go on the picker, in list order.
+   6. Login server (`login.New`), handler `Characters.Store` then `Scheduler.Refresh` for the character.
 3. Wails app with `a.Services()`, single-instance, and the main window. A second launch exits
    here and focuses the first.
-4. `a.Start(ctx)` binds the login port (busy port is fatal), enrolls every character and starts the scheduler goroutine.
+4. `a.Start(ctx)` binds the login port (busy port is fatal) and starts the scheduler goroutine.
 5. `wails.Run()`.
 
 ## Login flow
@@ -112,16 +115,19 @@ field names and JSON tags so the bindings don't change. `sqlc.yaml` is added tog
 
 ## Adding a feature (the extension point)
 
-1. `feature/<name>/`: a type implementing `feature.Feature` (`Name`, `Scopes`, `Tasks`).
-2. Tasks in the feature package: the feature type is the receiver holding dependencies, one file per ESI
-   endpoint with `var X = task.New((*Feature).x, opts...)`. See `docs/SCHEDULER.md`.
+1. `feature/<name>/`: `func Feature(d feature.Deps) feature.Feature` returning the ID, picker name, scopes
+   (none: always on), task bindings and Wails services. sqlc owns `New` in every package, hence the name.
+   Take extra arguments for anything `Deps` does not have.
+2. Tasks in the feature package: an unexported receiver type holding dependencies, one file per ESI
+   endpoint with `var X = task.New((*Receiver).x, opts...)`. See `docs/SCHEDULER.md`.
 3. Tables go in a new migration. Queries go in `feature/<name>/queries.sql` with a matching `sqlc.yaml` entry.
    Follow `docs/CONVENTIONS.md` for ESI calls, task results and table types.
-4. Optional Wails `Service` for the UI, with `ServiceName()`. Emit `<name>:changed` after writes and register
-   the event in `app/app.go` `init()`.
-5. Register the feature in `app.New`'s `features` slice and its service in `Services()`.
+4. Optional Wails `Service` for the UI, with `ServiceName()`, in the feature's `Services`. Emit
+   `<name>:changed` after writes and register the event in `app/app.go` `init()`.
+5. Add one line to the feature list in `app.New`.
 6. Frontend: add a key, a `queryOptions` and an `Events.On` to `apps/yulai/src/queries.ts`. Add a route in
-   `apps/yulai/src/router.tsx` and/or a panel in the character card.
+   `apps/yulai/src/router.tsx` and/or a panel in the character card. Gate pages on the feature ID with
+   `useFeature` from `apps/yulai/src/features.ts`.
 
 ## Frontend conventions
 

@@ -1,17 +1,51 @@
-package sde
+// Package starmap serves known space from the SDE to the map page.
+package starmap
 
-import "context"
+import (
+	"context"
 
-// MapData is the input of @eve-online-tools/eve-map.
-type MapData struct {
-	Systems []MapSystem `json:"systems"`
+	"github.com/wailsapp/wails/v3/pkg/application"
+
+	"github.com/eve-online-tools/yulai/core/sde"
+	"github.com/eve-online-tools/yulai/feature"
+)
+
+func Feature(d feature.Deps) feature.Feature {
+	return feature.Feature{
+		ID: "starmap",
+		Services: []application.Service{
+			application.NewService(newService(d.SDE)),
+		},
+	}
+}
+
+// Service is the Wails-facing side of the map data.
+type Service struct {
+	data *sde.Derived[*Data]
+}
+
+func newService(store *sde.Store) *Service {
+	return &Service{data: sde.NewDerived(store, build)}
+}
+
+func (s *Service) ServiceName() string { return "MapService" }
+
+// Data returns known space, built once per installed SDE. It fails with
+// sde.ErrNotInstalled before the first install; the frontend refetches on sde:changed.
+func (s *Service) Data(ctx context.Context) (*Data, error) {
+	return s.data.Get(ctx)
+}
+
+// Data is the input of @eve-online-tools/eve-map.
+type Data struct {
+	Systems []System `json:"systems"`
 	// Keyed by constellation ID.
-	Constellations map[int64]MapConstellation `json:"constellations"`
+	Constellations map[int64]Constellation `json:"constellations"`
 	// Region ID to name.
 	Regions map[int64]string `json:"regions"`
 }
 
-type MapSystem struct {
+type System struct {
 	ID              int64   `json:"id"`
 	Name            string  `json:"name"`
 	ConstellationID int64   `json:"constellationId"`
@@ -23,7 +57,7 @@ type MapSystem struct {
 	Gates []int64 `json:"gates"`
 }
 
-type MapConstellation struct {
+type Constellation struct {
 	Name     string `json:"name"`
 	RegionID int64  `json:"regionId"`
 }
@@ -39,9 +73,9 @@ type Vec2 struct {
 	Y float64 `json:"y"`
 }
 
-// mapData reads known space from the SDE. Systems without a position or
+// build reads known space from the SDE. Systems without a position or
 // constellation are skipped, since the map rejects them.
-func mapData(ctx context.Context, q *Queries) (*MapData, error) {
+func build(ctx context.Context, q *sde.Queries) (*Data, error) {
 	regions, err := q.ListMapRegions(ctx)
 	if err != nil {
 		return nil, err
@@ -59,16 +93,16 @@ func mapData(ctx context.Context, q *Queries) (*MapData, error) {
 		return nil, err
 	}
 
-	out := &MapData{
-		Systems:        make([]MapSystem, 0, len(systems)),
-		Constellations: make(map[int64]MapConstellation, len(constellations)),
+	out := &Data{
+		Systems:        make([]System, 0, len(systems)),
+		Constellations: make(map[int64]Constellation, len(constellations)),
 		Regions:        make(map[int64]string, len(regions)),
 	}
 	for _, r := range regions {
 		out.Regions[r.Key] = deref(r.NameEn)
 	}
 	for _, c := range constellations {
-		out.Constellations[c.Key] = MapConstellation{Name: deref(c.NameEn), RegionID: deref(c.RegionID)}
+		out.Constellations[c.Key] = Constellation{Name: deref(c.NameEn), RegionID: deref(c.RegionID)}
 	}
 
 	links := map[int64][]int64{}
@@ -88,7 +122,7 @@ func mapData(ctx context.Context, q *Queries) (*MapData, error) {
 			continue
 		}
 		id := int64(s.Key)
-		sys := MapSystem{
+		sys := System{
 			ID:              id,
 			Name:            deref(s.NameEn),
 			ConstellationID: *s.ConstellationID,

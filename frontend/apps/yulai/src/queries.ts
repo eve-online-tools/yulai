@@ -4,6 +4,7 @@ import { Service as Characters } from "@bindings/github.com/eve-online-tools/yul
 import { Service as ShipTree } from "@bindings/github.com/eve-online-tools/yulai/feature/shiptree";
 import { Service as Skills } from "@bindings/github.com/eve-online-tools/yulai/feature/skills";
 import { Service as SDE } from "@bindings/github.com/eve-online-tools/yulai/core/sde";
+import { Service as StarMap } from "@bindings/github.com/eve-online-tools/yulai/feature/starmap";
 import { Service as Presence } from "@bindings/github.com/eve-online-tools/yulai/feature/presence";
 import { Consent } from "@bindings/github.com/eve-online-tools/yulai/identity/login";
 import { SetupService as Setup, TaskService as Tasks } from "@bindings/github.com/eve-online-tools/yulai/app";
@@ -87,7 +88,7 @@ export const shipTreeQuery = queryOptions({
 // Built from the SDE, so it only changes with it.
 export const mapQuery = queryOptions({
   queryKey: keys.map,
-  queryFn: () => SDE.Map(),
+  queryFn: () => StarMap.Data(),
   staleTime: Infinity,
 });
 
