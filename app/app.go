@@ -19,6 +19,7 @@ import (
 	"github.com/eve-online-tools/yulai/feature"
 	"github.com/eve-online-tools/yulai/feature/character"
 	"github.com/eve-online-tools/yulai/feature/charactersheet"
+	"github.com/eve-online-tools/yulai/feature/freelance"
 	"github.com/eve-online-tools/yulai/feature/presence"
 	"github.com/eve-online-tools/yulai/feature/shiptree"
 	"github.com/eve-online-tools/yulai/feature/skills"
@@ -117,6 +118,7 @@ func New(ctx context.Context, cfg *Config, web fs.FS) (*App, error) {
 		charactersheet.Feature(d, app.Characters),
 		presence.Feature(d),
 		skills.Feature(d),
+		freelance.Feature(d),
 		shiptree.Feature(d),
 		starmap.Feature(d),
 	}

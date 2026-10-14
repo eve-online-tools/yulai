@@ -54,6 +54,12 @@ overrides:
       - db_type: "RACE_ID"
         nullable: true
         go_type: { import: "github.com/eve-online-tools/lib-esi-go/common/race", type: "Identifier", pointer: true }
+      # UUID columns. sqlite keeps them as text: they never parse as numbers.
+      - db_type: "JOB_ID"
+        go_type: { import: "github.com/eve-online-tools/lib-esi-go/common/uuid", type: "UUID" }
+      - db_type: "JOB_ID"
+        nullable: true
+        go_type: { import: "github.com/eve-online-tools/lib-esi-go/common/uuid", type: "UUID", pointer: true }
 sql:
   - &pkg
     engine: "sqlite"
@@ -98,6 +104,13 @@ sql:
         <<: *go
         package: "skills"
         out: "feature/skills"
+  - <<: *pkg
+    queries: "feature/freelance/queries.sql"
+    gen:
+      go:
+        <<: *go
+        package: "freelance"
+        out: "feature/freelance"
   - <<: *pkg
     schema: "core/sde/schema.sql"
     queries: "core/sde/queries.sql"

@@ -70,6 +70,7 @@ feature/        feature.go: Feature and Deps. One subpackage per feature
   charactersheet/  public character, corporation and alliance details
   presence/     online state, location and ship
   skills/       attributes, skills and skill queue
+  freelance/    public freelance jobs, a character's jobs and participation
   shiptree/     ship tree data from the SDE
   starmap/      map data from the SDE
 frontend/       pnpm workspaces, Vite + React
