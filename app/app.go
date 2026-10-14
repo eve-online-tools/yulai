@@ -109,6 +109,7 @@ func New(ctx context.Context, cfg *Config, web fs.FS) (*App, error) {
 	}
 	// Every feature is listed here. Order is the picker order.
 	app.features = []feature.Feature{
+		// core/sde cannot import feature, so its entry is built here.
 		{
 			ID:       "sde",
 			Tasks:    updater.Tasks(),
@@ -125,7 +126,7 @@ func New(ctx context.Context, cfg *Config, web fs.FS) (*App, error) {
 	var picker []login.Feature
 	for _, f := range app.features {
 		task.Default.Register(f.Tasks...)
-		if f.Scopes != nil {
+		if len(f.Scopes) > 0 {
 			picker = append(picker, login.Feature{ID: f.ID, Name: f.Name, Scopes: f.Scopes})
 		}
 	}

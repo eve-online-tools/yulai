@@ -21,7 +21,7 @@ type Feature struct {
 	ID string
 	// Name is shown on the login picker.
 	Name string
-	// Scopes must all be on a character's token for the feature to be on. Nil
+	// Scopes must all be on a character's token for the feature to be on. None
 	// means always on and not on the picker.
 	Scopes   []string
 	Tasks    []task.Binding

@@ -34,6 +34,8 @@ plan for the framework and where features plug in.
 | `feature/presence` | `presence_online`, `presence_locations`, `presence_ships`. Paced by online state | sync done (tested), no UI yet |
 | `feature/charactersheet`| Always on, no scopes. `character_sheets`, `corporations`, `alliances` | sync done (tested), no UI yet |
 | `feature/skills`   | `character_attributes`, `skill_totals`, `skills`, `skill_queue`. Every 5 minutes | sync done (tested), no UI yet |
+| `feature/shiptree` | Ship tree tables derived from the SDE                              | done (tested)  |
+| `feature/starmap`  | Known space derived from the SDE, for the map                      | done (tested)  |
 | `core/task`        | Generic in-memory scheduler, `task_pauses` table (see SCHEDULER.md) | engine done (tested), not wired |
 | `core/sde`         | Static Data Export in its own `sde.sqlite`, checked hourly (see SDE.md) | planned |
 | `frontend`         | pnpm workspaces: `apps/yulai` (router, query layer, events, pages), `packages/ui` | done, renders stub data |
@@ -114,7 +116,7 @@ field names and JSON tags so the bindings don't change. `sqlc.yaml` is added tog
 ## Adding a feature (the extension point)
 
 1. `feature/<name>/`: `func Feature(d feature.Deps) feature.Feature` returning the ID, picker name, scopes
-   (nil: always on), task bindings and Wails services. sqlc owns `New` in every package, hence the name.
+   (none: always on), task bindings and Wails services. sqlc owns `New` in every package, hence the name.
    Take extra arguments for anything `Deps` does not have.
 2. Tasks in the feature package: an unexported receiver type holding dependencies, one file per ESI
    endpoint with `var X = task.New((*Receiver).x, opts...)`. See `docs/SCHEDULER.md`.

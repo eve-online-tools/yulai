@@ -12,7 +12,7 @@ import (
 
 func Feature(d feature.Deps) feature.Feature {
 	return feature.Feature{
-		ID: "map",
+		ID: "starmap",
 		Services: []application.Service{
 			application.NewService(newService(d.SDE)),
 		},
