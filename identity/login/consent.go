@@ -13,8 +13,8 @@ type Browser interface {
 	OpenURL(url string) error
 }
 
-// Scopes reads the scopes on a character's stored token. Implemented by identity/token.
-type Scopes interface {
+// ScopeReader reads the scopes on a character's stored token. Implemented by identity/token.
+type ScopeReader interface {
 	Scopes(ctx context.Context, characterID int64) ([]string, error)
 }
 
@@ -24,10 +24,10 @@ type Consent struct {
 	url      string
 	features []Feature
 	browser  Browser
-	scopes   Scopes
+	scopes   ScopeReader
 }
 
-func NewConsent(s *Server, browser Browser, scopes Scopes) *Consent {
+func NewConsent(s *Server, browser Browser, scopes ScopeReader) *Consent {
 	return &Consent{url: s.URL(), features: s.features, browser: browser, scopes: scopes}
 }
 

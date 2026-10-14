@@ -44,3 +44,18 @@ func TestRelogin(t *testing.T) {
 		})
 	}
 }
+
+func TestAddCharacterOpensPicker(t *testing.T) {
+	h := newHarness(t)
+	b := &recordBrowser{}
+	c := NewConsent(h.srv, b, fixedScopes{})
+	if err := c.AddCharacter(); err != nil {
+		t.Fatal(err)
+	}
+	if b.url != h.srv.URL() {
+		t.Errorf("opened %q, want %q", b.url, h.srv.URL())
+	}
+	if got := c.Features(); len(got) != len(features) || got[0].Name != features[0].Name {
+		t.Errorf("Features = %v, want %v", got, features)
+	}
+}

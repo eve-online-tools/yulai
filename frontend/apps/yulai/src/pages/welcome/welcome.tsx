@@ -24,7 +24,8 @@ export function WelcomePage() {
   const myTasks = first ? characterTasks(tasks, first.id) : [];
   const synced = myTasks.filter(hasRun).length;
   const sdeInstalled = sde.build > 0;
-  const current = !first ? 0 : synced < myTasks.length || !sdeInstalled ? 1 : 2;
+  // No tasks yet means the login's refresh has not dispatched them.
+  const current = !first ? 0 : myTasks.length === 0 || synced < myTasks.length || !sdeInstalled ? 1 : 2;
 
   useEffect(() => {
     if (current === 2) navigate({ to: "/overview", replace: true });

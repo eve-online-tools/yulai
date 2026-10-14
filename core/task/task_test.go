@@ -644,3 +644,26 @@ func TestSubTaskSharesProgress(t *testing.T) {
 		}
 	})
 }
+
+func TestRefreshDispatchesSubject(t *testing.T) {
+	synctest.Test(t, func(t *testing.T) {
+		r := &recv{}
+		s := started(t, Options{}, New((*recv).Do, WithParameters(seedOf(1, 2)), WithInterval(time.Hour)).Bind(r))
+
+		s.Refresh("char:2")
+		synctest.Wait()
+		if !slices.Equal(r.calls, []int64{2}) {
+			t.Fatalf("calls = %v, want only the refreshed subject", r.calls)
+		}
+	})
+}
+
+func TestRefreshBeforeStart(t *testing.T) {
+	r := &recv{}
+	s := newScheduler(Options{})
+	s.Register(New((*recv).Do, WithParameters(seedOf(1)), WithInterval(time.Hour)).Bind(r))
+	s.Refresh("char:1")
+	if r.count() != 0 {
+		t.Fatalf("calls = %v before Start", r.calls)
+	}
+}

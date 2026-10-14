@@ -4,6 +4,7 @@ import (
 	"context"
 	"database/sql"
 	"errors"
+	"fmt"
 	"io/fs"
 	"log/slog"
 	"net/http"
@@ -101,7 +102,12 @@ func New(ctx context.Context, cfg *Config, web fs.FS) (*App, error) {
 		loginFeatures = append(loginFeatures, login.Feature{Name: f.Name(), Scopes: f.Scopes()})
 	}
 	app.Login, err = login.New(ssoClient, verifier, web, loginFeatures, func(ctx context.Context, r *login.Result) error {
-		return app.Characters.Store(ctx, r)
+		if err := app.Characters.Store(ctx, r); err != nil {
+			return err
+		}
+		// Sync the character now instead of on the next tick, which can be an hour away.
+		task.Default.Refresh(fmt.Sprintf("char:%d", r.CharacterID))
+		return nil
 	})
 	if err != nil {
 		conn.Close()

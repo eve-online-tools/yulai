@@ -3,8 +3,8 @@
 EVE Online desktop tool. Wails3 + Go backend, React + TypeScript frontend. Same architecture as
 [asset-manager](https://github.com/eve-online-tools/asset-manager) (`poc` branch).
 
-**Status: skeleton.** Packages, contracts, wiring and UI shell exist; behaviour is stubbed and
-returns `todo.ErrNotImplemented`. See [docs/PLAN.md](docs/PLAN.md) for what goes where and in what order. Code conventions are in [docs/CONVENTIONS.md](docs/CONVENTIONS.md).
+**Status: early.** Characters, presence, skills, the ship tree and the map work. See
+[docs/PLAN.md](docs/PLAN.md) for what goes where. Code conventions are in [docs/CONVENTIONS.md](docs/CONVENTIONS.md).
 
 ## Setup
 

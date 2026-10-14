@@ -74,7 +74,7 @@ export const skillQueueQuery = (characterID: number) =>
 
 export const characterTasks = (tasks: Status[], characterID: number) => tasks.filter((t) => t.subject === `char:${characterID}`);
 
-// Go's zero time means the task has not run this session.
+// Go's zero time (RFC 3339 "0001-01-01T00:00:00Z") means the task has not run this session.
 export const hasRun = (t: Status) => !t.lastRun.startsWith("0001-");
 
 // Built from the SDE, so it only changes with it.

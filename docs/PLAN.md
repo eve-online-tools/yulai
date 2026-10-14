@@ -1,10 +1,7 @@
 # Yulai application framework plan
 
 Yulai follows the architecture proven in asset-manager's `poc` branch. This document is the
-plan for the framework; the code in this repo is a compiling skeleton of it. Every stub returns
-`todo.ErrNotImplemented` (grep `core/todo` to find them) and the UI shell renders.
-
-Real features are out of scope for now. This plan describes where they plug in.
+plan for the framework and where features plug in.
 
 ## Principles
 
@@ -167,14 +164,14 @@ field names and JSON tags so the bindings don't change. `sqlc.yaml` is added tog
    Uncomment `db.Open` in `app.New`.
 2. **Identity:** `identity/sso`, `identity/login`, `identity/token`, sqlc for `tokens`.
 3. **Characters:** `character` queries, `Store`/`Remove`/`MarkNeedsLogin`, `EventChanged`.
-4. **Scheduler:** `core/task`, seeds and gates, `SyncService` per `docs/SCHEDULER.md`.
+4. **Scheduler:** `core/task`, seeds and gates, `TaskService` per `docs/SCHEDULER.md`.
 5. **First real feature** using the recipe above.
-6. Delete `core/todo`.
+6. Done: delete `core/todo`.
 
 ## Open questions
 
 - **What Yulai's features are.** That decides scopes, tables and pages beyond the shell.
-- **Shared module.** `core/*`, `identity/*`, `feature` and `feature/sync` are app-agnostic and would be
+- **Shared module.** `core/*`, `identity/*` and `feature` are app-agnostic and would be
   duplicated with asset-manager. They could be extracted into a shared `eve-online-tools/*` module once both
   apps have stabilised them. Until then, port by copy.
 - **Callback port.** Yulai uses `45538` (asset-manager uses `45537`) so both apps can run side by side.

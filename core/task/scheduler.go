@@ -263,6 +263,36 @@ func (s *Scheduler) tick(e *entry) {
 	}
 }
 
+// Refresh runs the seed of every parameterized task now and dispatches the inputs
+// for subject want, so a subject that just appeared, e.g. a logged-in character, does
+// not wait for the next tick. Pauses, backoff and dedupe apply as on a tick.
+func (s *Scheduler) Refresh(want string) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	if !s.started || s.stopping {
+		return
+	}
+	for _, e := range s.entries {
+		if e.seed == nil || s.pausedReason(e, "") != "" {
+			continue
+		}
+		s.wg.Add(1)
+		go func() {
+			defer s.wg.Done()
+			inputs, err := e.seed(s.ctx)
+			if err != nil {
+				s.log.Warn("task seed failed", "task", e.name, "err", err)
+				return
+			}
+			for _, in := range inputs {
+				if subject(in) == want {
+					s.scheduled(e, in)
+				}
+			}
+		}()
+	}
+}
+
 // spread is the delay between consecutive inputs of one tick.
 func spread(interval time.Duration, n int) time.Duration {
 	if interval <= 0 || n < 2 {
