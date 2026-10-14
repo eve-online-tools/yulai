@@ -8,7 +8,7 @@ import (
 func TestServiceList(t *testing.T) {
 	ctx := context.Background()
 	f, _, _ := newTestFeature(t, fakeESI{"/online": onlineBody, "/location": locationBody})
-	s := NewService(f)
+	s := &Service{q: f.q}
 
 	if rows, err := s.List(ctx); err != nil || rows == nil || len(rows) != 0 {
 		t.Fatalf("before fetch = %#v, %v, want empty", rows, err)

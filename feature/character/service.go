@@ -70,13 +70,6 @@ func (s *Service) WithScopes(ctx context.Context, scopes ...string) ([]int64, er
 	return out, nil
 }
 
-// WithFeature lists characters with a working token that unlocks f.
-//
-//wails:ignore
-func (s *Service) WithFeature(ctx context.Context, f feature.Feature) ([]int64, error) {
-	return s.WithScopes(ctx, f.Scopes()...)
-}
-
 // Store upserts the character and saves its tokens, replacing earlier scopes. It is
 // the login server's handler.
 //

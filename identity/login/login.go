@@ -48,6 +48,8 @@ type Result struct {
 
 // Feature is one choice on the picker.
 type Feature struct {
+	// ID is the feature's stable ID. The picker posts names.
+	ID     string   `json:"id"`
 	Name   string   `json:"name"`
 	Scopes []string `json:"scopes"`
 }

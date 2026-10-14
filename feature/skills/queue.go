@@ -12,14 +12,14 @@ import (
 )
 
 var FetchQueue = task.New(
-	(*Feature).queue,
+	(*Skills).queue,
 	task.WithStartup(),
 	task.WithInterval(every),
 	task.WithTimeout(timeout),
 )
 
 // queue returns the stored queue in position order, empty when nothing is queued.
-func (f *Feature) queue(ctx context.Context, in Input) ([]SkillQueue, error) {
+func (f *Skills) queue(ctx context.Context, in Input) ([]SkillQueue, error) {
 	resp, err := getqueue.Request(
 		ctx, f.esi,
 		&getqueue.Input{

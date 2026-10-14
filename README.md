@@ -65,7 +65,7 @@ identity/       who you are and your tokens
   sso/          EVE SSO protocol: discovery, PKCE, token exchange/refresh, JWT verification
   login/        loopback login server (picker, SSO redirect, callback) and ConsentService
   token/        tokens table, encrypted refresh tokens, RefreshableToken for ESI
-feature/        feature.go: Feature and Job contracts. One subpackage per feature
+feature/        feature.go: Feature and Deps. One subpackage per feature
   character/    characters table, list, remove, needs-login
 frontend/       pnpm workspaces, Vite + React
   apps/yulai/   the Wails app (TanStack Router/Query), builds to frontend/dist/yulai

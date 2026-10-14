@@ -20,7 +20,7 @@ import type { Skill, SkillQueue } from "@bindings/github.com/eve-online-tools/yu
 import { selectClass } from "@xaroth.nl/design/parts";
 import { Alert, EmptyState, PageHead, Select } from "@xaroth.nl/design/react";
 import { AppIcon } from "@yulai/ui";
-import { skillsFeature, useCharactersWithFeature } from "../../features";
+import { skillsFeature, useFeature } from "../../features";
 import { shipTreeQuery, skillQueueQuery, skillsQuery } from "../../queries";
 import styles from "./ship-tree.module.scss";
 
@@ -30,7 +30,7 @@ void preloadShipTreeSprites();
 const route = getRouteApi("/layout/ship-tree");
 
 export function ShipTreePage() {
-  const characters = useCharactersWithFeature(skillsFeature);
+  const { name: skillsName, characters } = useFeature(skillsFeature);
   const search = route.useSearch();
   const navigate = route.useNavigate();
   const character = characters.find((c) => c.id === search.character) ?? characters[0];
@@ -43,7 +43,7 @@ export function ShipTreePage() {
     return (
       <>
         <PageHead title="Ship Tree" />
-        <EmptyState icon={<AppIcon name="ship" size={32} />} title={`No character has ${skillsFeature}`}>
+        <EmptyState icon={<AppIcon name="ship" size={32} />} title={`No character has ${skillsName}`}>
           Log in again from the characters page with it checked.
         </EmptyState>
       </>

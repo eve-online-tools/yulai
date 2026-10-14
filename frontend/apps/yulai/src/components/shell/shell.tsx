@@ -1,6 +1,6 @@
 import type { CSSProperties } from "react";
 import { Outlet, useMatches } from "@tanstack/react-router";
-import { presenceFeature, skillsFeature, useCharactersWithFeature } from "../../features";
+import { presenceFeature, skillsFeature, useFeature } from "../../features";
 import { DataUpdate } from "../data-update";
 import { GettingStarted } from "../getting-started";
 import { NavIcon, NavItem } from "../nav-item";
@@ -10,8 +10,8 @@ import styles from "./shell.module.scss";
 // App shell inside the frame: tool navigation on the left, the page on the right.
 export function Shell() {
   const { width, collapsed, handleProps } = useSidebarWidth();
-  const skillCharacters = useCharactersWithFeature(skillsFeature);
-  const presenceCharacters = useCharactersWithFeature(presenceFeature);
+  const skills = useFeature(skillsFeature);
+  const presence = useFeature(presenceFeature);
   const fullBleed = useMatches({ select: (matches) => matches.some((m) => m.staticData.fullBleed) });
   return (
     <div className={styles.shell} style={{ "--sidebar-w": `${width}px` } as CSSProperties}>
@@ -23,14 +23,14 @@ export function Shell() {
             icon="map"
             label="New Eden"
             collapsed={collapsed}
-            disabled={presenceCharacters.length === 0 ? `Needs a character with ${presenceFeature}` : undefined}
+            disabled={presence.characters.length === 0 ? `Needs a character with ${presence.name}` : undefined}
           />
           <NavItem
             to="/ship-tree"
             icon="ship"
             label="Ship Tree"
             collapsed={collapsed}
-            disabled={skillCharacters.length === 0 ? `Needs a character with ${skillsFeature}` : undefined}
+            disabled={skills.characters.length === 0 ? `Needs a character with ${skills.name}` : undefined}
           />
         </nav>
         <div className={styles.foot}>

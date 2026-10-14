@@ -19,13 +19,13 @@ type SkillList struct {
 }
 
 var FetchSkills = task.New(
-	(*Feature).skills,
+	(*Skills).skills,
 	task.WithStartup(),
 	task.WithInterval(every),
 	task.WithTimeout(timeout),
 )
 
-func (f *Feature) skills(ctx context.Context, in Input) (*SkillList, error) {
+func (f *Skills) skills(ctx context.Context, in Input) (*SkillList, error) {
 	resp, err := getskills.Request(
 		ctx, f.esi,
 		&getskills.Input{

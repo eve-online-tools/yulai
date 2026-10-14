@@ -1,15 +1,11 @@
 package shiptree
 
 import (
-	"archive/zip"
 	"encoding/json"
-	"io"
-	"log/slog"
-	"os"
-	"path/filepath"
 	"testing"
 
 	"github.com/eve-online-tools/yulai/core/sde"
+	"github.com/eve-online-tools/yulai/core/sde/sdetest"
 )
 
 // Records in CCP's export format, trimmed to the fields the tree reads.
@@ -107,16 +103,7 @@ const want = `{
 }`
 
 func TestBuild(t *testing.T) {
-	s, err := sde.Open(t.Context(), t.TempDir(), slog.New(slog.NewTextHandler(io.Discard, nil)))
-	if err != nil {
-		t.Fatal(err)
-	}
-	t.Cleanup(func() { s.Close() })
-	if err := s.Install(t.Context(), writeZip(t, fixture)); err != nil {
-		t.Fatal(err)
-	}
-
-	d, err := NewService(s).Data(t.Context())
+	d, err := newService(sdetest.Install(t, fixture)).Data(t.Context())
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -130,40 +117,9 @@ func TestBuild(t *testing.T) {
 }
 
 func TestBuildNotInstalled(t *testing.T) {
-	s, err := sde.Open(t.Context(), t.TempDir(), slog.New(slog.NewTextHandler(io.Discard, nil)))
-	if err != nil {
-		t.Fatal(err)
-	}
-	t.Cleanup(func() { s.Close() })
-	if _, err := NewService(s).Data(t.Context()); err != sde.ErrNotInstalled {
+	if _, err := newService(sdetest.Open(t)).Data(t.Context()); err != sde.ErrNotInstalled {
 		t.Fatalf("err = %v", err)
 	}
-}
-
-func writeZip(t *testing.T, files map[string]string) string {
-	t.Helper()
-	p := filepath.Join(t.TempDir(), "export.zip")
-	f, err := os.Create(p)
-	if err != nil {
-		t.Fatal(err)
-	}
-	zw := zip.NewWriter(f)
-	for name, body := range files {
-		w, err := zw.Create(name)
-		if err != nil {
-			t.Fatal(err)
-		}
-		if _, err := io.WriteString(w, body+"\n"); err != nil {
-			t.Fatal(err)
-		}
-	}
-	if err := zw.Close(); err != nil {
-		t.Fatal(err)
-	}
-	if err := f.Close(); err != nil {
-		t.Fatal(err)
-	}
-	return p
 }
 
 func jsonEqual(t *testing.T, a, b []byte) bool {

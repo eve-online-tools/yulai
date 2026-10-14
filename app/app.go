@@ -23,6 +23,7 @@ import (
 	"github.com/eve-online-tools/yulai/feature/presence"
 	"github.com/eve-online-tools/yulai/feature/shiptree"
 	"github.com/eve-online-tools/yulai/feature/skills"
+	"github.com/eve-online-tools/yulai/feature/starmap"
 	"github.com/eve-online-tools/yulai/identity/login"
 	"github.com/eve-online-tools/yulai/identity/sso"
 	"github.com/eve-online-tools/yulai/identity/token"
@@ -50,13 +51,12 @@ type App struct {
 	Config     *Config
 	Characters *character.Service
 	Login      *login.Server
-	SDE        *sde.Updater
-	Presence   *presence.Feature
 
-	conn   *sql.DB
-	sde    *sde.Store
-	tokens *token.Store
-	cancel context.CancelFunc
+	conn     *sql.DB
+	sde      *sde.Store
+	tokens   *token.Store
+	features []feature.Feature
+	cancel   context.CancelFunc
 	// done closes when the task scheduler has drained its in-flight runs.
 	done chan struct{}
 }
@@ -82,26 +82,54 @@ func New(ctx context.Context, cfg *Config, web fs.FS) (*App, error) {
 		return nil, err
 	}
 	app := &App{Config: cfg, conn: conn, sde: store}
-	app.SDE = sde.NewUpdater(store, &http.Client{}, emitter{})
-	tokens := token.NewStore(conn, ssoClient, verifier, sealer, func(ctx context.Context, id int64, reason string) {
+	app.tokens = token.NewStore(conn, ssoClient, verifier, sealer, func(ctx context.Context, id int64, reason string) {
 		if err := app.Characters.MarkNeedsLogin(ctx, id, reason); err != nil {
 			slog.Warn("mark needs login", "character", id, "err", err)
 		}
 	})
 	esiClient := esi.NewClient(cfg.SSO.Name, cfg.SSO.Description, cfg.CachePath())
+	app.Characters = character.NewService(conn, emitter{}, app.tokens, esiClient)
 
-	app.Presence = presence.NewFeature(conn, esiClient, tokens, characters{app}, emitter{})
-	// Every opt-in feature is registered here. Order is what the UI shows.
-	features := []feature.Feature{
-		app.Presence,
-		skills.NewFeature(conn, esiClient, tokens, characters{app}, emitter{}),
+	task.Default = task.NewScheduler(task.Options{
+		Workers:  taskWorkers,
+		OnChange: func() { emitter{}.Emit(EventTasksChanged) },
+		OnProgress: func(ev task.ProgressEvent) {
+			application.Get().Event.Emit(progressEvents[ev.State], ev)
+		},
+	})
+	updater := sde.NewUpdater(store, &http.Client{}, emitter{})
+
+	d := feature.Deps{
+		DB:         conn,
+		ESI:        esiClient,
+		SDE:        store,
+		Tokens:     app.tokens,
+		Characters: app.Characters,
+		Events:     emitter{},
+	}
+	// Every feature is listed here. Order is the picker order.
+	app.features = []feature.Feature{
+		{
+			ID:       "sde",
+			Tasks:    updater.Tasks(),
+			Services: []application.Service{application.NewService(sde.NewService(updater, task.Default.List))},
+		},
+		character.Feature(app.Characters),
+		charactersheet.Feature(d, app.Characters),
+		presence.Feature(d),
+		skills.Feature(d),
+		shiptree.Feature(d),
+		starmap.Feature(d),
 	}
 
-	loginFeatures := make([]login.Feature, 0, len(features))
-	for _, f := range features {
-		loginFeatures = append(loginFeatures, login.Feature{Name: f.Name(), Scopes: f.Scopes()})
+	var picker []login.Feature
+	for _, f := range app.features {
+		task.Default.Register(f.Tasks...)
+		if f.Scopes != nil {
+			picker = append(picker, login.Feature{ID: f.ID, Name: f.Name, Scopes: f.Scopes})
+		}
 	}
-	app.Login, err = login.New(ssoClient, verifier, web, loginFeatures, func(ctx context.Context, r *login.Result) error {
+	app.Login, err = login.New(ssoClient, verifier, web, picker, func(ctx context.Context, r *login.Result) error {
 		if err := app.Characters.Store(ctx, r); err != nil {
 			return err
 		}
@@ -114,24 +142,6 @@ func New(ctx context.Context, cfg *Config, web fs.FS) (*App, error) {
 		store.Close()
 		return nil, err
 	}
-	app.Characters = character.NewService(conn, emitter{}, tokens, esiClient)
-	app.tokens = tokens
-
-	task.Default = task.NewScheduler(task.Options{
-		Workers:  taskWorkers,
-		OnChange: func() { emitter{}.Emit(EventTasksChanged) },
-		OnProgress: func(ev task.ProgressEvent) {
-			application.Get().Event.Emit(progressEvents[ev.State], ev)
-		},
-	})
-	task.Default.Register(app.SDE.Tasks()...)
-	task.Default.Register(app.Characters.Tasks()...)
-	// Always on, so not in features: it needs no scopes and has nothing to opt into.
-	task.Default.Register(charactersheet.NewSheet(conn, esiClient, app.Characters, emitter{}).Tasks()...)
-	for _, f := range features {
-		task.Default.Register(f.Tasks()...)
-	}
-
 	return app, nil
 }
 
@@ -153,16 +163,15 @@ func (a *App) Start(ctx context.Context) error {
 }
 
 func (a *App) Services() []application.Service {
-	return []application.Service{
-		application.NewService(a.Characters),
+	out := []application.Service{
 		application.NewService(login.NewConsent(a.Login, browser{}, a.tokens)),
 		application.NewService(newSetupService(a.Config, a.Login.URL())),
-		application.NewService(sde.NewService(a.SDE, task.Default.List)),
 		application.NewService(&TaskService{s: task.Default}),
-		application.NewService(skills.NewService(a.conn)),
-		application.NewService(shiptree.NewService(a.sde)),
-		application.NewService(presence.NewService(a.Presence)),
 	}
+	for _, f := range a.features {
+		out = append(out, f.Services...)
+	}
+	return out
 }
 
 // Close stops the scheduler and waits for in-flight runs before closing the
@@ -184,14 +193,7 @@ type browser struct{}
 
 func (browser) OpenURL(url string) error { return application.Get().Browser.OpenURL(url) }
 
-// characters implements presence.Characters and skills.Characters once app.Characters is set.
-type characters struct{ app *App }
-
-func (c characters) WithFeature(ctx context.Context, f feature.Feature) ([]int64, error) {
-	return c.app.Characters.WithFeature(ctx, f)
-}
-
-// emitter implements character.Emitter.
+// emitter implements feature.Emitter.
 type emitter struct{}
 
 func (emitter) Emit(name string) { application.Get().Event.Emit(name, struct{}{}) }

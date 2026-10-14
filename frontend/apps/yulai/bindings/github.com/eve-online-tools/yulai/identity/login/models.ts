@@ -9,11 +9,18 @@ import { Create as $Create } from "@wailsio/runtime";
  * Feature is one choice on the picker.
  */
 export class Feature {
+    /**
+     * ID is the feature's stable ID. The picker posts names.
+     */
+    "id": string;
     "name": string;
     "scopes": string[];
 
     /** Creates a new Feature instance. */
     constructor($$source: Partial<Feature> = {}) {
+        if (!("id" in $$source)) {
+            this["id"] = "";
+        }
         if (!("name" in $$source)) {
             this["name"] = "";
         }
@@ -28,10 +35,10 @@ export class Feature {
      * Creates a new Feature instance from a string or object.
      */
     static createFrom($$source: any = {}): Feature {
-        const $$createField1_0 = $$createType0;
+        const $$createField2_0 = $$createType0;
         let $$parsedSource = typeof $$source === 'string' ? JSON.parse($$source) : $$source;
         if ("scopes" in $$parsedSource) {
-            $$parsedSource["scopes"] = $$createField1_0($$parsedSource["scopes"]);
+            $$parsedSource["scopes"] = $$createField2_0($$parsedSource["scopes"]);
         }
         return new Feature($$parsedSource as Partial<Feature>);
     }
