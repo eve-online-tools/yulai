@@ -16,7 +16,7 @@ import * as $models from "./models.js";
 
 /**
  * Data returns the tree's static data, built once per installed SDE. It fails
- * before the first install; the frontend refetches on sde:changed.
+ * before the first install; the frontend refetches when the sde topic changes.
  */
 export function Data(): $CancellablePromise<$models.Data | null> {
     return $Call.ByID(1257128812).then(($result: any) => {

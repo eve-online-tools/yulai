@@ -125,7 +125,8 @@ field names and JSON tags so the bindings don't change. `sqlc.yaml` is added tog
 4. Optional Wails `Service` for the UI, with `ServiceName()`, in the feature's `Services`. Call
    `d.Events.Changed(Topic)` after writes that change data.
 5. Add one line to the feature list in `app.New`.
-6. Frontend: add a key starting with the topic and a `queryOptions` to `apps/yulai/src/queries.ts`. Add a route in
+6. Frontend: add a key starting with the topic and a `queryOptions` to `apps/yulai/src/queries.ts`. A query
+   that also depends on other topics lists them in `meta.topics`. Add a route in
    `apps/yulai/src/router.tsx` and/or a panel in the character card. Gate pages on the feature ID with
    `useFeature` from `apps/yulai/src/features.ts`.
 

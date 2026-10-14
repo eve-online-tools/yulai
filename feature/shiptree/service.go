@@ -30,7 +30,7 @@ func newService(store *sde.Store) *Service {
 func (s *Service) ServiceName() string { return "ShipTreeService" }
 
 // Data returns the tree's static data, built once per installed SDE. It fails
-// before the first install; the frontend refetches on sde:changed.
+// before the first install; the frontend refetches when the sde topic changes.
 func (s *Service) Data(ctx context.Context) (*Data, error) {
 	return s.data.Get(ctx)
 }

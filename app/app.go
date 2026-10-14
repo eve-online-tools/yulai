@@ -33,7 +33,7 @@ const taskWorkers = 8
 // EventChanged carries a topic. The frontend refetches the queries under it.
 const EventChanged = "data:changed"
 
-// TopicTasks is sent, debounced, when task run status changes.
+// TopicTasks is sent, debounced, when task run status changes. It is keys.tasks in the frontend.
 const TopicTasks = "tasks"
 
 func init() {
