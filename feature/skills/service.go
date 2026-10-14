@@ -4,11 +4,17 @@ import (
 	"context"
 
 	"github.com/eve-online-tools/yulai/core/db"
+	"github.com/eve-online-tools/yulai/core/sde"
 )
 
 // Service is the Wails-facing side of the stored skills.
 type Service struct {
-	q *Queries
+	q       *Queries
+	catalog *sde.Derived[*Catalog]
+}
+
+func newService(q *Queries, store *sde.Store) *Service {
+	return &Service{q: q, catalog: sde.NewDerived(store, buildCatalog)}
 }
 
 func (s *Service) ServiceName() string { return "SkillsService" }
@@ -61,4 +67,10 @@ func (s *Service) Totals(ctx context.Context, characterID int64) (*SkillTotal, e
 		return nil, nil
 	}
 	return &row, nil
+}
+
+// Catalog returns every published skill by group, built once per installed SDE.
+// It fails before the first install; the frontend refetches when the sde topic changes.
+func (s *Service) Catalog(ctx context.Context) (*Catalog, error) {
+	return s.catalog.Get(ctx)
 }

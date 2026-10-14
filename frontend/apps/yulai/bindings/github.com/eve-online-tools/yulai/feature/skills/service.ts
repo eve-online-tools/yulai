@@ -24,11 +24,21 @@ export function Attributes(characterID: number): $CancellablePromise<$models.Cha
 }
 
 /**
+ * Catalog returns every published skill by group, built once per installed SDE.
+ * It fails before the first install; the frontend refetches when the sde topic changes.
+ */
+export function Catalog(): $CancellablePromise<$models.Catalog | null> {
+    return $Call.ByID(3183418975).then(($result: any) => {
+        return $$createType3($result);
+    });
+}
+
+/**
  * List returns the character's trained skills, empty before the first fetch.
  */
 export function List(characterID: number): $CancellablePromise<$models.Skill[]> {
     return $Call.ByID(4096199240, characterID).then(($result: any) => {
-        return $$createType3($result);
+        return $$createType5($result);
     });
 }
 
@@ -37,7 +47,7 @@ export function List(characterID: number): $CancellablePromise<$models.Skill[]> 
  */
 export function Queue(characterID: number): $CancellablePromise<$models.SkillQueue[]> {
     return $Call.ByID(4006968111, characterID).then(($result: any) => {
-        return $$createType5($result);
+        return $$createType7($result);
     });
 }
 
@@ -46,16 +56,18 @@ export function Queue(characterID: number): $CancellablePromise<$models.SkillQue
  */
 export function Totals(characterID: number): $CancellablePromise<$models.SkillTotal | null> {
     return $Call.ByID(2213051211, characterID).then(($result: any) => {
-        return $$createType7($result);
+        return $$createType9($result);
     });
 }
 
 // Private type creation functions
 const $$createType0 = $models.CharacterAttribute.createFrom;
 const $$createType1 = $Create.Nullable($$createType0);
-const $$createType2 = $models.Skill.createFrom;
-const $$createType3 = $Create.Array($$createType2);
-const $$createType4 = $models.SkillQueue.createFrom;
+const $$createType2 = $models.Catalog.createFrom;
+const $$createType3 = $Create.Nullable($$createType2);
+const $$createType4 = $models.Skill.createFrom;
 const $$createType5 = $Create.Array($$createType4);
-const $$createType6 = $models.SkillTotal.createFrom;
-const $$createType7 = $Create.Nullable($$createType6);
+const $$createType6 = $models.SkillQueue.createFrom;
+const $$createType7 = $Create.Array($$createType6);
+const $$createType8 = $models.SkillTotal.createFrom;
+const $$createType9 = $Create.Nullable($$createType8);

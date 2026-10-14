@@ -29,6 +29,8 @@ export const keys = {
   progress: (key: string) => ["progress", key] as const,
   skills: (characterID: number) => ["skills", characterID] as const,
   skillQueue: (characterID: number) => ["skills", characterID, "queue"] as const,
+  skillTotals: (characterID: number) => ["skills", characterID, "totals"] as const,
+  skillCatalog: ["sde", "skills"] as const,
   shipTree: ["sde", "shipTree"] as const,
 };
 
@@ -72,6 +74,19 @@ export const skillQueueQuery = (characterID: number) =>
     queryKey: keys.skillQueue(characterID),
     queryFn: () => Skills.Queue(characterID),
   });
+
+export const skillTotalsQuery = (characterID: number) =>
+  queryOptions({
+    queryKey: keys.skillTotals(characterID),
+    queryFn: () => Skills.Totals(characterID),
+  });
+
+// Built from the SDE, so it only changes with it.
+export const skillCatalogQuery = queryOptions({
+  queryKey: keys.skillCatalog,
+  queryFn: () => Skills.Catalog(),
+  staleTime: Infinity,
+});
 
 export const characterTasks = (tasks: Status[], characterID: number) => tasks.filter((t) => t.subject === `char:${characterID}`);
 

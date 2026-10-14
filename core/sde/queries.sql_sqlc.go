@@ -735,6 +735,42 @@ func (q *Queries) ShipTreeTypes(ctx context.Context) ([]ShipTreeTypesRow, error)
 	return items, nil
 }
 
+const skillGroups = `-- name: SkillGroups :many
+
+SELECT key, name_en FROM groups
+WHERE category_id = 16 AND published
+ORDER BY name_en
+`
+
+type SkillGroupsRow struct {
+	Key    int64   `json:"key"`
+	NameEn *string `json:"nameEn"`
+}
+
+// Skill catalog: published skills (category 16) and their groups.
+func (q *Queries) SkillGroups(ctx context.Context) ([]SkillGroupsRow, error) {
+	rows, err := q.db.QueryContext(ctx, skillGroups)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []SkillGroupsRow
+	for rows.Next() {
+		var i SkillGroupsRow
+		if err := rows.Scan(&i.Key, &i.NameEn); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const skillNames = `-- name: SkillNames :many
 SELECT key, name_en FROM types
 WHERE group_id IN (SELECT key FROM groups WHERE category_id = 16)
@@ -756,6 +792,87 @@ func (q *Queries) SkillNames(ctx context.Context) ([]SkillNamesRow, error) {
 	for rows.Next() {
 		var i SkillNamesRow
 		if err := rows.Scan(&i.Key, &i.NameEn); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const skillTypeAttributes = `-- name: SkillTypeAttributes :many
+SELECT a.parent, a.attribute_id, a.value
+FROM type_dogma_dogma_attributes a
+JOIN types t ON t.key = a.parent
+WHERE t.published AND t.group_id IN (SELECT key FROM groups WHERE category_id = 16 AND published)
+  AND a.attribute_id IN (180, 181, 275, 182, 183, 184, 1285, 1289, 1290, 277, 278, 279, 1286, 1287, 1288)
+ORDER BY a.parent, a.idx
+`
+
+type SkillTypeAttributesRow struct {
+	Parent      typeid.Identifier `json:"parent"`
+	AttributeID *int64            `json:"attributeId"`
+	Value       *float64          `json:"value"`
+}
+
+// Primary and secondary attribute (180, 181), rank (275), required skills 1-6 (182, 183, 184, 1285, 1289, 1290)
+// and their levels (277, 278, 279, 1286, 1287, 1288).
+func (q *Queries) SkillTypeAttributes(ctx context.Context) ([]SkillTypeAttributesRow, error) {
+	rows, err := q.db.QueryContext(ctx, skillTypeAttributes)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []SkillTypeAttributesRow
+	for rows.Next() {
+		var i SkillTypeAttributesRow
+		if err := rows.Scan(&i.Parent, &i.AttributeID, &i.Value); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const skillTypes = `-- name: SkillTypes :many
+SELECT key, group_id, name_en, description_en FROM types
+WHERE published AND group_id IN (SELECT key FROM groups WHERE category_id = 16 AND published)
+ORDER BY name_en
+`
+
+type SkillTypesRow struct {
+	Key           typeid.Identifier `json:"key"`
+	GroupID       *int64            `json:"groupId"`
+	NameEn        *string           `json:"nameEn"`
+	DescriptionEn *string           `json:"descriptionEn"`
+}
+
+func (q *Queries) SkillTypes(ctx context.Context) ([]SkillTypesRow, error) {
+	rows, err := q.db.QueryContext(ctx, skillTypes)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []SkillTypesRow
+	for rows.Next() {
+		var i SkillTypesRow
+		if err := rows.Scan(
+			&i.Key,
+			&i.GroupID,
+			&i.NameEn,
+			&i.DescriptionEn,
+		); err != nil {
 			return nil, err
 		}
 		items = append(items, i)

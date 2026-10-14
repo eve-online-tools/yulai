@@ -77,6 +77,9 @@ install, so the first `Get` normally finds it ready.
 `@eve-online-tools/eve-map`, built from `map_solar_systems`, `map_stargates`, `map_constellations` and
 `map_regions`. It is a `Derived`, so it is ready before the map opens. Its query key starts with `sde`, so the frontend refetches it when the `sde` topic changes.
 
+`SkillsService.Catalog()` (`feature/skills`) returns every published skill by group with its rank, attributes and
+required skills, from `groups`, `types` and `type_dogma_dogma_attributes`. Also a `Derived`, for the skills page.
+
 ## Tasks
 
 | Task | Schedule | Does |
