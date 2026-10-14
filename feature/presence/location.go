@@ -53,7 +53,7 @@ func (f *Presence) location(ctx context.Context, in Input) (*PresenceLocation, e
 		return nil, err
 	}
 	if !existed || db.Changed(prev, row) {
-		f.events.Emit(EventChanged)
+		f.events.Changed(Topic)
 	}
 	return &row, nil
 }

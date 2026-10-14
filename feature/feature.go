@@ -49,8 +49,10 @@ type Characters interface {
 	WithScopes(ctx context.Context, scopes ...string) ([]int64, error)
 }
 
+// Emitter tells the frontend that stored data changed. It refetches the queries
+// under that topic.
 type Emitter interface {
-	Emit(name string)
+	Changed(topic string)
 }
 
 // Covers reports whether have includes every scope in need.

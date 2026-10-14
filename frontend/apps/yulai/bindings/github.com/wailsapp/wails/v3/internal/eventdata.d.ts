@@ -12,15 +12,10 @@ import type * as task$0 from "../../../../eve-online-tools/yulai/core/task/model
 declare module "@wailsio/runtime" {
     namespace Events {
         interface CustomEvents {
-            "character:changed": {};
-            "charactersheet:changed": {};
-            "presence:changed": {};
+            "data:changed": string;
             "progress:done": task$0.ProgressEvent;
             "progress:start": task$0.ProgressEvent;
             "progress:update": task$0.ProgressEvent;
-            "sde:changed": {};
-            "skills:changed": {};
-            "task:changed": {};
         }
     }
 }

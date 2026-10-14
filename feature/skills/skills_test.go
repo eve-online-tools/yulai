@@ -51,7 +51,7 @@ func (c fakeChars) WithScopes(context.Context, ...string) ([]int64, error) { ret
 
 type countEmitter struct{ n int }
 
-func (c *countEmitter) Emit(string) { c.n++ }
+func (c *countEmitter) Changed(string) { c.n++ }
 
 func newTestFeature(t *testing.T, esi fakeESI) (*Skills, *sql.DB, *countEmitter) {
 	t.Helper()

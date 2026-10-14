@@ -13,7 +13,7 @@ import (
 	"github.com/eve-online-tools/yulai/feature"
 )
 
-const EventChanged = "charactersheet:changed"
+const Topic = "charactersheet"
 
 const (
 	characterEvery   = time.Hour

@@ -30,16 +30,14 @@ import (
 
 const taskWorkers = 8
 
-// EventTasksChanged fires, debounced, when task run status or progress changes.
-const EventTasksChanged = "task:changed"
+// EventChanged carries a topic. The frontend refetches the queries under it.
+const EventChanged = "data:changed"
+
+// TopicTasks is sent, debounced, when task run status changes.
+const TopicTasks = "tasks"
 
 func init() {
-	application.RegisterEvent[struct{}](character.EventChanged)
-	application.RegisterEvent[struct{}](presence.EventChanged)
-	application.RegisterEvent[struct{}](charactersheet.EventChanged)
-	application.RegisterEvent[struct{}](skills.EventChanged)
-	application.RegisterEvent[struct{}](sde.EventChanged)
-	application.RegisterEvent[struct{}](EventTasksChanged)
+	application.RegisterEvent[string](EventChanged)
 	application.RegisterEvent[task.ProgressEvent](EventProgressStart)
 	application.RegisterEvent[task.ProgressEvent](EventProgressUpdate)
 	application.RegisterEvent[task.ProgressEvent](EventProgressDone)
@@ -91,7 +89,7 @@ func New(ctx context.Context, cfg *Config, web fs.FS) (*App, error) {
 
 	task.Default = task.NewScheduler(task.Options{
 		Workers:  taskWorkers,
-		OnChange: func() { emitter{}.Emit(EventTasksChanged) },
+		OnChange: func() { emitter{}.Changed(TopicTasks) },
 		OnProgress: func(ev task.ProgressEvent) {
 			application.Get().Event.Emit(progressEvents[ev.State], ev)
 		},
@@ -196,4 +194,4 @@ func (browser) OpenURL(url string) error { return application.Get().Browser.Open
 // emitter implements feature.Emitter.
 type emitter struct{}
 
-func (emitter) Emit(name string) { application.Get().Event.Emit(name, struct{}{}) }
+func (emitter) Changed(topic string) { application.Get().Event.Emit(EventChanged, topic) }

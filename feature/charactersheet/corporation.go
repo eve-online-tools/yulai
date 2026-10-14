@@ -70,7 +70,7 @@ func (s *Sheet) corporation(ctx context.Context, in CorporationInput) (_ *Corpor
 		return nil, err
 	}
 	if !existed || db.Changed(prev, row) {
-		s.events.Emit(EventChanged)
+		s.events.Changed(Topic)
 	}
 
 	if row.AllianceID == nil {

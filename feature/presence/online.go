@@ -58,7 +58,7 @@ func (f *Presence) online(ctx context.Context, in Input) (*PresenceOnline, error
 		f.forget(in.CharacterID, partLocation, partShip)
 	}
 	if !existed || db.Changed(prev, row) {
-		f.events.Emit(EventChanged)
+		f.events.Changed(Topic)
 	}
 	return &row, nil
 }

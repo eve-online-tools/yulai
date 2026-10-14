@@ -85,12 +85,16 @@ getlocation "github.com/eve-online-tools/lib-esi-go/esi/getcharacterscharacterid
 
 ## Events
 
-Emit `<feature>:changed` only when stored values change, not on every fetch, so the frontend does not
-refetch every tick. Read the previous row before the upsert and compare with `db.Changed`, which ignores
+Every change goes out as one Wails event, `data:changed`, carrying a topic. Each feature has a `Topic`
+constant, which is also the first element of its frontend query keys. The frontend refetches every query
+under the topic, plus queries that list it in `meta.topics`.
+
+Call `Changed(Topic)` only when stored values change, not on every fetch, so the frontend does not refetch
+every tick. Read the previous row before the upsert and compare with `db.Changed`, which ignores
 `FetchedAt`:
 
 ```go
 if !existed || db.Changed(prev, row) {
-	f.events.Emit(EventChanged)
+	f.events.Changed(Topic)
 }
 ```

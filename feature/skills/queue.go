@@ -74,7 +74,7 @@ func (f *Skills) queue(ctx context.Context, in Input) ([]SkillQueue, error) {
 		return nil, err
 	}
 	if changed {
-		f.events.Emit(EventChanged)
+		f.events.Changed(Topic)
 	}
 	return rows, nil
 }

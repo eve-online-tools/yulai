@@ -17,7 +17,7 @@ import (
 
 type events struct{ n atomic.Int32 }
 
-func (e *events) Emit(string) { e.n.Add(1) }
+func (e *events) Changed(string) { e.n.Add(1) }
 
 // cdn serves latest.jsonl and the zip of one build like developers.eveonline.com.
 type cdn struct {

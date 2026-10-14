@@ -42,7 +42,7 @@ func (f fakeESI) RoundTrip(r *http.Request) (*http.Response, error) {
 
 type nopEmitter struct{}
 
-func (nopEmitter) Emit(string) {}
+func (nopEmitter) Changed(string) {}
 
 func newTestService(t *testing.T, esiBody string) (*Service, *token.Store) {
 	t.Helper()
