@@ -41,8 +41,11 @@ func (s *Service) Queue(ctx context.Context, characterID int64) ([]SkillQueue, e
 func (s *Service) Attributes(ctx context.Context, characterID int64) (*CharacterAttribute, error) {
 	row, err := s.q.GetAttributes(ctx, characterID)
 	found, err := db.Found(err)
-	if err != nil || !found {
+	if err != nil {
 		return nil, err
+	}
+	if !found {
+		return nil, nil
 	}
 	return &row, nil
 }
@@ -51,8 +54,11 @@ func (s *Service) Attributes(ctx context.Context, characterID int64) (*Character
 func (s *Service) Totals(ctx context.Context, characterID int64) (*SkillTotal, error) {
 	row, err := s.q.GetTotals(ctx, characterID)
 	found, err := db.Found(err)
-	if err != nil || !found {
+	if err != nil {
 		return nil, err
+	}
+	if !found {
+		return nil, nil
 	}
 	return &row, nil
 }
