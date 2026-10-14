@@ -4,9 +4,7 @@ package character
 import (
 	"context"
 	"database/sql"
-	"errors"
 	"net/http"
-	"net/url"
 	"strings"
 	"time"
 
@@ -26,42 +24,20 @@ const (
 	StatusNeedsLogin = "needs_login"
 )
 
-// Enroller is implemented by the sync scheduler. Kept as an interface so character
-// does not import sync.
-type Enroller interface {
-	Enroll(ctx context.Context, characterID int64) error
-}
-
-// Browser opens URLs in the system browser. Implemented by app with Wails.
-type Browser interface {
-	OpenURL(url string) error
-}
-
 // Emitter sends app events. Implemented by app with Wails.
 type Emitter interface {
 	Emit(name string)
 }
 
-// FeatureInfo is what the frontend needs to show opt-in choices.
-type FeatureInfo struct {
-	Name   string   `json:"name"`
-	Scopes []string `json:"scopes"`
-}
-
 type Service struct {
-	q        *Queries
-	loginURL string
-	browser  Browser
-	events   Emitter
-	tokens   *token.Store
-	esi      *http.Client
-	features []feature.Feature
-	enroller Enroller
+	q      *Queries
+	events Emitter
+	tokens *token.Store
+	esi    *http.Client
 }
 
-// loginURL is the login server's picker page.
-func NewService(conn *sql.DB, loginURL string, browser Browser, events Emitter, tokens *token.Store, esiClient *http.Client, features []feature.Feature, enroller Enroller) *Service {
-	return &Service{q: New(conn), loginURL: loginURL, browser: browser, events: events, tokens: tokens, esi: esiClient, features: features, enroller: enroller}
+func NewService(conn *sql.DB, events Emitter, tokens *token.Store, esiClient *http.Client) *Service {
+	return &Service{q: New(conn), events: events, tokens: tokens, esi: esiClient}
 }
 
 func (s *Service) ServiceName() string { return "CharacterService" }
@@ -101,38 +77,8 @@ func (s *Service) WithFeature(ctx context.Context, f feature.Feature) ([]int64, 
 	return s.WithScopes(ctx, f.Scopes()...)
 }
 
-// Features lists every opt-in feature and the scopes it needs. The frontend diffs
-// them against a character's token scopes to show what is enabled.
-func (s *Service) Features() []FeatureInfo {
-	out := make([]FeatureInfo, 0, len(s.features))
-	for _, f := range s.features {
-		out = append(out, FeatureInfo{Name: f.Name(), Scopes: f.Scopes()})
-	}
-	return out
-}
-
-// AddCharacter opens the login server's feature picker in the system browser.
-// Completed logins arrive through Store and are reported through EventChanged.
-func (s *Service) AddCharacter() error { return s.browser.OpenURL(s.loginURL) }
-
-// Relogin opens the feature picker with the character's current features checked,
-// to replace a token that stopped working.
-func (s *Service) Relogin(ctx context.Context, characterID int64) error {
-	scopes, err := s.tokens.Scopes(ctx, characterID)
-	if err != nil && !errors.Is(err, sql.ErrNoRows) {
-		return err
-	}
-	q := url.Values{"feature": {""}}
-	for _, f := range s.features {
-		if feature.Covers(scopes, f.Scopes()) {
-			q.Add("feature", f.Name())
-		}
-	}
-	return s.browser.OpenURL(s.loginURL + "?" + q.Encode())
-}
-
-// Store upserts the character and saves its tokens, replacing earlier scopes, then
-// enrolls it. It is the login server's handler.
+// Store upserts the character and saves its tokens, replacing earlier scopes. It is
+// the login server's handler.
 //
 //wails:ignore
 func (s *Service) Store(ctx context.Context, r *login.Result) error {
@@ -169,9 +115,6 @@ func (s *Service) Store(ctx context.Context, r *login.Result) error {
 		return err
 	}
 	if err := s.tokens.Save(ctx, r.CharacterID, &r.Tokens, &r.Identity); err != nil {
-		return err
-	}
-	if err := s.enroller.Enroll(ctx, r.CharacterID); err != nil {
 		return err
 	}
 	s.events.Emit(EventChanged)

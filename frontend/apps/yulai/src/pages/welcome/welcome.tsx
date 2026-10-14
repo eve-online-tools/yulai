@@ -1,12 +1,13 @@
 import { useEffect } from "react";
 import { useMutation, useSuspenseQuery } from "@tanstack/react-query";
 import { useNavigate } from "@tanstack/react-router";
-import { Service as Characters, type ListRow as Character } from "@bindings/github.com/eve-online-tools/yulai/feature/character";
-import type { SyncJob } from "@bindings/github.com/eve-online-tools/yulai/feature/sync";
+import type { ListRow as Character } from "@bindings/github.com/eve-online-tools/yulai/feature/character";
+import type { Status } from "@bindings/github.com/eve-online-tools/yulai/core/task";
+import { Consent } from "@bindings/github.com/eve-online-tools/yulai/identity/login";
 import { Alert, Button, Panel } from "@xaroth.nl/design/react";
 import { Portrait } from "@yulai/ui";
 import { DataUpdate } from "../../components/data-update";
-import { charactersQuery, sdeQuery, setupQuery, syncJobsQuery } from "../../queries";
+import { characterTasks, charactersQuery, hasRun, sdeQuery, setupQuery, tasksQuery } from "../../queries";
 import styles from "./welcome.module.scss";
 
 const steps = ["Add a character", "Synchronizing", "Complete"];
@@ -15,15 +16,16 @@ const steps = ["Add a character", "Synchronizing", "Complete"];
 export function WelcomePage() {
   const { data: setup } = useSuspenseQuery(setupQuery);
   const { data: characters } = useSuspenseQuery(charactersQuery);
-  const { data: jobs } = useSuspenseQuery(syncJobsQuery);
+  const { data: tasks } = useSuspenseQuery(tasksQuery);
   const { data: sde } = useSuspenseQuery(sdeQuery);
   const navigate = useNavigate();
 
   const first = characters[0];
-  const myJobs = first ? jobs.filter((j) => j.characterId === first.id) : [];
-  const synced = myJobs.filter((j) => j.lastRun != null).length;
+  const myTasks = first ? characterTasks(tasks, first.id) : [];
+  const synced = myTasks.filter(hasRun).length;
   const sdeInstalled = sde.build > 0;
-  const current = !first ? 0 : synced < myJobs.length || !sdeInstalled ? 1 : 2;
+  // No tasks yet means the login's refresh has not dispatched them.
+  const current = !first ? 0 : myTasks.length === 0 || synced < myTasks.length || !sdeInstalled ? 1 : 2;
 
   useEffect(() => {
     if (current === 2) navigate({ to: "/overview", replace: true });
@@ -45,7 +47,7 @@ export function WelcomePage() {
           </ol>
           <div className={styles.content}>
             {current === 0 && <AddFirst loginUrl={setup.loginUrl} />}
-            {current === 1 && <Syncing character={first} jobs={myJobs} sdeInstalled={sdeInstalled} sdeError={sde.lastError} />}
+            {current === 1 && <Syncing character={first} tasks={myTasks} sdeInstalled={sdeInstalled} sdeError={sde.lastError} />}
           </div>
         </Panel>
       </div>
@@ -55,7 +57,7 @@ export function WelcomePage() {
 }
 
 function AddFirst({ loginUrl }: { loginUrl: string }) {
-  const add = useMutation({ mutationFn: () => Characters.AddCharacter() });
+  const add = useMutation({ mutationFn: () => Consent.AddCharacter() });
   return (
     <>
       <p className="muted small">Pick the features you want, then log in with EVE SSO in your browser.</p>
@@ -77,13 +79,13 @@ function AddFirst({ loginUrl }: { loginUrl: string }) {
 
 type SyncingProps = {
   character: Character;
-  jobs: SyncJob[];
+  tasks: Status[];
   sdeInstalled: boolean;
   sdeError: string;
 };
 
-function Syncing({ character, jobs, sdeInstalled, sdeError }: SyncingProps) {
-  const failed = jobs.find((j) => j.lastError);
+function Syncing({ character, tasks, sdeInstalled, sdeError }: SyncingProps) {
+  const failed = tasks.find((t) => t.lastError);
   return (
     <>
       <div className="row">
@@ -91,7 +93,7 @@ function Syncing({ character, jobs, sdeInstalled, sdeError }: SyncingProps) {
         <span>Welcome, {character.name}. Fetching your character data and the static game data.</span>
       </div>
       {!sdeInstalled && <p className="muted small">Static data is downloading, see progress below.</p>}
-      {failed && <Alert tone="warning">{failed.job}: {failed.lastError}</Alert>}
+      {failed && <Alert tone="warning">{failed.task}: {failed.lastError}</Alert>}
       {!sdeInstalled && sdeError && <Alert tone="warning">Static data: {sdeError}</Alert>}
     </>
   );

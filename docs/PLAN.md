@@ -1,10 +1,7 @@
 # Yulai application framework plan
 
 Yulai follows the architecture proven in asset-manager's `poc` branch. This document is the
-plan for the framework; the code in this repo is a compiling skeleton of it. Every stub returns
-`todo.ErrNotImplemented` (grep `core/todo` to find them) and the UI shell renders.
-
-Real features are out of scope for now. This plan describes where they plug in.
+plan for the framework and where features plug in.
 
 ## Principles
 
@@ -33,13 +30,12 @@ Real features are out of scope for now. This plan describes where they plug in.
 | `identity/login`   | Permanent loopback server: feature picker, SSO redirect, callback  | done (tested)   |
 | `identity/token`   | `tokens` table, sealed refresh tokens, `For()` → `RefreshableToken`| ported         |
 | `feature`          | `Feature` contract (`Tasks() []task.Binding`), `Enabled()`, `Covers()` | done (tested) |
-| `feature/character`| `characters` table, add-character flow, list, remove, needs-login  | done (tested), `Enroll` is a no-op until the scheduler is wired |
+| `feature/character`| `characters` table, list, remove, needs-login                      | done (tested) |
 | `feature/presence` | `presence_online`, `presence_locations`, `presence_ships`. Paced by online state | sync done (tested), no UI yet |
 | `feature/charactersheet`| Always on, no scopes. `character_sheets`, `corporations`, `alliances` | sync done (tested), no UI yet |
 | `feature/skills`   | `character_attributes`, `skill_totals`, `skills`, `skill_queue`. Every 5 minutes | sync done (tested), no UI yet |
 | `core/task`        | Generic in-memory scheduler, `task_pauses` table (see SCHEDULER.md) | engine done (tested), not wired |
 | `core/sde`         | Static Data Export in its own `sde.sqlite`, checked hourly (see SDE.md) | planned |
-| `feature/sync`     | Wails `SyncService` over the scheduler: list, pause, resume, trigger | old job registry, to be replaced |
 | `frontend`         | pnpm workspaces: `apps/yulai` (router, query layer, events, pages), `packages/ui` | done, renders stub data |
 
 The asset-manager `poc` implementations are the reference for every stub. Port each one and
@@ -68,7 +64,7 @@ SSO runs in the system browser, never in a Wails window: the user can only trust
 if they can see the real URL and know the app is not reading their input. A loopback HTTP server
 in `identity/login` runs for the whole app lifetime.
 
-1. "Add character" (`Characters.AddCharacter`) opens `http://localhost:45538/` in the system browser.
+1. "Add character" (`ConsentService.AddCharacter`, `identity/login`) opens `http://localhost:45538/` in the system browser.
 2. `GET /` renders the feature picker (`apps/webserver`, with the `[]feature.Feature` list as page data).
 3. `POST /start` takes the selected features, creates an attempt (`state`, PKCE verifier, scopes)
    and redirects to the SSO authorize URL.
@@ -141,7 +137,7 @@ field names and JSON tags so the bindings don't change. `sqlc.yaml` is added tog
 - Hash history, so secondary windows open at `/#/<route>`.
 - Routes under `layout` get the sidebar shell. Routes directly under root sit in the frame only.
 - `/` redirects to `/welcome` while there are no characters. It has no shell and a horizontal stepper:
-  add a character, synchronizing (until the character's sync jobs have all run once), complete (redirects
+  add a character, synchronizing (until the character's tasks have all run once this session), complete (redirects
   to `/characters`). Optional onboarding is the sidebar checklist in `components/getting-started`. Its items
   are derived from backend state; only skips and dismissal are kept, in `localStorage`.
 - Loaders call `queryClient.ensureQueryData` and components use `useSuspenseQuery`.
@@ -168,14 +164,13 @@ field names and JSON tags so the bindings don't change. `sqlc.yaml` is added tog
    Uncomment `db.Open` in `app.New`.
 2. **Identity:** `identity/sso`, `identity/login`, `identity/token`, sqlc for `tokens`.
 3. **Characters:** `character` queries, `Store`/`Remove`/`MarkNeedsLogin`, `EventChanged`.
-4. **Scheduler:** `core/task`, seeds and gates, `SyncService` per `docs/SCHEDULER.md`.
+4. **Scheduler:** `core/task`, seeds and gates, `TaskService` per `docs/SCHEDULER.md`.
 5. **First real feature** using the recipe above.
-6. Delete `core/todo`.
 
 ## Open questions
 
 - **What Yulai's features are.** That decides scopes, tables and pages beyond the shell.
-- **Shared module.** `core/*`, `identity/*`, `feature` and `feature/sync` are app-agnostic and would be
+- **Shared module.** `core/*`, `identity/*` and `feature` are app-agnostic and would be
   duplicated with asset-manager. They could be extracted into a shared `eve-online-tools/*` module once both
   apps have stabilised them. Until then, port by copy.
 - **Callback port.** Yulai uses `45538` (asset-manager uses `45537`) so both apps can run side by side.

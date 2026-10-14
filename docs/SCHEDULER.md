@@ -1,6 +1,6 @@
 # Scheduler plan
 
-Replaces the asset-manager style `feature/sync` (per-character jobs in a `sync_jobs` table).
+Replaces the asset-manager style per-character jobs in a `sync_jobs` table.
 
 ## Requirements
 
@@ -69,6 +69,7 @@ func (s *Scheduler) Resume(ctx context.Context, p Pause) error
 func (s *Scheduler) Trigger(ctx context.Context, name, subject string) error
 func (s *Scheduler) List() []Status
 func (s *Scheduler) Progress(key, subject string) (Progress, bool) // while a WithProgress task runs
+func (s *Scheduler) Refresh(subject string) // run every seed now, dispatch that subject's inputs
 
 // Inside a run of a WithProgress task, or a sub-task it queued: sets its progress. No-op elsewhere.
 func Report(ctx context.Context, p Progress) // Phase, Item, Done, Total (0: unknown)
@@ -132,21 +133,23 @@ success).
    away. User requests also bypass backoff. If the key is already running, `Queue` coalesces into one
    follow-up run. `Run` waits for that follow-up and gets its result. A cancelled ctx stops the wait, not the run.
    `Trigger(name, subject)` is the by-name form for the UI and reuses the last input seen for the subject.
-6. **Scheduler resolution** for `Queue` and `Run`: `WithScheduler` on ctx, then `task.Default`.
+6. **Refresh.** `Refresh(subject)` runs every seed now and dispatches only that subject's inputs, as a tick
+   would. `app` calls it after a login so a new character does not wait for the next interval.
+7. **Scheduler resolution** for `Queue` and `Run`: `WithScheduler` on ctx, then `task.Default`.
    Code under test that queues internally therefore reaches the test scheduler.
-7. **Pauses.** `Pause(kind, value)` / `Resume(kind, value)` with kind `task` (a `Pausable` name) or `subject`.
+8. **Pauses.** `Pause(kind, value)` / `Resume(kind, value)` with kind `task` (a `Pausable` name) or `subject`.
    Persisted through a `PauseStore` (`MemoryPauses` until the sqlite store backs `task_pauses`), loaded at
    `Start`, checked at dispatch.
-8. **Status.** `List()` returns, per task and key: running, last run, last error, last skip reason, backoff
-   until, paused, queued. Changes call `Options.OnChange` (debounced 250ms); `SyncService` turns that into the
+9. **Status.** `List()` returns, per task and key: running, last run, last error, last skip reason, backoff
+   until, paused, queued. Changes call `Options.OnChange` (debounced 250ms); `app` turns that into the
    `task:changed` Wails event, so `core/task` does not import Wails.
-9. **Progress.** Opt-in with `WithProgress(key)`. A run emits `ProgressStart` when it starts executing,
+10. **Progress.** Opt-in with `WithProgress(key)`. A run emits `ProgressStart` when it starts executing,
    `ProgressUpdate` on `Report` (at most every 100ms) and `ProgressDone` (with the last progress and the error)
    when it ends, through `Options.OnProgress`, so a UI shows a bar on start and hides it on done.
    `Report` finds the run through ctx; a sub-task queued with that ctx and no key of its own reports into the
    same run, without start or done of its own. `Progress(key, subject)` gives the current value to a UI that
    opens mid-run.
-10. **Stop.** When the `Start` ctx ends, run contexts are cancelled, waiting `Run` callers get `ErrStopped` or
+11. **Stop.** When the `Start` ctx ends, run contexts are cancelled, waiting `Run` callers get `ErrStopped` or
    the cancellation error, and `Start` returns once every run has.
 
 ## Layout
@@ -156,7 +159,7 @@ core/task/               engine, gates, pause store; owns task_pauses (the one t
 core/task/pool/          concurrency pools with priority for on-demand runs
 core/esi/                Pool, Timeout, ErrorLimit and Offline gates, Cached(resp)
 identity/token/          seeds over tokens, e.g. CharactersWithScope
-feature/sync/            Wails SyncService: List, Pause, Resume, Trigger(name, subject)
+app/tasks.go             Wails TaskService: List, Progress
 feature/<name>/
   feature.go             Feature: Name, Scopes, Tasks() []task.Binding
   db/                    sqlc output, imported by tasks and the feature
@@ -366,5 +369,5 @@ func TestBalance(t *testing.T) {
 2. `task_pauses` in the first migration, sqlite `PauseStore` with sqlc queries (needs `core/db`).
 3. Done: `feature.Feature` gets `Tasks() []task.Binding`. Remove `Job`, `Run`, `Outcome` and update `feature_test.go`.
 4. `core/esi` gates, pool, `Cached`. `identity/token` seed helpers, `Use`, invalid-grant hook.
-5. Replace `feature/sync` with the thin `SyncService` and wire everything in `app.New`. Then the frontend query key,
+5. Done: replace `feature/sync` with `TaskService` and wire everything in `app.New`. Then the frontend query key,
    event listener and status per task.

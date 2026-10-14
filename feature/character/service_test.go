@@ -12,8 +12,6 @@ import (
 	"github.com/eve-online-tools/yulai/core/crypt"
 	"github.com/eve-online-tools/yulai/core/db"
 	"github.com/eve-online-tools/yulai/core/keyring"
-	"github.com/eve-online-tools/yulai/core/task"
-	"github.com/eve-online-tools/yulai/feature"
 	"github.com/eve-online-tools/yulai/identity/login"
 	"github.com/eve-online-tools/yulai/identity/sso"
 	"github.com/eve-online-tools/yulai/identity/token"
@@ -46,14 +44,7 @@ type nopEmitter struct{}
 
 func (nopEmitter) Emit(string) {}
 
-type nopEnroller struct{ ids []int64 }
-
-func (n *nopEnroller) Enroll(_ context.Context, id int64) error {
-	n.ids = append(n.ids, id)
-	return nil
-}
-
-func newTestService(t *testing.T, esiBody string) (*Service, *token.Store, *nopEnroller) {
+func newTestService(t *testing.T, esiBody string) (*Service, *token.Store) {
 	t.Helper()
 	ctx := context.Background()
 	conn, err := db.Open(ctx, filepath.Join(t.TempDir(), "test.sqlite"))
@@ -67,9 +58,8 @@ func newTestService(t *testing.T, esiBody string) (*Service, *token.Store, *nopE
 	}
 	client := sso.NewClient(sso.Config{ClientID: "test"})
 	tokens := token.NewStore(conn, client, sso.NewVerifier(client), sealer, nil)
-	enroller := &nopEnroller{}
 	esiClient := &http.Client{Transport: fakeESI{body: esiBody}}
-	return NewService(conn, "", nil, nopEmitter{}, tokens, esiClient, nil, enroller), tokens, enroller
+	return NewService(conn, nopEmitter{}, tokens, esiClient), tokens
 }
 
 func result(scopes ...string) *login.Result {
@@ -83,7 +73,7 @@ const pilot = `{"name":"Test Pilot","corporation_id":98000001,"alliance_id":9900
 
 func TestStoreThenRelogReplacesScopes(t *testing.T) {
 	ctx := context.Background()
-	s, tokens, enroller := newTestService(t, pilot)
+	s, tokens := newTestService(t, pilot)
 
 	if err := s.Store(ctx, result("esi-a.v1", "esi-b.v1")); err != nil {
 		t.Fatal(err)
@@ -118,14 +108,11 @@ func TestStoreThenRelogReplacesScopes(t *testing.T) {
 	if rows[0].Status != StatusOK || rows[0].StatusError != nil {
 		t.Fatalf("status not reset: %+v", rows[0])
 	}
-	if len(enroller.ids) != 2 {
-		t.Fatalf("Enroll called %d times, want 2", len(enroller.ids))
-	}
 }
 
 func TestRemoveDropsToken(t *testing.T) {
 	ctx := context.Background()
-	s, tokens, _ := newTestService(t, pilot)
+	s, tokens := newTestService(t, pilot)
 	if err := s.Store(ctx, result("esi-a.v1")); err != nil {
 		t.Fatal(err)
 	}
@@ -141,7 +128,7 @@ func TestRemoveDropsToken(t *testing.T) {
 }
 
 func TestStoreFailsOnESIError(t *testing.T) {
-	s, _, _ := newTestService(t, "")
+	s, _ := newTestService(t, "")
 	s.esi = &http.Client{Transport: roundTripFunc(func(r *http.Request) (*http.Response, error) {
 		return &http.Response{StatusCode: http.StatusNotFound, Status: "404 Not Found", Header: http.Header{}, Body: io.NopCloser(strings.NewReader(`{"error":"not found"}`)), Request: r}, nil
 	})}
@@ -156,34 +143,3 @@ func TestStoreFailsOnESIError(t *testing.T) {
 type roundTripFunc func(*http.Request) (*http.Response, error)
 
 func (f roundTripFunc) RoundTrip(r *http.Request) (*http.Response, error) { return f(r) }
-
-type fakeFeature struct {
-	name   string
-	scopes []string
-}
-
-func (f fakeFeature) Name() string          { return f.name }
-func (f fakeFeature) Scopes() []string      { return f.scopes }
-func (f fakeFeature) Tasks() []task.Binding { return nil }
-
-type recordBrowser struct{ url string }
-
-func (b *recordBrowser) OpenURL(url string) error { b.url = url; return nil }
-
-func TestReloginPreselectsCurrentFeatures(t *testing.T) {
-	s, _, _ := newTestService(t, `{"corporation_id": 98000001}`)
-	ctx := context.Background()
-	b := &recordBrowser{}
-	s.browser, s.loginURL = b, "http://localhost:45538/"
-	s.features = []feature.Feature{fakeFeature{"A", []string{"esi-a.v1"}}, fakeFeature{"B", []string{"esi-b.v1"}}}
-	if err := s.Store(ctx, result("esi-a.v1")); err != nil {
-		t.Fatal(err)
-	}
-
-	if err := s.Relogin(ctx, 90000001); err != nil {
-		t.Fatal(err)
-	}
-	if want := "http://localhost:45538/?feature=&feature=A"; b.url != want {
-		t.Errorf("opened %q, want %q", b.url, want)
-	}
-}

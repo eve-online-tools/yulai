@@ -1,9 +1,10 @@
-import { useQuery, useSuspenseQuery, useMutation } from "@tanstack/react-query";
-import type { FeatureInfo, ListRow as Character } from "@bindings/github.com/eve-online-tools/yulai/feature/character";
-import { Service as Sync } from "@bindings/github.com/eve-online-tools/yulai/feature/sync";
-import { Button, EmptyState, PageHead, Panel, Tag } from "@xaroth.nl/design/react";
+import { useQuery, useSuspenseQuery } from "@tanstack/react-query";
+import type { ListRow as Character } from "@bindings/github.com/eve-online-tools/yulai/feature/character";
+import type { Status } from "@bindings/github.com/eve-online-tools/yulai/core/task";
+import type { Feature } from "@bindings/github.com/eve-online-tools/yulai/identity/login";
+import { EmptyState, PageHead, Panel, Tag } from "@xaroth.nl/design/react";
 import { Portrait, enabledFeatures } from "@yulai/ui";
-import { charactersQuery, featuresQuery, syncJobsQuery } from "../../queries";
+import { characterTasks, charactersQuery, featuresQuery, hasRun, tasksQuery } from "../../queries";
 import styles from "./overview.module.scss";
 
 export function OverviewPage() {
@@ -23,14 +24,13 @@ export function OverviewPage() {
   );
 }
 
-// Feature panels (one per feature that has something to show) go between the tags and the jobs.
-function CharacterCard({ character: c, features }: { character: Character; features: FeatureInfo[] }) {
-  const { data: jobs = [] } = useQuery(syncJobsQuery);
-  const runNow = useMutation({ mutationFn: (job: string) => Sync.RunNow(c.id, job) });
+// Feature panels (one per feature that has something to show) go between the tags and the tasks.
+function CharacterCard({ character: c, features }: { character: Character; features: Feature[] }) {
+  const { data: tasks = [] } = useQuery(tasksQuery);
 
   const enabled = enabledFeatures(features, c.scopes).map((f) => f.name);
   const disabled = features.filter((f) => !enabled.includes(f.name)).map((f) => f.name);
-  const myJobs = jobs.filter((j) => j.characterId === c.id);
+  const myTasks = characterTasks(tasks, c.id);
 
   return (
     <Panel className={styles.card}>
@@ -54,10 +54,10 @@ function CharacterCard({ character: c, features }: { character: Character; featu
       </div>
 
       <details className={`small ${styles.jobs}`}>
-        <summary className="muted">Sync jobs ({myJobs.length})</summary>
+        <summary className="muted">Tasks ({myTasks.length})</summary>
         <dl>
-          {myJobs.map((j) => (
-            <JobRow key={j.job} job={j.job} nextRun={j.nextRun} lastError={j.lastError} onRun={() => runNow.mutate(j.job)} />
+          {myTasks.map((t) => (
+            <TaskRow key={t.task} task={t} />
           ))}
         </dl>
       </details>
@@ -65,14 +65,13 @@ function CharacterCard({ character: c, features }: { character: Character; featu
   );
 }
 
-function JobRow({ job, nextRun, lastError, onRun }: { job: string; nextRun: number | null; lastError: string | null; onRun: () => void }) {
-  const label = lastError ? "error" : nextRun ? `next ${new Date(nextRun * 1000).toLocaleTimeString()}` : "paused";
+function TaskRow({ task: t }: { task: Status }) {
+  const label = t.lastError ? "error" : t.running ? "running" : hasRun(t) ? `last ${new Date(t.lastRun).toLocaleTimeString()}` : "pending";
   return (
     <>
-      <dt>{job}</dt>
+      <dt>{t.task}</dt>
       <dd>
-        <span className={lastError ? "error" : "muted"} title={lastError ?? ""}>{label}</span>{" "}
-        <Button variant="tertiary" size="sm" onClick={onRun}>sync now</Button>
+        <span className={t.lastError ? "error" : "muted"} title={t.lastError}>{label}</span>
       </dd>
     </>
   );

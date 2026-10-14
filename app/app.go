@@ -4,6 +4,7 @@ import (
 	"context"
 	"database/sql"
 	"errors"
+	"fmt"
 	"io/fs"
 	"log/slog"
 	"net/http"
@@ -22,23 +23,18 @@ import (
 	"github.com/eve-online-tools/yulai/feature/presence"
 	"github.com/eve-online-tools/yulai/feature/shiptree"
 	"github.com/eve-online-tools/yulai/feature/skills"
-	"github.com/eve-online-tools/yulai/feature/sync"
 	"github.com/eve-online-tools/yulai/identity/login"
 	"github.com/eve-online-tools/yulai/identity/sso"
 	"github.com/eve-online-tools/yulai/identity/token"
 )
 
-const (
-	syncWorkers = 4
-	taskWorkers = 8
-)
+const taskWorkers = 8
 
 // EventTasksChanged fires, debounced, when task run status or progress changes.
 const EventTasksChanged = "task:changed"
 
 func init() {
 	application.RegisterEvent[struct{}](character.EventChanged)
-	application.RegisterEvent[struct{}](sync.EventJobsChanged)
 	application.RegisterEvent[struct{}](presence.EventChanged)
 	application.RegisterEvent[struct{}](charactersheet.EventChanged)
 	application.RegisterEvent[struct{}](skills.EventChanged)
@@ -53,13 +49,13 @@ func init() {
 type App struct {
 	Config     *Config
 	Characters *character.Service
-	Scheduler  *sync.Scheduler
 	Login      *login.Server
 	SDE        *sde.Updater
 	Presence   *presence.Feature
 
 	conn   *sql.DB
 	sde    *sde.Store
+	tokens *token.Store
 	cancel context.CancelFunc
 	// done closes when the task scheduler has drained its in-flight runs.
 	done chan struct{}
@@ -101,20 +97,25 @@ func New(ctx context.Context, cfg *Config, web fs.FS) (*App, error) {
 		skills.NewFeature(conn, esiClient, tokens, characters{app}, emitter{}),
 	}
 
-	app.Scheduler = sync.NewScheduler(conn, features, tokens, syncWorkers)
 	loginFeatures := make([]login.Feature, 0, len(features))
 	for _, f := range features {
 		loginFeatures = append(loginFeatures, login.Feature{Name: f.Name(), Scopes: f.Scopes()})
 	}
 	app.Login, err = login.New(ssoClient, verifier, web, loginFeatures, func(ctx context.Context, r *login.Result) error {
-		return app.Characters.Store(ctx, r)
+		if err := app.Characters.Store(ctx, r); err != nil {
+			return err
+		}
+		// Sync the character now instead of on the next tick, which can be an hour away.
+		task.Default.Refresh(fmt.Sprintf("char:%d", r.CharacterID))
+		return nil
 	})
 	if err != nil {
 		conn.Close()
 		store.Close()
 		return nil, err
 	}
-	app.Characters = character.NewService(conn, app.Login.URL(), browser{}, emitter{}, tokens, esiClient, features, app.Scheduler)
+	app.Characters = character.NewService(conn, emitter{}, tokens, esiClient)
+	app.tokens = tokens
 
 	task.Default = task.NewScheduler(task.Options{
 		Workers:  taskWorkers,
@@ -134,24 +135,14 @@ func New(ctx context.Context, cfg *Config, web fs.FS) (*App, error) {
 	return app, nil
 }
 
-// Start binds the login server, enrolls existing characters and runs the schedulers
-// until ctx ends or Close. A busy login port is fatal.
+// Start binds the login server and runs the scheduler until ctx ends or Close. A
+// busy login port is fatal.
 func (a *App) Start(ctx context.Context) error {
 	if err := a.Login.Listen(); err != nil {
 		return err
 	}
-	chars, err := a.Characters.List(ctx)
-	if err != nil {
-		return err
-	}
-	for _, c := range chars {
-		if err := a.Scheduler.Enroll(ctx, c.ID); err != nil {
-			slog.Warn("enroll", "character", c.ID, "err", err)
-		}
-	}
 	ctx, a.cancel = context.WithCancel(ctx)
 	a.done = make(chan struct{})
-	go a.Scheduler.Start(ctx)
 	go func() {
 		defer close(a.done)
 		if err := task.Default.Start(ctx); err != nil {
@@ -164,17 +155,17 @@ func (a *App) Start(ctx context.Context) error {
 func (a *App) Services() []application.Service {
 	return []application.Service{
 		application.NewService(a.Characters),
-		application.NewService(sync.NewService(a.Scheduler)),
+		application.NewService(login.NewConsent(a.Login, browser{}, a.tokens)),
 		application.NewService(newSetupService(a.Config, a.Login.URL())),
 		application.NewService(sde.NewService(a.SDE, task.Default.List)),
-		application.NewService(&ProgressService{s: task.Default}),
+		application.NewService(&TaskService{s: task.Default}),
 		application.NewService(skills.NewService(a.conn)),
 		application.NewService(shiptree.NewService(a.sde)),
 		application.NewService(presence.NewService(a.Presence)),
 	}
 }
 
-// Close stops the schedulers and waits for in-flight runs before closing the
+// Close stops the scheduler and waits for in-flight runs before closing the
 // login server and the database they write to.
 func (a *App) Close() error {
 	if a.cancel != nil {
@@ -188,7 +179,7 @@ func (a *App) Close() error {
 	return errors.Join(err, a.sde.Close())
 }
 
-// browser implements character.Browser.
+// browser implements login.Browser.
 type browser struct{}
 
 func (browser) OpenURL(url string) error { return application.Get().Browser.OpenURL(url) }

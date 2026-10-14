@@ -1,6 +1,6 @@
 import { useState, type ReactNode } from "react";
 import { useMutation, useQuery } from "@tanstack/react-query";
-import { Service as Characters } from "@bindings/github.com/eve-online-tools/yulai/feature/character";
+import { Consent } from "@bindings/github.com/eve-online-tools/yulai/identity/login";
 import { Alert, Button } from "@xaroth.nl/design/react";
 import { AppIcon } from "@yulai/ui";
 import { navItemClass, navItemCollapsedClass, navItemLabelClass } from "../nav-item";
@@ -27,7 +27,7 @@ export function GettingStarted({ collapsed }: { collapsed?: boolean }) {
   const [stored, setStored] = useState(load);
   const { data: characters = [] } = useQuery(charactersQuery);
   const { data: setup } = useQuery(setupQuery);
-  const add = useMutation({ mutationFn: () => Characters.AddCharacter() });
+  const add = useMutation({ mutationFn: () => Consent.AddCharacter() });
 
   const save = (next: Stored) => {
     localStorage.setItem(storageKey, JSON.stringify(next));
